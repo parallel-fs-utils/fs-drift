@@ -1,0 +1,6 @@
+# example of user-specified mixed workload for fsstress
+read,10
+create,30
+append,60
+delete,5
+rename,1
