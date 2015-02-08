@@ -1,0 +1,8 @@
+# this is just an example of output from parse_stress_log.py
+
+files created ,files appended to ,files randomly written to ,files read ,files randomly read ,files truncated ,files deleted ,files renamed ,softlinks created ,read requests ,read bytes ,random read requests ,random read bytes ,write requests ,write bytes ,random write requests ,random write bytes ,fdatasync calls ,fsync calls ,leaf directories created ,no create -- file already existed ,file not found ,
+97,208,116,558,265,52,60,61,16,6033,2913304,106,94291,2175,1045795,109,105553,26,57,0,267,481,
+180,396,205,1050,512,101,115,100,18,11456,5486848,206,171926,3984,1946428,193,194220,52,113,0,521,919,
+266,622,310,1602,785,151,177,138,18,17446,8399138,328,273663,6187,2996502,304,298415,79,177,0,758,1358,
+344,772,420,2060,1023,196,223,183,18,21910,10519803,420,347203,7794,3774097,417,387973,103,237,0,995,1687,
+416,1004,515,2521,1279,249,270,231,18,26667,12816991,510,409090,9795,4736469,509,465936,129,298,0,1236,2083,
