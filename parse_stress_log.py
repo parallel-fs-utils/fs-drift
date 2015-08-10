@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# parse_stress_log.py - parse a output file from fsstress.py process run to obtain counter data
+# parse_stress_log.py - parse a output file from fs-drift.py process run to obtain counter data
 # output counter data in csv format with output field name in column 1, counters for each sample interval in right columns
 
 import sys

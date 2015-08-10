@@ -9,7 +9,7 @@ from common import rq, file_access_dist, OK, NOTOK
 
 def usage(msg):
 	print msg
-	print 'usage: fsstress.py [ --option value ]'
+	print 'usage: fs-drift.py [ --option value ]'
 	print 'options:'
 	print '-h|--help'
 	print '-t|--top-directory'
@@ -157,7 +157,7 @@ def parseopts():
 	if stats_report_interval > 0:
 		print'%11s%9d = statistics report intervalpercentage'%('', stats_report_interval)
 	if (duration == 1):
-		print 'do "python fsstress.py --help" for list of command line parameters'
+		print 'do "python fs-drift.py --help" for list of command line parameters'
 	sys.stdout.flush()
 
 if __name__ == "__main__":

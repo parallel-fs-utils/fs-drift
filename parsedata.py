@@ -1,8 +1,7 @@
-# parsedata.py - program to parse counters output by fsstress.py
+# parsedata.py - program to parse counters output by fs-drift.py
 # into .csv file format so they can be graphed easily.
 # this only handles a single process output at this time
-# take output of fsstress.py and make it this program's input
-# this program runs stand-alone outside of fsstress
+# take output of fs-drift.py and make it this program's input
 
 import string
 import sys

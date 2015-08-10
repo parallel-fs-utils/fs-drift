@@ -58,7 +58,7 @@ large_prime = 12373
 # for gaussian distribution with moving mean, we need to remember simulated time
 # so we can pick up where we left off with moving mean
 
-simtime_pathname = '/var/tmp/fsstress-simtime.tmp'
+simtime_pathname = '/var/tmp/fs-drift-simtime.tmp'
 SIMULATED_TIME_UNDEFINED = None
 simulated_time = SIMULATED_TIME_UNDEFINED  # initialized later
 time_save_rate = 5

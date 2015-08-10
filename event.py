@@ -4,7 +4,7 @@
 import string
 import sys
 import random
-# from fsstress modules
+# from fs-drift modules
 import common
 from common import rq
 import fsop

@@ -1,4 +1,4 @@
-# common.py - symbols used throughout fsstress
+# common.py - shared symbols and globals
 
 import os
 
