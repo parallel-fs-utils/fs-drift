@@ -1,13 +1,13 @@
-# fsstress
+# fs-drift
 mixed-workload filesystem aging test
 
-For a list of options usable with this script, "./fsstress.py -h" .
+For a list of options usable with this script, "./fs-drift.py -h" .
 
-To run it: ./fsstress.py
+To run it: ./fs-drift.py
 
 This of course is a very small run, it just gives you a rough idea of the input parameters and the results you can generate.
 
-fsstress is a program that attempts to stress a filesystem in various ways over a long period of time, in the following ways:
+fs-drift is a program that attempts to stress a filesystem in various ways over a long period of time, in the following ways:
 - file and record sizes are completely random
 - random sequences of reads and writes
 - random sequences of creates and deletes
@@ -25,15 +25,15 @@ Inputs:
 
 -t|--top-directory
 
-where fsstress puts all its files.  Since the design center for fsstress is distributed filesystems, we don't support multiple top-level directories.  However, you can run multiple instances of fsstress with different top-level directories and aggregate the results yourself.
+where fs-drift puts all its files.  Since the design center for fs-drift is distributed filesystems, we don't support multiple top-level directories.  However, you can run multiple instances of fs-drift with different top-level directories and aggregate the results yourself.
 
 -S|--starting-gun-file
 
-When run in distributed mode, fsstress processes wait until they see this file before the run actually starts.  This allows fsstress to synchronize start and stop of testing across systems, crucial for result aggregation across processes.
+When run in distributed mode, fs-drift processes wait until they see this file before the run actually starts.  This allows fs-drift to synchronize start and stop of testing across systems, crucial for result aggregation across processes.
 
 -o|--operation-count
 
-How many operations fsstress should attempt.  Note that this includes operations that abort with an expected system call error, such as create of a file that already exists.
+How many operations fs-drift should attempt.  Note that this includes operations that abort with an expected system call error, such as create of a file that already exists.
 
 -d|--duration
 
@@ -41,7 +41,7 @@ Generally it's best to specify test duration in seconds instead of operation cou
 
 -f|--max-files
 
-Set a limit on the maximum number of files that can be accessed by fsstress.  This allows us to run tests where we use a small fraction of the filesystem's space.  To fill up a filesystem, just specify a --max-files and a mean file size such that the product is much greater than the filesystem's space.
+Set a limit on the maximum number of files that can be accessed by fs-drift.  This allows us to run tests where we use a small fraction of the filesystem's space.  To fill up a filesystem, just specify a --max-files and a mean file size such that the product is much greater than the filesystem's space.
 
 -s|--max-file-size-kb
 
