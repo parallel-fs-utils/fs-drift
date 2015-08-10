@@ -12,6 +12,7 @@ import common
 from common import rq, file_access_dist, verbosity, OK, NOTOK, BYTES_PER_KB, FD_UNDEFINED
 import opts
 import numpy # for gaussian distribution
+import subprocess
 
 # operation counters, incremented by op function below
 have_created = 0
@@ -70,7 +71,8 @@ def init_buf():
 
 def scallerr( msg, fn, syscall_exception ):
 	err = syscall_exception.errno
-	print 'ERROR: %s: %s syscall errno %d(%s)'%(msg, fn, err, os.strerror(err))
+        a=subprocess.Popen("date", shell=True, stdout=subprocess.PIPE).stdout.read()
+	print '%s ERROR: %s: %s syscall errno %d(%s)'%(a.rstrip('\n'), msg, fn, err, os.strerror(err))
 
 def gen_random_dirname(file_index):
 	d = '.'
