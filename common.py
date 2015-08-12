@@ -18,6 +18,7 @@ class rq:
 	DELETE = 6
 	RENAME = 7
 	TRUNCATE = 8
+        HARDLINK = 9
 
 class file_access_dist:
 	UNIFORM = 2

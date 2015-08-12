@@ -39,9 +39,10 @@ def print_stats():
 	'%9u = files deleted\n' \
 	'%9u = files renamed\n' \
 	'%9u = softlinks created\n' \
+        '%9u = hardlinks created\n' \
 	%(fsop.have_created, fsop.have_appended, fsop.have_randomly_written, \
 	  fsop.have_read, fsop.have_randomly_read, fsop.have_truncated, \
-	  fsop.have_deleted, fsop.have_renamed, fsop.have_linked)
+	  fsop.have_deleted, fsop.have_renamed, fsop.have_linked, fsop.have_hlinked)
 	
 	print \
 	'%9u = read requests\n' \

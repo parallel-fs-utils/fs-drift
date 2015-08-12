@@ -25,6 +25,7 @@ have_read = 0
 have_randomly_read = 0
 have_renamed = 0
 have_truncated = 0
+have_hlinked = 0
 
 # throughput counters
 read_requests = 0
@@ -409,6 +410,28 @@ def link():
 		return NOTOK
 	return OK
 
+def hlink():
+	global have_hlinked, e_file_not_found, e_already_exists
+	fn = gen_random_fn()
+	fn2 = gen_random_fn() + link_suffix
+	if verbosity & 0x10000: print 'hard link to %s from %s'%(fn, fn2)
+	if not os.path.isfile(fn):
+		e_file_not_found += 1
+		return OK
+	try:
+		rc = os.link(fn, fn2)
+		have_hlinked += 1
+	except os.error, e:
+		if e.errno == errno.EEXIST:
+			e_already_exists += 1
+			return OK
+		elif e.errno == errno.ENOENT:
+			e_file_not_found += 1
+			return OK
+		scallerr('link', fn, e)
+		return NOTOK
+	return OK
+
 def delete():
 	global have_deleted, e_file_not_found
 	fn = gen_random_fn()
@@ -454,7 +477,8 @@ rq_map = \
    rq.LINK:(link,"link"), \
    rq.DELETE:(delete,"delete"), \
    rq.RENAME:(rename, "rename"), \
-   rq.TRUNCATE:(truncate, "truncate") \
+   rq.TRUNCATE:(truncate, "truncate"), \
+   rq.HARDLINK:(hlink, "hardlink") \
   }
 
 
