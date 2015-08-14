@@ -51,6 +51,7 @@ e_no_space = 0
 total_dirs = 1
 
 link_suffix = '.s'
+hlink_suffix = '.h'
 rename_suffix = '.r'
 
 buf = None
@@ -413,7 +414,7 @@ def link():
 def hlink():
 	global have_hlinked, e_file_not_found, e_already_exists
 	fn = gen_random_fn()
-	fn2 = gen_random_fn() + link_suffix
+	fn2 = gen_random_fn() + hlink_suffix
 	if verbosity & 0x10000: print 'hard link to %s from %s'%(fn, fn2)
 	if not os.path.isfile(fn):
 		e_file_not_found += 1
@@ -440,7 +441,12 @@ def delete():
 		linkfn = fn + link_suffix
 		if os.path.isfile(linkfn):
 			if verbosity & 0x20000:
-                                print 'delete link %s'%(linkfn)
+                                print 'delete soft link %s'%(linkfn)
+			os.unlink(linkfn)
+                else:
+                        linkfn = fn + hlink_suffix
+			if verbosity & 0x20000:
+                                print 'delete hard link %s'%(linkfn)
 			os.unlink(linkfn)
 		os.unlink(fn)
 		have_deleted += 1
