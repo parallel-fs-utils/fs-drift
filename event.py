@@ -15,7 +15,7 @@ import opts
 
 #default weights are:
 
-weights = { rq.READ:10, rq.RANDOM_READ:2, rq.CREATE:4, rq.RANDOM_WRITE:2, rq.APPEND:2, rq.LINK:0, rq.DELETE:1, rq.RENAME:0, rq.TRUNCATE:1, rq.HARDLINK:1}
+weights = { rq.READ:10, rq.RANDOM_READ:2, rq.CREATE:4, rq.RANDOM_WRITE:2, rq.APPEND:2, rq.LINK:0, rq.DELETE:1, rq.RENAME:0, rq.TRUNCATE:1, rq.HARDLINK:2}
 
 normalized_weights = {}
 

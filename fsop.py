@@ -47,6 +47,10 @@ e_no_dir_space = 0
 e_no_inode_space = 0
 e_no_space = 0
 
+# most recent center
+last_center = 0
+
+
 #someday these two should be parameters
 total_dirs = 1
 
@@ -90,6 +94,7 @@ def gen_random_dirname(file_index):
 def gen_random_fn(is_create=False):
 	global total_dirs
 	global simulated_time
+        global last_center
 	if total_dirs == 1: # if first time
 		for i in range(0, opts.levels):
 			total_dirs *= opts.dirs_per_level
@@ -114,20 +119,22 @@ def gen_random_fn(is_create=False):
                 # for creates, use greater time, so that reads, etc. will "follow" creates most of the time
 		# mean and std deviation define gaussian distribution
 
-		center = (simulated_time * opts.mean_index_velocity) 
+		center = (simulated_time * opts.mean_index_velocity)
                 if is_create: center += (opts.create_stddevs_ahead * opts.gaussian_stddev)
-		if verbosity & 0x20: print 'center = %f'%center
+		if verbosity & 0x20: print '%f = center'%center
         	index_float = numpy.random.normal(loc = center, scale = opts.gaussian_stddev)
 		file_opstr = 'read'
 		if is_create: file_opstr = 'create'
-		if verbosity & 0x20: print '%s gaussian value = %f'%(file_opstr, index_float)
+		if verbosity & 0x20: print '%s gaussian value is %f'%(file_opstr, index_float)
 		#index = int(index_float) % max_files_per_dir
 		index = int(index_float) % opts.max_files
+                last_center = center
 
 		# since this is a time-varying distribution, record the time every so often
 		# so we can pick up where we left off
 
-		simulated_time += 1
+                if opts.drift_time == -1:
+		        simulated_time += 1
 		if simulated_time % time_save_rate == 0:
 			with open(simtime_pathname, 'w') as time_fd:
 				time_fd.write('%10d'%simulated_time)
