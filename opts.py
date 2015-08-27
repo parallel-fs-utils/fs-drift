@@ -58,6 +58,7 @@ rand_distr_type_str = 'uniform'
 mean_index_velocity = 0.0 # default is a fixed mean for the distribution
 gaussian_stddev = 1000.0  # just a guess, means most of accesses within 1000 files?
 create_stddevs_ahead = 3.0 # just a guess, most files will be created before they are read
+drift_time = -1
 
 def parseopts():
 	global top_directory, starting_gun_file, opcount, max_files, max_file_size_kb, duration

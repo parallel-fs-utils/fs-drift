@@ -17,7 +17,7 @@ for r in records:
   if collect_counters and r.__contains__('='): # if this is a counter record
     pair = [ s.strip() for s in r.split('=') ]
     key = pair[1]
-    value = int(pair[0])
+    value = float(pair[0])
     try:
       counters[key].append(value)
     except KeyError as e:

@@ -30,6 +30,7 @@ def print_stats():
 	print
 	print 'elapsed time: %9.1f'%(time.time() - start_time)
 	print '\n\n'\
+	'%9u = center\n' \
 	'%9u = files created\n' \
 	'%9u = files appended to\n' \
 	'%9u = files randomly written to\n' \
@@ -39,9 +40,10 @@ def print_stats():
 	'%9u = files deleted\n' \
 	'%9u = files renamed\n' \
 	'%9u = softlinks created\n' \
-	%(fsop.have_created, fsop.have_appended, fsop.have_randomly_written, \
+        '%9u = hardlinks created\n' \
+	%(fsop.last_center, fsop.have_created, fsop.have_appended, fsop.have_randomly_written, \
 	  fsop.have_read, fsop.have_randomly_read, fsop.have_truncated, \
-	  fsop.have_deleted, fsop.have_renamed, fsop.have_linked)
+	  fsop.have_deleted, fsop.have_renamed, fsop.have_linked, fsop.have_hlinked)
 	
 	print \
 	'%9u = read requests\n' \
@@ -94,6 +96,7 @@ sys.stdout.flush()
 op = 0
 rsptimes = []
 last_stat_time = time.time()
+last_drift_time = time.time()
 stop_file = opts.top_directory + os.sep + 'stop-file'
 
 # we have to synchronize threads across multiple hosts somehow, we do this with a 
@@ -105,6 +108,7 @@ if opts.starting_gun_file:
 time.sleep(2) # give everyone else a chance to see that start-file is there
 start_time = time.time()
 event_count = 0
+
 while True:
         # every 1000 events, check for "stop file" that indicates test should end
 
@@ -130,6 +134,7 @@ while True:
 		print
 		print x, name
 	before = time.time()
+        before_drift = time.time()
 	try:
 		rc = fn()
 		after = time.time()
@@ -143,6 +148,9 @@ while True:
 	if (opts.stats_report_interval > 0) and (before - last_stat_time > opts.stats_report_interval):
 		print_stats()
 		last_stat_time = before
+	if (opts.drift_time > 0) and (before_drift - last_drift_time > opts.drift_time):
+                fsop.simulated_time += opts.drift_time
+		last_drift_time = before_drift
 
 if opts.rsptimes:
 	for (reltime, rspt) in rsptimes:
