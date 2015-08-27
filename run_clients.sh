@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# run_clients.sh - script to launch fsstress.py processes on all clients listed in clients.list file
+# run_clients.sh - script to launch fs-drift.py processes on all clients listed in clients.list file
 #
 #
 threads_per_client=$1
-logdir=/var/tmp/stress-logs
-topdir=${fss_topdir:-/mnt/ramfs/stress2}
+logdir=/var/tmp/drift-logs
+topdir=${fss_topdir:-/mnt/ramfs/drift2}
 starting_gun=starting-gun.tmp
-counter_topdir=/var/tmp/stress_counters
+counter_topdir=/var/tmp/drift_counters
 any_client=`head -1 clients.list` 
 
 rm -fv $topdir/$starting_gun
@@ -31,6 +31,6 @@ for n in `cat clients.list` ; do
   scp -rqB $n:$logdir $d
   threads=`ls $d | wc -l`
   for t in `seq 1 $threads` ; do 
-    ./parse_stress_log.py < $d/$n.thr$t.log > $d/thr$t.csv
+    ./parse_drift_log.py < $d/$n.thr$t.log > $d/thr$t.csv
   done
 done

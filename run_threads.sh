@@ -1,17 +1,17 @@
 #!/bin/bash 
 #
-# run_threads.sh - run multiple processes with fsstress.py
+# run_threads.sh - run multiple processes with fs-drift.py 
 # edit test parameters in multi_thread_config.sh
 #
 
 . ./multi_thread_config.sh
 
 starting_gun=starting-gun.tmp
-stress_opts="-t $topdir -S $starting_gun -d $duration -f $files -s $size -r $recsz -l $levels -i $interval "
+drift_opts="-t $topdir -S $starting_gun -d $duration -f $files -s $size -r $recsz -l $levels -i $interval "
 if [ -n "$workload" ] ; then
-  stress_opts="$stress_opts -w $workload "
+  drift_opts="$drift_opts -w $workload "
 fi
-cd `dirname $stress_pgm`
+cd `dirname $drift_pgm`
 rm -rf $logdir
 mkdir -p $logdir
 if [ -z "$threads" ] ; then
@@ -20,7 +20,7 @@ if [ -z "$threads" ] ; then
 fi
 if [ $threads -gt 0 ] ; then
   for n in `seq 1 $threads` ; do 
-    eval "$stress_pgm $stress_opts > $logdir/`hostname`.thr$n.log 2>&1 &" 
+    eval "$drift_pgm $drift_opts > $logdir/`hostname`.thr$n.log 2>&1 &" 
     pids="$pids $!"
   done
 fi
