@@ -26,6 +26,19 @@ def ensure_deleted(file_path):
 
 # print out counters for the interval that just completed.
 
+def print_short_stats():
+	print 'elapsed time: %9.1f'%(time.time() - start_time)
+	print '\n'\
+        '%9u = center\n' \
+	'%9u = files created\t' \
+        '%9u = files appended to\n' \
+	'%9u = files random write\t' \
+	'%9u = files read\n' \
+	'%9u = files randomly read\n' \
+	%(fsop.last_center, fsop.have_created, fsop.have_appended, fsop.have_randomly_written, \
+	  fsop.have_read, fsop.have_randomly_read)
+        sys.stdout.flush()
+
 def print_stats():
 	print
 	print 'elapsed time: %9.1f'%(time.time() - start_time)
@@ -146,7 +159,10 @@ while True:
 		print "%s returns %d"%(name, rc)
 		total_errors += 1
 	if (opts.stats_report_interval > 0) and (before - last_stat_time > opts.stats_report_interval):
-		print_stats()
+                if opts.short_stats == True:
+                        print_short_stats()
+                else:
+		        print_stats()
 		last_stat_time = before
 	if (opts.drift_time > 0) and (before_drift - last_drift_time > opts.drift_time):
                 fsop.simulated_time += opts.drift_time

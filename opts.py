@@ -28,6 +28,7 @@ def usage(msg):
 	print '-D|--dirs-per-level'
 	print '-w|--workload-table'
 	print '-i|--report-interval'
+        print '-a|--abreviated-stats'
         print '-+D|--random-distribution'
         print '-+v|--mean-velocity'
         print '-+d|--gaussian-stddev'
@@ -47,6 +48,7 @@ max_random_reads = 2
 max_random_writes = 2
 fdatasync_probability_pct = 10
 fsync_probability_pct = 20
+short_stats = False
 levels = 2
 dirs_per_level = 3
 rsptimes = False
@@ -61,7 +63,7 @@ create_stddevs_ahead = 3.0 # just a guess, most files will be created before the
 drift_time = -1
 
 def parseopts():
-	global top_directory, starting_gun_file, opcount, max_files, max_file_size_kb, duration
+	global top_directory, starting_gun_file, opcount, max_files, max_file_size_kb, duration, short_stats
 	global max_record_size_kb, max_random_reads, max_random_writes, rsptimes
 	global fsync_probability_pct, fdatasync_probability_pct, workload_table_filename
 	global stats_report_interval, levels, dirs_per_level
@@ -103,6 +105,8 @@ def parseopts():
 			levels = int(val)
 		elif nm == '--dirs-per-level' or nm == '-D':
 			dirs_per_level = int(val)
+                elif nm == '--short-stats' or nm == '-a':
+                        short_stats=True
 		elif nm == '--report-interval' or nm == '-i':
 			stats_report_interval = int(val)
 		elif nm == '--response-times' or nm == '-T':
