@@ -67,7 +67,7 @@ If true, allows fsync() call to be done every so often when files are written.
 
 If true, allows fdatasync() call to be done every so often when files are written.
 
--r|--response-times
+-T|--response-times
 
 If true, save response time data to a .csv file.
 

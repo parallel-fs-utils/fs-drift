@@ -23,7 +23,7 @@ def usage(msg):
 	print '-W|--max-random-writes'
 	print '-Y|--fsyncs'
 	print '-y|--fdatasyncs'
-	print '-r|--response-times'
+	print '-T|--response-times'
 	print '-l|--levels'
 	print '-D|--dirs-per-level'
 	print '-w|--workload-table'
