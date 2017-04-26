@@ -450,11 +450,11 @@ def delete():
 			if verbosity & 0x20000:
                                 print 'delete soft link %s'%(linkfn)
 			os.unlink(linkfn)
-                else:
-                        linkfn = fn + hlink_suffix
+		hlinkfn = fn + hlink_suffix
+		if os.path.isfile(hlinkfn):
 			if verbosity & 0x20000:
-                                print 'delete hard link %s'%(linkfn)
-			os.unlink(linkfn)
+                                print 'delete hard link %s'%(hlinkfn)
+			os.unlink(hlinkfn)
 		os.unlink(fn)
 		have_deleted += 1
 	except os.error, e:
