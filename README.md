@@ -69,7 +69,7 @@ If true, allows fdatasync() call to be done every so often when files are writte
 
 -T|--response-times
 
-If true, save response time data to a .csv file. (default False)
+If true, save response time data to a .csv file. First value is number of seaconds after start of the test. Second value is number of seconds the operation lasted. Response times for different operations are separated. (default False)
 
 -l|--levels
 
