@@ -107,7 +107,7 @@ os.chdir(opts.top_directory)
 sys.stdout.flush()
 
 op = 0
-rsptimes = []
+rsptimes = {'read':[], 'random_read': [], 'create':[], 'random_write':[], 'append':[], 'link':[], 'delete':[], 'rename':[], 'truncate':[], 'hardlink':[]}
 last_stat_time = time.time()
 last_drift_time = time.time()
 stop_file = opts.top_directory + os.sep + 'stop-file'
@@ -153,7 +153,7 @@ while True:
 		rc = fn()
 		after = time.time()
 		if curr_e_exists == fsop.e_already_exists and curr_e_not_found == fsop.e_file_not_found:
-		        rsptimes.append((before - start_time, after - before))
+		        rsptimes[name].append((before - start_time, after - before))
 	except KeyboardInterrupt, e:
 		print "received SIGINT (control-C) signal, aborting..."
 		break
