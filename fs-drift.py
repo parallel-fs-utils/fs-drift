@@ -171,8 +171,10 @@ while True:
 		last_drift_time = before_drift
 
 if opts.rsptimes:
-	for (reltime, rspt) in rsptimes:
-		rsptime_file.write('%9.3f , %9.6f\n'%(reltime,  rspt))
+	for key, ls in rsptimes.items():
+		rsptime_file.write(key+'\n')	
+		for (reltime, rspt) in ls:
+			rsptime_file.write('%9.3f , %9.6f\n'%(reltime,  rspt))	
 	rsptime_file.close()
 	print 'response time file is %s'%rsptime_filename
 
