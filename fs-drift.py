@@ -148,10 +148,12 @@ while True:
 		print x, name
 	before = time.time()
         before_drift = time.time()
+        curr_e_exists, curr_e_not_found = fsop.e_already_exists, fsop.e_file_not_found
 	try:
 		rc = fn()
 		after = time.time()
-		rsptimes.append((before - start_time, after - before))
+		if curr_e_exists == fsop.e_already_exists and curr_e_not_found == fsop.e_file_not_found:
+		        rsptimes.append((before - start_time, after - before))
 	except KeyboardInterrupt, e:
 		print "received SIGINT (control-C) signal, aborting..."
 		break
