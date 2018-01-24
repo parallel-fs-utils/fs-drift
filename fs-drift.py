@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # fs-drift.py - user runs this module to generate workload
 # "-h" option generates online help
@@ -107,7 +107,7 @@ os.chdir(opts.top_directory)
 sys.stdout.flush()
 
 op = 0
-rsptimes = []
+rsptimes = {'read':[], 'random_read': [], 'create':[], 'random_write':[], 'append':[], 'link':[], 'delete':[], 'rename':[], 'truncate':[], 'hardlink':[]}
 last_stat_time = time.time()
 last_drift_time = time.time()
 stop_file = opts.top_directory + os.sep + 'stop-file'
@@ -123,6 +123,12 @@ start_time = time.time()
 event_count = 0
 
 while True:
+        #if there is pause file present, do nothing
+
+        if os.path.isfile(opts.pause_file):
+                time.sleep(5)
+                continue
+
         # every 1000 events, check for "stop file" that indicates test should end
 
 	event_count += 1
@@ -148,10 +154,12 @@ while True:
 		print x, name
 	before = time.time()
         before_drift = time.time()
+        curr_e_exists, curr_e_not_found = fsop.e_already_exists, fsop.e_file_not_found
 	try:
 		rc = fn()
 		after = time.time()
-		rsptimes.append((before - start_time, after - before))
+		if curr_e_exists == fsop.e_already_exists and curr_e_not_found == fsop.e_file_not_found:
+		        rsptimes[name].append((before - start_time, after - before))
 	except KeyboardInterrupt, e:
 		print "received SIGINT (control-C) signal, aborting..."
 		break
@@ -169,8 +177,10 @@ while True:
 		last_drift_time = before_drift
 
 if opts.rsptimes:
-	for (reltime, rspt) in rsptimes:
-		rsptime_file.write('%9.3f , %9.6f\n'%(reltime,  rspt))
+	for key, ls in rsptimes.items():
+		rsptime_file.write(key+'\n')	
+		for (reltime, rspt) in ls:
+			rsptime_file.write('%9.3f , %9.6f\n'%(reltime,  rspt))	
 	rsptime_file.close()
 	print 'response time file is %s'%rsptime_filename
 

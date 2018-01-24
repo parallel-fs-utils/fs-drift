@@ -25,83 +25,87 @@ Inputs:
 
 -t|--top-directory
 
-where fs-drift puts all its files.  Since the design center for fs-drift is distributed filesystems, we don't support multiple top-level directories.  However, you can run multiple instances of fs-drift with different top-level directories and aggregate the results yourself.
+where fs-drift puts all its files.  Since the design center for fs-drift is distributed filesystems, we don't support multiple top-level directories.  However, you can run multiple instances of fs-drift with different top-level directories and aggregate the results yourself.(default '/tmp/foo')
 
 -S|--starting-gun-file
 
-When run in distributed mode, fs-drift processes wait until they see this file before the run actually starts.  This allows fs-drift to synchronize start and stop of testing across systems, crucial for result aggregation across processes.
+When run in distributed mode, fs-drift processes wait until they see this file before the run actually starts.  This allows fs-drift to synchronize start and stop of testing across systems, crucial for result aggregation across processes.(default None)
 
 -o|--operation-count
 
-How many operations fs-drift should attempt.  Note that this includes operations that abort with an expected system call error, such as create of a file that already exists.
+How many operations fs-drift should attempt.  Note that this includes operations that abort with an expected system call error, such as create of a file that already exists.(default 0)
 
 -d|--duration
 
-Generally it's best to specify test duration in seconds instead of operation count.
+Generally it's best to specify test duration in seconds instead of operation count.(default 1)
 
 -f|--max-files
 
-Set a limit on the maximum number of files that can be accessed by fs-drift.  This allows us to run tests where we use a small fraction of the filesystem's space.  To fill up a filesystem, just specify a --max-files and a mean file size such that the product is much greater than the filesystem's space.
+Set a limit on the maximum number of files that can be accessed by fs-drift.  This allows us to run tests where we use a small fraction of the filesystem's space.  To fill up a filesystem, just specify a --max-files and a mean file size such that the product is much greater than the filesystem's space.(default 20)
 
 -s|--max-file-size-kb
 
-Set a limit on maximum file size in KB.  File size is randomly generated and can be much less than this.
+Set a limit on maximum file size in KB.  File size is randomly generated and can be much less than this.(default 10)
 
 -r|--max-record-size-kb
 
-Set a limit on maximum record size in KB.  Record (I/O transfer) size is randomly generated and can be much less than this.
+Set a limit on maximum record size in KB.  Record (I/O transfer) size is randomly generated and can be much less than this.(default 1)
 
 -R|--max-random-reads
 
-Set a limit on how many random reads in a row are done to a file per random read op.
+Set a limit on how many random reads in a row are done to a file per random read op.(default 2)
 
 -W|--max-random-writes
 
-Set a limit on how many random writes in a row can be done to a file per random write op.
+Set a limit on how many random writes in a row can be done to a file per random write op.(default 2)
 
 -Y|--fsyncs
 
-If true, allows fsync() call to be done every so often when files are written.
+If true, allows fsync() call to be done every so often when files are written. Value is probability in percent. (default 20)
 
 -y|--fdatasyncs
 
-If true, allows fdatasync() call to be done every so often when files are written.
+If true, allows fdatasync() call to be done every so often when files are written. Value is probability in percent. (default 10)
 
--r|--response-times
+-T|--response-times
 
-If true, save response time data to a .csv file.
+If true, save response time data to a .csv file. First value is number of seaconds after start of the test. Second value is number of seconds the operation lasted. Response times for different operations are separated. (default False)
 
 -l|--levels
 
-How many directory levels will be used.
+How many directory levels will be used. (default 2)
 
 -D|--dirs-per-level
 
-How many directories per level will be used.
+How many directories per level will be used. (default 3)
 
 -w|--workload-table
 
-Provide a user-specified workload table controlling the mix of random operations.
+Provide a user-specified workload table controlling the mix of random operations.(default None)
 
 -i|--report-interval
 
-Report counters over a user-specified interval.
+Report counters over a user-specified interval. (default 0)
 
 -+D|--random-distribution
 
-By default, filename access frequency is random uniform, but with this parameter set to "gaussian" you can create a non-uniform distribution of file access.  This is useful for caching and cache tiering systems.
+By default, filename access frequency is random uniform, but with this parameter set to "gaussian" you can create a non-uniform distribution of file access.  This is useful for caching and cache tiering systems. (default 'uniform')
 
 -+v|--mean-velocity
 
-By default, a non-uniform random filename distribution is stationary over time, but with this parameter you can make the mean "move" at a specified velocity (i.e. the file number mean will shift by this much for every operation, modulo the maximum number of files.  
+By default, a non-uniform random filename distribution is stationary over time, but with this parameter you can make the mean "move" at a specified velocity (i.e. the file number mean will shift by this much for every operation, modulo the maximum number of files. (default 0.0)
 
 -+d|--gaussian-stddev
 
-For gaussian filename distribution, this parameter controls with width of the bell curve.  As you increase this parameter past the cache space in your caching layer, the probability of a cache hit will go down.
+For gaussian filename distribution, this parameter controls with width of the bell curve.  As you increase this parameter past the cache space in your caching layer, the probability of a cache hit will go down. (default 1000.0)
 
 -+c|--create_stddevs-ahead
 
-This parameter is for cache tiering testing.  It allows creates to "lead" all other operations, so that we can create a high probability that read files will be in the set of "hot files".  Otherwise, most read accesses with non-uniform filename distribution will result  in "file not found" errors.
+This parameter is for cache tiering testing.  It allows creates to "lead" all other operations, so that we can create a high probability that read files will be in the set of "hot files".  Otherwise, most read accesses with non-uniform filename distribution will result  in "file not found" errors. (default 3.0)
+
+-p|--pause
+
+Parameter allows to specify pause file. If this file exists, fs-drift won't perform any I/O operations. (default /var/tmp/pause)
 
 
 
