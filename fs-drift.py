@@ -123,6 +123,12 @@ start_time = time.time()
 event_count = 0
 
 while True:
+        #if there is pause file present, do nothing
+
+        if os.path.isfile(opts.pause_file):
+                time.sleep(5)
+                continue
+
         # every 1000 events, check for "stop file" that indicates test should end
 
 	event_count += 1

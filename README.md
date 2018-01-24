@@ -103,6 +103,10 @@ For gaussian filename distribution, this parameter controls with width of the be
 
 This parameter is for cache tiering testing.  It allows creates to "lead" all other operations, so that we can create a high probability that read files will be in the set of "hot files".  Otherwise, most read accesses with non-uniform filename distribution will result  in "file not found" errors. (default 3.0)
 
+-p|--pause
+
+Parameter allows to specify pause file. If this file exists, fs-drift won't perform any I/O operations. (default /var/tmp/pause)
+
 
 
 

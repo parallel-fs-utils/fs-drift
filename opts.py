@@ -33,6 +33,7 @@ def usage(msg):
         print '-+v|--mean-velocity'
         print '-+d|--gaussian-stddev'
         print '-+c|--create_stddevs-ahead'
+        print '-p|--pause_file'
 	sys.exit(NOTOK)
 
 # command line parameter variables here
@@ -61,6 +62,7 @@ mean_index_velocity = 0.0 # default is a fixed mean for the distribution
 gaussian_stddev = 1000.0  # just a guess, means most of accesses within 1000 files?
 create_stddevs_ahead = 3.0 # just a guess, most files will be created before they are read
 drift_time = -1
+pause_file='/var/tmp/pause'
 
 def parseopts():
 	global top_directory, starting_gun_file, opcount, max_files, max_file_size_kb, duration, short_stats
@@ -127,6 +129,8 @@ def parseopts():
 			gaussian_stddev = float(val)
                 elif nm == '--create_stddevs-ahead' or nm == '-+c':
                         create_stddevs_ahead = float(val)
+		elif nm == '--pause_file' or nm == '-p':
+                        pause_file = val
 		else:
 			usage('syntax error for option %s value %s'%(nm, val))
 	except Exception, e:
