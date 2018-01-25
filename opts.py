@@ -24,6 +24,7 @@ def usage(msg):
 	print '-Y|--fsyncs'
 	print '-y|--fdatasyncs'
 	print '-T|--response-times'
+        print '-b|--bandwidth'
 	print '-l|--levels'
 	print '-D|--dirs-per-level'
 	print '-w|--workload-table'
@@ -53,6 +54,7 @@ short_stats = False
 levels = 2
 dirs_per_level = 3
 rsptimes = False
+bw = False
 workload_table_filename = None
 stats_report_interval = 0
 # new parameters related to gaussian filename distribution
@@ -66,7 +68,7 @@ pause_file='/var/tmp/pause'
 
 def parseopts():
 	global top_directory, starting_gun_file, opcount, max_files, max_file_size_kb, duration, short_stats
-	global max_record_size_kb, max_random_reads, max_random_writes, rsptimes
+	global max_record_size_kb, max_random_reads, max_random_writes, rsptimes, bw
 	global fsync_probability_pct, fdatasync_probability_pct, workload_table_filename
 	global stats_report_interval, levels, dirs_per_level
 	global rand_distr_type, rand_distr_type_str, mean_index_velocity, gaussian_stddev, create_stddevs_ahead
@@ -114,6 +116,9 @@ def parseopts():
 		elif nm == '--response-times' or nm == '-T':
 			v = string.lower(val)
 			rsptimes = (v == 'true' or v == 'yes' or v == 'on')
+		elif nm == '--bandwidth' or nm == '-b':
+			v = string.lower(val)
+			bw = (v == 'true' or v == 'yes' or v == 'on')
 		elif nm == '--random-distribution' or nm == '-+D':
 			v = string.lower(val)
 			if v == 'uniform':
@@ -155,12 +160,13 @@ def parseopts():
 '%11s%9.1f = gaussian stddev\n'\
 '%11s%9.1f = create stddevs ahead\n'\
 '%20s = save response times\n'\
+'%20s = save bandwidth\n'\
   %(top_directory, str(starting_gun_file), '', opcount, '', duration, '', max_files, '', max_file_size_kb, \
     '', max_record_size_kb, '', max_random_reads, '', max_random_writes, \
     '', fdatasync_probability_pct, '', fsync_probability_pct, \
     '', levels, '', dirs_per_level, \
     rand_distr_type_str, '', mean_index_velocity, '', gaussian_stddev, '', create_stddevs_ahead, \
-    str(rsptimes)))
+    str(rsptimes), str(bw)))
 	if workload_table_filename != None:
 		print '%20s = workload table filename'%workload_table_filename
 	if stats_report_interval > 0:

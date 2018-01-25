@@ -69,7 +69,11 @@ If true, allows fdatasync() call to be done every so often when files are writte
 
 -T|--response-times
 
-If true, save response time data to a .csv file. First value is number of seaconds after start of the test. Second value is number of seconds the operation lasted. Response times for different operations are separated. (default False)
+If true, save response time data to a .csv file. First value is number of seconds after start of the test. Second value is number of seconds the operation lasted. Response times for different operations are separated. (default False)
+
+-b|--bandwidth
+
+If truem save bandwidth data to a csv file. First value is number of seconds after start of the thest. Second value is bandwidth[kB/s]. Recorded values are for sequential reads (read), random reads (randread), random writes (randwrite) and sequential writes (write). Sequential writes are agregated from append and create operations.
 
 -l|--levels
 

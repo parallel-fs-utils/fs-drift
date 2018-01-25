@@ -11,10 +11,16 @@ import random
 import event
 import fsop
 import common
-from common import rq, OK, NOTOK
+from common import rq, OK, NOTOK, BYTES_PER_KB
 import opts
 import errno
 
+# get byte counters from fsop
+
+def refresh_counters():
+        global counters
+        counters = {'read' : fsop.read_bytes, 'create' : fsop.write_bytes, 'append' : fsop.write_bytes, 'random_write' : fsop.randwrite_bytes, 'random_read' : fsop.randread_bytes}
+                
 # instead of looking up before deletion, do reverse, delete and catch exception
 
 def ensure_deleted(file_path):
@@ -100,14 +106,21 @@ except os.error, e:
 	if e.errno != errno.EEXIST:
 		raise e
 if opts.rsptimes:
-	rsptime_filename = '/var/tmp/fs-drift_%d_%d_rspt.csv'%(int(time.time()) , os.getpid())
+	rsptime_filename = '/var/tmp/fs-drift_rsptimes_%d_%d_rspt.csv'%(int(time.time()) , os.getpid())
 	rsptime_file = open(rsptime_filename, "w")
+
+if opts.bw:
+	bw_filename = '/var/tmp/fs-drift_bw_%d_%d_rspt.csv'%(int(time.time()) , os.getpid())
+	bw_file = open(bw_filename, "w")
 
 os.chdir(opts.top_directory)
 sys.stdout.flush()
 
 op = 0
 rsptimes = {'read':[], 'random_read': [], 'create':[], 'random_write':[], 'append':[], 'link':[], 'delete':[], 'rename':[], 'truncate':[], 'hardlink':[]}
+read, randread, write, randwrite = [], [], [], []
+bandwidth = {'read':read, 'random_read': randread, 'create':write, 'random_write':randwrite, 'append':write}
+
 last_stat_time = time.time()
 last_drift_time = time.time()
 stop_file = opts.top_directory + os.sep + 'stop-file'
@@ -155,11 +168,19 @@ while True:
 	before = time.time()
         before_drift = time.time()
         curr_e_exists, curr_e_not_found = fsop.e_already_exists, fsop.e_file_not_found
+        refresh_counters()
+        if name in counters:
+                bytes_before = counters[name] 
 	try:
 		rc = fn()
 		after = time.time()
 		if curr_e_exists == fsop.e_already_exists and curr_e_not_found == fsop.e_file_not_found:
-		        rsptimes[name].append((before - start_time, after - before))
+		        total_time = float(after - before)
+		        rsptimes[name].append((before - start_time, total_time))
+		        if name in counters:
+		                refresh_counters()
+		                total_size = counters[name] - bytes_before 
+		                bandwidth[name].append((before - start_time, total_size / total_time))
 	except KeyboardInterrupt, e:
 		print "received SIGINT (control-C) signal, aborting..."
 		break
@@ -183,6 +204,18 @@ if opts.rsptimes:
 			rsptime_file.write('%9.3f , %9.6f\n'%(reltime,  rspt))	
 	rsptime_file.close()
 	print 'response time file is %s'%rsptime_filename
+	
+if opts.bw:
+        bandwidth['write'] = write
+        del bandwidth['create']
+        del bandwidth['append']
+ 
+	for key, ls in bandwidth.items():
+		bw_file.write(key+'\n')	
+		for (reltime, bw) in ls:
+			bw_file.write('%9.3f , %9.6f\n'%(reltime,  bw/BYTES_PER_KB))	
+	bw_file.close()
+	print 'bandwidth file is %s'%bw_filename
 
 print_stats()
 if opts.starting_gun_file: ensure_deleted(opts.starting_gun_file)
