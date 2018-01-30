@@ -110,7 +110,7 @@ if opts.rsptimes:
 	rsptime_file = open(rsptime_filename, "w")
 
 if opts.bw:
-	bw_filename = '/var/tmp/fs-drift_bw_%d_%d_rspt.csv'%(int(time.time()) , os.getpid())
+	bw_filename = '/var/tmp/fs-drift_bw_%d_%d_bw.csv'%(int(time.time()) , os.getpid())
 	bw_file = open(bw_filename, "w")
 
 os.chdir(opts.top_directory)
@@ -207,8 +207,8 @@ if opts.rsptimes:
 	
 if opts.bw:
         bandwidth['write'] = write
-        del bandwidth['create']
-        del bandwidth['append']
+        bandwidth.pop('create')
+        bandwidth.pop('append')
  
 	for key, ls in bandwidth.items():
 		bw_file.write(key+'\n')	
