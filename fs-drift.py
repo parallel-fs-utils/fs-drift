@@ -180,6 +180,8 @@ while True:
 		        if name in counters:
 		                refresh_counters()
 		                total_size = counters[name] - bytes_before 
+		                if total_size == 0:
+		                        print name, rc, before - start_time
 		                bandwidth[name].append((before - start_time, total_size / total_time))
 	except KeyboardInterrupt, e:
 		print "received SIGINT (control-C) signal, aborting..."
