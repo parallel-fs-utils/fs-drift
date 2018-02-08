@@ -117,9 +117,7 @@ os.chdir(opts.top_directory)
 sys.stdout.flush()
 
 op = 0
-rsptimes = {'read':[], 'random_read': [], 'create':[], 'random_write':[], 'append':[], 'link':[], 'delete':[], 'rename':[], 'truncate':[], 'hardlink':[]}
-read, randread, write, randwrite = [], [], [], []
-bandwidth = {'read':read, 'random_read': randread, 'create':write, 'random_write':randwrite, 'append':write}
+bandwidth = {'read':'read', 'random_read': 'random_read', 'create':'write', 'random_write':'random_write', 'append':'write'}
 
 last_stat_time = time.time()
 last_drift_time = time.time()
@@ -165,7 +163,6 @@ while True:
 	if common.verbosity & 0x1: 
 		print
 		print x, name
-	before = time.time()
         before_drift = time.time()
         curr_e_exists, curr_e_not_found = fsop.e_already_exists, fsop.e_file_not_found
         refresh_counters()
@@ -173,16 +170,16 @@ while True:
                 bytes_before = counters[name] 
 	try:
 		rc = fn()
-		after = time.time()
+		after = fsop.time_after
+		before = fsop.time_before
 		if curr_e_exists == fsop.e_already_exists and curr_e_not_found == fsop.e_file_not_found:
 		        total_time = float(after - before)
-		        rsptimes[name].append((before - start_time, total_time))
-		        if name in counters:
+		        if opts.rsptimes:
+		                rsptime_file.write('%9.3f , %9.6f , %s\n'%(before - start_time,  total_time, name))
+		        if name in counters and opts.bw:
 		                refresh_counters()
-		                total_size = counters[name] - bytes_before 
-		                if total_size == 0:
-		                        print name, rc, before - start_time
-		                bandwidth[name].append((before - start_time, total_size / total_time))
+		                total_size = counters[name] - bytes_before
+		                bw_file.write('%9.3f , %9.6f , %s\n'%(before - start_time,  (total_size / total_time)/BYTES_PER_KB, bandwidth[name]))
 	except KeyboardInterrupt, e:
 		print "received SIGINT (control-C) signal, aborting..."
 		break
@@ -200,22 +197,10 @@ while True:
 		last_drift_time = before_drift
 
 if opts.rsptimes:
-	for key, ls in rsptimes.items():
-		rsptime_file.write(key+'\n')	
-		for (reltime, rspt) in ls:
-			rsptime_file.write('%9.3f , %9.6f\n'%(reltime,  rspt))	
 	rsptime_file.close()
 	print 'response time file is %s'%rsptime_filename
 	
 if opts.bw:
-        bandwidth['write'] = write
-        bandwidth.pop('create')
-        bandwidth.pop('append')
- 
-	for key, ls in bandwidth.items():
-		bw_file.write(key+'\n')	
-		for (reltime, bw) in ls:
-			bw_file.write('%9.3f , %9.6f\n'%(reltime,  bw/BYTES_PER_KB))	
 	bw_file.close()
 	print 'bandwidth file is %s'%bw_filename
 
