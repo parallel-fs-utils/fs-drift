@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python2
 
 # fs-drift.py - user runs this module to generate workload
 # "-h" option generates online help
