@@ -22,6 +22,6 @@ for r in records:
             counters[key].append(value)
         except KeyError as e:
             counters[key] = [value]
-for k in counters.keys():  # for each counter name
+for k in list(counters.keys()):  # for each counter name
     # output list of samples for this thread
-    print k + ',' + list2csv.list2csv(counters[k])
+    print(k + ',' + list2csv.list2csv(counters[k]))

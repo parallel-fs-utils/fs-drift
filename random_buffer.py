@@ -14,4 +14,4 @@ def gen_buffer(size_bytes):
 
 
 if __name__ == '__main__':
-    print gen_buffer(100)
+    print(gen_buffer(100))

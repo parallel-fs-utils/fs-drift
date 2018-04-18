@@ -32,4 +32,4 @@ verbosity = 0
 e = os.getenv("VERBOSITY")
 if e != None:
     verbosity = int(e)
-    print 'verbosity = %u (0x%08x)' % (verbosity, verbosity)
+    print('verbosity = %u (0x%08x)' % (verbosity, verbosity))

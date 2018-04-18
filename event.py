@@ -35,53 +35,53 @@ def parse_weights():
                 if len(record) < 2:
                     continue  # skip blank or partial lines
                 (opname, relweight) = (record[0], record[1])
-                for (opcode, (opfn, right_opname)) in fsop.rq_map.items():
+                for (opcode, (opfn, right_opname)) in list(fsop.rq_map.items()):
                     if right_opname == string.lower(opname):
                         weights[opcode] = int(relweight)
                 linenum += 1
-        except IOError, e:
-            print str(e)
-            print 'could not parse workload.csv at line %d' % linenum
+        except IOError as e:
+            print(str(e))
+            print('could not parse workload.csv at line %d' % linenum)
             sys.exit(1)
-    print 'weights: %s' % str(weights)
+    print('weights: %s' % str(weights))
 
 
 def normalize_weights():
     global normalized_weights
     total_weight = 0.0
-    for (opcode, weight) in weights.items():
+    for (opcode, weight) in list(weights.items()):
         total_weight += weight
     normalized_weights = {}
-    print 'total weight: %f ' % total_weight
-    print 'normalized weights:'
-    print '%20s  %9s   %6s  %9s' % (
-        'request type', 'weight', 'cum.prob', 'probability')
+    print('total weight: %f ' % total_weight)
+    print('normalized weights:')
+    print('%20s  %9s   %6s  %9s' % (
+        'request type', 'weight', 'cum.prob', 'probability'))
     cum_probability = 0.0
-    for (typ, weight) in weights.items():
+    for (typ, weight) in list(weights.items()):
         probability = (float(weight)/total_weight)
         cum_probability += probability
         normalized_weights[typ] = cum_probability
         (fn, name) = fsop.rq_map[typ]
-        print '%20s  %9u   %5.3f      %5.3f' %\
-            (name, weight, cum_probability, probability)
-    print
+        print('%20s  %9u   %5.3f      %5.3f' %\
+            (name, weight, cum_probability, probability))
+    print()
 
 
 def gen_event():
     r = random.uniform(0.0, 1.0)
     if common.verbosity & 0x200000:
-        print 'random event generator = %f' % r
-    for (opcode, cumulative_probability) in normalized_weights.items():
+        print('random event generator = %f' % r)
+    for (opcode, cumulative_probability) in list(normalized_weights.items()):
         (fn, opname) = fsop.rq_map[opcode]
         if common.verbosity & 0x100:
-            print opcode, opname, cumulative_probability
+            print(opcode, opname, cumulative_probability)
         if r < cumulative_probability:
             return opcode
     return opcode
 
 
 if __name__ == '__main__':
-    histogram = range(0, len(weights))
+    histogram = list(range(0, len(weights)))
     for i in range(0, 1000):
         histogram[gen_event()] += 1
-    print histogram
+    print(histogram)
