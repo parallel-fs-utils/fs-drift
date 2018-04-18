@@ -173,7 +173,7 @@ def random_record_size():
 def random_segment_size(filesz):
     segsize = 2*random_record_size()
     if segsize > filesz:
-        segsize = filesz/7
+        segsize = filesz//7
     return segsize
 
 
