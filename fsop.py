@@ -158,10 +158,13 @@ def random_record_size():
 	return random.randint(1, opts.max_record_size_kb * BYTES_PER_KB)
 
 def random_segment_size(filesz):
-	segsize = 2*random_record_size()
-	if segsize > filesz: segsize = filesz/7
-	return segsize
-
+    if opts.fix_record_size_kb:
+        segsize = 2*opts.fix_record_size_kb * BYTES_PER_KB
+    else:
+        segsize = 2*random_record_size()
+    if segsize > filesz:
+        segsize = filesz/7
+    return segsize
 def random_seek_offset(filesz):
 	return random.randint(0, filesz)
 
