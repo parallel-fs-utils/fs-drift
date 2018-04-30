@@ -212,53 +212,54 @@ def read():
 	return s
 
 def random_read():
-	global e_file_not_found, have_randomly_read, randread_requests, randread_bytes
-	global time_before, time_after	
-	s = OK
-	fd = FD_UNDEFINED
-	have_randomly_read += 1
-	fn = gen_random_fn()
-	try:
-		fd = os.open(fn, os.O_RDONLY)
-		stinfo = os.fstat(fd)
-		total_read_reqs = 0
-		target_read_reqs = random.randint(1, opts.max_random_reads)
-		if verbosity & 0x2000: 
-			print 'randread %s filesize %u reqs %u'%(fn, stinfo.st_size, target_read_reqs)
-		time_before = time.time()			
-		while total_read_reqs < target_read_reqs:
-			off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
-			rdsz = random_segment_size(stinfo.st_size)
-			if verbosity & 0x2000: print 'randread off %u sz %u'%(off,rdsz)
-			total_count = 0
-			remaining_sz = stinfo.st_size - off
-			while total_count < rdsz:
-			        if opts.fix_record_size_kb:
-			                recsz = opts.fix_record_size_kb * BYTES_PER_KB
-			        else:
-				        recsz = random_record_size()
-				if recsz + total_count > remaining_sz: recsz = remaining_sz - total_count
-				elif recsz + total_count > rdsz: recsz = rdsz - total_count
-				if recsz == 0: break
-				bytebuf = os.read(fd, recsz)
-				count = len(bytebuf)
-				assert count > 0
-				if verbosity & 0x2000: 
-					print 'randread recsz %u count %u'%(recsz,count)
-				total_count += count
-				randread_bytes += count
-			total_read_reqs += 1
-			randread_requests += 1
-                time_after = time.time()
-		have_randomly_read += 1
-	except os.error, e:
-		if e.errno == errno.ENOENT:
-			e_file_not_found += 1 
-		else:
-			scallerr('random_read', fn, e)
-			s = NOTOK
-	try_to_close(fd, fn)
-	return s
+    global e_file_not_found, have_randomly_read, randread_requests, randread_bytes
+    global time_before, time_after
+    s = OK
+    fd = FD_UNDEFINED
+    have_randomly_read += 1
+    fn = gen_random_fn()
+    try:
+        fd = os.open(fn, os.O_RDONLY)
+        stinfo = os.fstat(fd)
+        total_read_reqs = 0
+        target_read_reqs = random.randint(1, opts.max_random_reads)
+        if verbosity & 0x2000:
+            print 'randread %s filesize %u reqs %u' % (fn, stinfo.st_size, target_read_reqs)
+        time_before = time.time()
+        while total_read_reqs < target_read_reqs:
+            if opts.fix_record_size_kb:
+                recsz = opts.fix_record_size_kb * BYTES_PER_KB
+            else:
+                recsz = random_record_size()
+            if verbosity & 0x2000:print 'randread off %u sz %u' % (off, recsz)
+            off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
+            total_count = 0
+            remaining_sz = stinfo.st_size - off
+            targetsz = recsz
+            while total_count < targetsz:
+                if recsz + total_count > remaining_sz:
+                    recsz = remaining_sz - total_count
+                if recsz <= 0:
+                    break
+                bytebuf = os.read(fd, recsz)
+                count = len(bytebuf)
+                assert count > 0
+                if verbosity & 0x2000:
+                    print 'randread recsz %u count %u' % (recsz, count)
+                total_count += count
+                randread_bytes += count
+            total_read_reqs += 1
+            randread_requests += 1
+        time_after = time.time()
+        have_randomly_read += 1
+    except os.error, e:
+        if e.errno == errno.ENOENT:
+            e_file_not_found += 1
+        else:
+            scallerr('random_read', fn, e)
+            s = NOTOK
+    try_to_close(fd, fn)
+    return s
 
 def maybe_fsync(fd):
 	global fsyncs, fdatasyncs
