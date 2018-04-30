@@ -80,7 +80,11 @@ def init_buf():
     global buf
     buf = random_buffer.gen_buffer(opts.max_record_size_kb*BYTES_PER_KB)
 
-
+def refresh_buf(size):
+    global buf
+    buf = random_buffer.gen_buffer(size)
+    
+    
 def scallerr(msg, fn, syscall_exception):
     err = syscall_exception.errno
     a = subprocess.Popen("date", shell=True,
@@ -308,6 +312,7 @@ def create():
     fd = FD_UNDEFINED
     fn = gen_random_fn(is_create=True)
     target_sz = random_file_size()
+    refresh_buf(target_sz)
     if verbosity & 0x1000:
         print 'create %s sz %s' % (fn, target_sz)
     subdir = os.path.dirname(fn)
@@ -360,6 +365,7 @@ def append():
     s = OK
     fn = gen_random_fn()
     target_sz = random_file_size()
+    refresh_buf(target_sz)
     if verbosity & 0x8000:
         print 'append %s sz %s' % (fn, target_sz)
     fd = FD_UNDEFINED
@@ -412,12 +418,13 @@ def random_write():
         if verbosity & 0x20000:
             print 'randwrite %s reqs %u' % (fn, target_write_reqs)
         target_sz = random_file_size()
+        refresh_buf(target_write_reqs * max(opts.fix_record_size_kb,
+                                            opts.max_record_size_kb) * BYTES_PER_KB)
         time_before = time.time()
         while total_write_reqs < target_write_reqs:
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             total_count = 0
             offset = 0
-            #wrsz = random_segment_size(stinfo.st_size)######
             if opts.fix_record_size_kb:
                 recsz = opts.fix_record_size_kb * BYTES_PER_KB
             else:
