@@ -410,32 +410,34 @@ def random_write():
         target_write_reqs = random.randint(1, opts.max_random_writes)
         if verbosity & 0x20000:
             print 'randwrite %s reqs %u' % (fn, target_write_reqs)
+        target_sz = random_file_size()
         time_before = time.time()
         while total_write_reqs < target_write_reqs:
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             total_count = 0
             offset = 0
-            wrsz = random_segment_size(stinfo.st_size)
+            #wrsz = random_segment_size(stinfo.st_size)######
+            if opts.fix_record_size_kb:
+                recsz = opts.fix_record_size_kb * BYTES_PER_KB
+            else:
+                recsz = random_record_size()
             if verbosity & 0x20000:
-                print 'randwrite off %u sz %u' % (off, wrsz)
-            while total_count < wrsz:
-                if opts.fix_record_size_kb:
-                    recsz = opts.fix_record_size_kb * BYTES_PER_KB
-                else:
-                    recsz = random_record_size()
-                if recsz + total_count > wrsz:
-                    recsz = wrsz - total_count
+                print 'randwrite off %u sz %u' % (off, recsz)
+            targetsz = recsz
+            while total_count < targetsz:
+                #if recsz + total_count > wrsz: recsz = wrsz - total_count
                 count = os.write(fd, buf[offset:recsz])
                 if verbosity & 0x20000:
                     print 'randwrite count=%u recsz=%u' % (count, recsz)
                 assert count > 0
                 total_count += count
                 offset += count
+                recsz -= count
             total_write_reqs += 1
             randwrite_requests += 1
             randwrite_bytes += total_count
-            maybe_fsync(fd)
         time_after = time.time()
+        maybe_fsync(fd)
         have_randomly_written += 1
     except os.error, e:
         if e.errno == errno.ENOENT:
