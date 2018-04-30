@@ -323,12 +323,14 @@ def create():
     try:
         fd = os.open(fn, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         total_sz = 0
+        offset = 0
         time_before = time.time()
         while total_sz < target_sz:
             recsz = random_record_size()
             if recsz + total_sz > target_sz:
                 recsz = target_sz - total_sz
-            count = os.write(fd, buf[0:recsz])
+            count = os.write(fd, buf[offset:offset+recsz])
+            offset += count
             assert count > 0
             if verbosity & 0x1000:
                 print 'create sz %u written %u' % (recsz, count)
@@ -364,6 +366,7 @@ def append():
         fd = os.open(fn, os.O_WRONLY)
         have_appended += 1
         total_appended = 0
+        offset = 0
         time_before = time.time()
         while total_appended < target_sz:
             recsz = random_record_size()
@@ -372,7 +375,8 @@ def append():
             assert recsz > 0
             if verbosity & 0x8000:
                 print 'append rsz %u' % (recsz)
-            count = os.write(fd, buf[0:recsz])
+            count = os.write(fd, buf[offset:offset+recsz])
+            offset += count
             assert count > 0
             total_appended += count
             write_requests += 1
@@ -410,6 +414,7 @@ def random_write():
         while total_write_reqs < target_write_reqs:
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             total_count = 0
+            offset = 0
             wrsz = random_segment_size(stinfo.st_size)
             if verbosity & 0x20000:
                 print 'randwrite off %u sz %u' % (off, wrsz)
@@ -420,11 +425,12 @@ def random_write():
                     recsz = random_record_size()
                 if recsz + total_count > wrsz:
                     recsz = wrsz - total_count
-                count = os.write(fd, buf[0:recsz])
+                count = os.write(fd, buf[offset:recsz])
                 if verbosity & 0x20000:
                     print 'randwrite count=%u recsz=%u' % (count, recsz)
                 assert count > 0
                 total_count += count
+                offset += count
             total_write_reqs += 1
             randwrite_requests += 1
             randwrite_bytes += total_count
