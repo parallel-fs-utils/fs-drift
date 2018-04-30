@@ -6,6 +6,7 @@ import os
 import os.path
 import random
 import errno
+import time
 import random_buffer
 # my modules
 import common
