@@ -34,7 +34,6 @@ for r in records:
             counters[key] = [value]
 sample_ct = len(counters.values()[0])
 for k in counters.keys():  # for each counter name
-    for j in range(0, sample_ct):
-        key_row = [k]
-        key_row.extend( [ str(v) for v in counters[k] ] )
-        print(','.join(key_row))
+    key_row = [k]
+    key_row.extend( [ str(v) for v in counters[k] ] )
+    print(','.join(key_row))
