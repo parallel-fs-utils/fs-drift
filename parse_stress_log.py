@@ -5,15 +5,25 @@
 
 import sys
 import os
-import list2csv
 
 collect_counters = False
 counters = {}
-records = [r.strip() for r in sys.stdin.readlines()]
+records = []
+if len(sys.argv) > 1:
+    with open(sys.argv[1], 'r') as f:
+        records = [ r.strip() for r in f.readlines() ]
+else:
+    records = [ r.strip() for r in sys.stdin.readlines() ]
+
 for r in records:
-    if r.__contains__('elapsed time') and r.__contains__(' 0.0'):
+    if r.__contains__('elapsed time'):
         # we're made it past the test parameters, rest of output is counters
         collect_counters = True
+        elapsed = (r.split()[2])
+        try:
+            counters['elapsed'].append(elapsed)
+        except KeyError:
+            counters['elapsed'] = [elapsed]
     if collect_counters and r.__contains__('='):  # if this is a counter record
         pair = [s.strip() for s in r.split('=')]
         key = pair[1]
@@ -22,6 +32,9 @@ for r in records:
             counters[key].append(value)
         except KeyError as e:
             counters[key] = [value]
-for k in list(counters.keys()):  # for each counter name
-    # output list of samples for this thread
-    print(k + ',' + list2csv.list2csv(counters[k]))
+sample_ct = len(counters.values()[0])
+for k in counters.keys():  # for each counter name
+    for j in range(0, sample_ct):
+        key_row = [k]
+        key_row.extend( [ str(v) for v in counters[k] ] )
+        print(','.join(key_row))
