@@ -112,7 +112,7 @@ def gen_random_fn(is_create=False):
     if total_dirs == 1:  # if first time
         for i in range(0, opts.levels):
             total_dirs *= opts.dirs_per_level
-    max_files_per_dir = opts.max_files / total_dirs
+    max_files_per_dir = opts.max_files // total_dirs
 
     if opts.rand_distr_type == file_access_dist.UNIFORM:
         # lower limit 0 means at least 1 file/dir
