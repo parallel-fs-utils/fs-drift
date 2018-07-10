@@ -80,11 +80,12 @@ def init_buf():
     global buf
     buf = random_buffer.gen_buffer(opts.max_record_size_kb*BYTES_PER_KB)
 
+
 def refresh_buf(size):
     global buf
     buf = random_buffer.gen_buffer(size)
-    
-    
+
+
 def scallerr(msg, fn, syscall_exception):
     err = syscall_exception.errno
     a = subprocess.Popen("date", shell=True,
@@ -223,8 +224,8 @@ def read():
             read_requests += 1
             read_bytes += count
             if verbosity & 0x4000:
-                print('seq. read off %u sz %u got %u' %\
-                    (total_read, rdsz, count))
+                print('seq. read off %u sz %u got %u' %
+                      (total_read, rdsz, count))
             total_read += len(bytes)
         time_after = time.time()
         have_read += 1
