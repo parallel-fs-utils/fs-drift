@@ -1,7 +1,6 @@
 # event.py - this module generates random I/O events in this simulation
 # and also parses the workload specification which controls frequency of different event types
 
-import string
 import sys
 import random
 # from fs-drift modules
@@ -29,11 +28,11 @@ def parse_weights():
 	f.close()
 	weights = {}
 	for l in lines:
-		record = string.split(string.strip(l),',')
+        record = str.split(str.strip(l), ',')
 		if len(record) < 2: continue # skip blank or partial lines
 		(opname, relweight) = (record[0], record[1])
 		for (opcode, (opfn, right_opname)) in list(fsop.rq_map.items()):
-			if right_opname == string.lower(opname):
+			if right_opname == opname.lower():
 				weights[opcode] = int(relweight)
 		linenum += 1
     except IOError as e:

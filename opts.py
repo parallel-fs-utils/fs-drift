@@ -1,6 +1,5 @@
 # opts.py - module to parse command line options and output what parameters will be used for this run
 
-import string
 import os
 import os.path
 import sys
@@ -118,13 +117,13 @@ def parseopts():
 		elif nm == '--report-interval' or nm == '-i':
 			stats_report_interval = int(val)
 		elif nm == '--response-times' or nm == '-T':
-			v = string.lower(val)
+			v = val.lower()
 			rsptimes = (v == 'true' or v == 'yes' or v == 'on')
 		elif nm == '--bandwidth' or nm == '-b':
-			v = string.lower(val)
+			v = val.lower()
 			bw = (v == 'true' or v == 'yes' or v == 'on')
 		elif nm == '--random-distribution' or nm == '-+D':
-			v = string.lower(val)
+			v = val.lower()
 			if v == 'uniform':
 				rand_distr_type = file_access_dist.UNIFORM
 			elif v == 'gaussian':
