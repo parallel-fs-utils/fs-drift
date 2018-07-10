@@ -27,8 +27,8 @@ for line in sys.stdin.readlines():
 		counter_begin = False
 		if counter_sections == 1:
 			for x in headers: hdr_record += x + ','
-			print hdr_record
-		print counter_record
+			print(hdr_record)
+		print(counter_record)
 
 	if (counter_sections == 1) and counter_begin and (tokens[1] == '='):
 		# for first section, record counter descriptions on right of '='

@@ -8,34 +8,34 @@ import common
 from common import rq, file_access_dist, OK, NOTOK
 
 def usage(msg):
-	print msg
-	print 'usage: fs-drift.py [ --option value ]'
-	print 'options:'
-	print '-h|--help'
-	print '-t|--top-directory'
-        print '-S|--starting-gun-file'
-	print '-o|--operation-count'
-	print '-d|--duration'
-	print '-f|--max-files'
-	print '-s|--max-file-size-kb'
-	print '-r|--max-record-size-kb'
-	print '-+r|--max-record-size-kb'
-	print '-R|--max-random-reads'
-	print '-W|--max-random-writes'
-	print '-Y|--fsyncs'
-	print '-y|--fdatasyncs'
-	print '-T|--response-times'
-        print '-b|--bandwidth'
-	print '-l|--levels'
-	print '-D|--dirs-per-level'
-	print '-w|--workload-table'
-	print '-i|--report-interval'
-        print '-a|--abreviated-stats'
-        print '-+D|--random-distribution'
-        print '-+v|--mean-velocity'
-        print '-+d|--gaussian-stddev'
-        print '-+c|--create_stddevs-ahead'
-        print '-p|--pause_file'
+	print(msg)
+	print('usage: fs-drift.py [ --option value ]')
+	print('options:')
+	print('-h|--help')
+	print('-t|--top-directory')
+        print('-S|--starting-gun-file')
+	print('-o|--operation-count')
+	print('-d|--duration')
+	print('-f|--max-files')
+	print('-s|--max-file-size-kb')
+	print('-r|--max-record-size-kb')
+	print('-+r|--max-record-size-kb')
+	print('-R|--max-random-reads')
+	print('-W|--max-random-writes')
+	print('-Y|--fsyncs')
+	print('-y|--fdatasyncs')
+	print('-T|--response-times')
+        print('-b|--bandwidth')
+	print('-l|--levels')
+	print('-D|--dirs-per-level')
+	print('-w|--workload-table')
+	print('-i|--report-interval')
+        print('-a|--abreviated-stats')
+        print('-+D|--random-distribution')
+        print('-+v|--mean-velocity')
+        print('-+d|--gaussian-stddev')
+        print('-+c|--create_stddevs-ahead')
+        print('-p|--pause_file')
 	sys.exit(NOTOK)
 
 # command line parameter variables here
@@ -142,10 +142,10 @@ def parseopts():
                         pause_file = val
 		else:
 			usage('syntax error for option %s value %s'%(nm, val))
-	except Exception, e:
+	except Exception as e:
 	  usage(str(e))
 	print('')
-	print(\
+	print((\
 '%20s = top directory\n'\
 '%20s = starting gun file\n'\
 '%11s%9d = operation count\n'\
@@ -171,13 +171,13 @@ def parseopts():
     '', fdatasync_probability_pct, '', fsync_probability_pct, \
     '', levels, '', dirs_per_level, \
     rand_distr_type_str, '', mean_index_velocity, '', gaussian_stddev, '', create_stddevs_ahead, \
-    str(rsptimes), str(bw)))
+    str(rsptimes), str(bw))))
 	if workload_table_filename != None:
-		print '%20s = workload table filename'%workload_table_filename
+		print('%20s = workload table filename'%workload_table_filename)
 	if stats_report_interval > 0:
-		print'%11s%9d = statistics report intervalpercentage'%('', stats_report_interval)
+		print('%11s%9d = statistics report intervalpercentage'%('', stats_report_interval))
 	if (duration == 1):
-		print 'do "python fs-drift.py --help" for list of command line parameters'
+		print('do "python fs-drift.py --help" for list of command line parameters')
 	sys.stdout.flush()
 
 if __name__ == "__main__":
