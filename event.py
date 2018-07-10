@@ -30,7 +30,7 @@ def parse_weights():
             f.close()
             weights = {}
             for l in lines:
-            record = str.split(str.strip(l), ',')
+                record = str.split(str.strip(l), ',')
                 if len(record) < 2:
                     continue  # skip blank or partial lines
                 (opname, relweight) = (record[0], record[1])
