@@ -80,11 +80,9 @@ def init_buf():
     global buf
     buf = random_buffer.gen_buffer(opts.max_record_size_kb*BYTES_PER_KB)
 
-
 def refresh_buf(size):
     global buf
     buf = random_buffer.gen_buffer(size)
-
 
 def scallerr(msg, fn, syscall_exception):
     err = syscall_exception.errno
