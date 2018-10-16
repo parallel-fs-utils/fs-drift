@@ -38,16 +38,17 @@ def ensure_deleted(file_path):
 
 def print_short_stats():
     print('elapsed time: %9.1f' % (time.time() - start_time))
-    print('\n'
-          '%9u = center\n'
-          '%9u = files created\t'
-          '%9u = files appended to\n'
-          '%9u = files random write\t'
-          '%9u = files read\n'
-          '%9u = files randomly read\n'
-          % (fsop.last_center, fsop.have_created, fsop.have_appended, fsop.have_randomly_written,
-             fsop.have_read, fsop.have_randomly_read))
+    print('\n'\
+        '%9u = center\n' \
+        '%9u = files created\t' \
+        '%9u = files appended to\n' \
+        '%9u = files random write\t' \
+        '%9u = files read\n' \
+        '%9u = files randomly read\n' \
+        % (fsop.last_center, fsop.have_created, fsop.have_appended, fsop.have_randomly_written,
+           fsop.have_read, fsop.have_randomly_read))
     sys.stdout.flush()
+
 
 
 def print_stats():
