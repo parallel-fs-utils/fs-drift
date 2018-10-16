@@ -11,7 +11,7 @@ import random
 import event
 import fsop
 import common
-from common import rq, OK, NOTOK
+from common import rq, OK, NOTOK, BYTES_PER_KB
 import opts
 import errno
 
