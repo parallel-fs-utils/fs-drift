@@ -204,6 +204,7 @@ def try_to_close(closefd, filename):
 
 def read():
     global e_file_not_found, have_read, read_requests, read_bytes
+    global time_before, time_after
     s = OK
     fd = FD_UNDEFINED
     fn = gen_random_fn()
@@ -236,6 +237,7 @@ def read():
 
 def random_read():
     global e_file_not_found, have_randomly_read, randread_requests, randread_bytes
+    global time_before, time_after    
     s = OK
     fd = FD_UNDEFINED
     have_randomly_read += 1
@@ -299,6 +301,7 @@ def maybe_fsync(fd):
 def create():
     global have_created, e_already_exists, write_requests, write_bytes, dirs_created
     global e_no_dir_space, e_no_inode_space, e_no_space
+    global time_before, time_after    
     s = OK
     fd = FD_UNDEFINED
     fn = gen_random_fn(is_create=True)
@@ -347,6 +350,7 @@ def create():
 def append():
     global have_appended, write_requests, write_bytes, e_file_not_found
     global e_no_space
+    global time_before, time_after    
     s = OK
     fn = gen_random_fn()
     target_sz = random_file_size()
@@ -386,6 +390,7 @@ def append():
 def random_write():
     global have_randomly_written, randwrite_requests, randwrite_bytes, e_file_not_found
     global e_no_space
+    global time_before, time_after    
     s = OK
     fd = FD_UNDEFINED
     fn = gen_random_fn()
@@ -430,6 +435,7 @@ def random_write():
 
 def truncate():
     global have_truncated, e_file_not_found
+    global time_before, time_after    
     fd = FD_UNDEFINED
     s = OK
     fn = gen_random_fn()
@@ -452,6 +458,7 @@ def truncate():
 
 def link():
     global have_linked, e_file_not_found, e_already_exists
+    global time_before, time_after    
     fn = gen_random_fn()
     fn2 = gen_random_fn() + link_suffix
     if verbosity & 0x10000:
@@ -476,6 +483,7 @@ def link():
 
 def hlink():
     global have_hlinked, e_file_not_found, e_already_exists
+    global time_before, time_after    
     fn = gen_random_fn()
     fn2 = gen_random_fn() + hlink_suffix
     if verbosity & 0x10000:
@@ -500,6 +508,7 @@ def hlink():
 
 def delete():
     global have_deleted, e_file_not_found
+    global time_before, time_after    
     fn = gen_random_fn()
     if verbosity & 0x20000:
         print('delete %s' % (fn))
@@ -527,6 +536,7 @@ def delete():
 
 def rename():
     global have_renamed, e_file_not_found
+    global time_before, time_after    
     fn = gen_random_fn()
     fn2 = gen_random_fn()
     if verbosity & 0x20000:
