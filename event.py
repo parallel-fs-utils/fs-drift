@@ -53,16 +53,16 @@ def normalize_weights():
     normalized_weights = {}
     print('total weight: %f ' % total_weight)
     print('normalized weights:')
-    print('%20s  %9s   %6s  %9s' %
-          ('request type', 'weight', 'cum.prob', 'probability'))
+    print('%20s  %9s   %6s  %9s' % (
+        'request type', 'weight', 'cum.prob', 'probability'))
     cum_probability = 0.0
     for (typ, weight) in list(weights.items()):
         probability = (float(weight)/total_weight)
         cum_probability += probability
         normalized_weights[typ] = cum_probability
         (fn, name) = fsop.rq_map[typ]
-        print('%20s  %9u   %5.3f      %5.3f' %
-              (name, weight, cum_probability, probability))
+        print('%20s  %9u   %5.3f      %5.3f' %\
+            (name, weight, cum_probability, probability))
     print()
 
 
