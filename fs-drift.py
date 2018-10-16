@@ -15,6 +15,14 @@ from common import rq, OK, NOTOK, BYTES_PER_KB
 import opts
 import errno
 
+# get byte counters from fsop
+
+
+def refresh_counters():
+    global counters
+    counters = {'read': fsop.read_bytes, 'create': fsop.write_bytes, 'append': fsop.write_bytes,
+                'random_write': fsop.randwrite_bytes, 'random_read': fsop.randread_bytes}
+
 # instead of looking up before deletion, do reverse, delete and catch exception
 
 
