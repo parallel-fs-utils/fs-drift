@@ -109,7 +109,7 @@ except os.error as e:
     if e.errno != errno.EEXIST:
         raise e
 if opts.rsptimes:
-    rsptime_filename = '/var/tmp/fs-drift_rsptimes_%d_%d_rspt.csv' % (
+    rsptime_filename = '/var/tmp/fs-drift_%d_%d_rspt.csv' % (
         int(time.time()), os.getpid())
     rsptime_file = open(rsptime_filename, "w")
 
