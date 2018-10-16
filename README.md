@@ -51,6 +51,10 @@ Set a limit on maximum file size in KB.  File size is randomly generated and can
 
 Set a limit on maximum record size in KB.  Record (I/O transfer) size is randomly generated and can be much less than this.(default 1)
 
+-+r|--fix-record-size-kb
+
+Set a fix record size for random operations in KB. Record (I/O transfer) size will be this much for random operations. If set to 0, record size will be generated the same way as for other operations. (default 0)
+
 -R|--max-random-reads
 
 Set a limit on how many random reads in a row are done to a file per random read op.(default 2)
@@ -69,7 +73,11 @@ If true, allows fdatasync() call to be done every so often when files are writte
 
 -T|--response-times
 
-If true, save response time data to a .csv file. First value is number of seaconds after start of the test. Second value is number of seconds the operation lasted. Response times for different operations are separated. (default False)
+If true, save response time data to a .csv file. First value is number of seconds after start of the test. Second value is number of seconds the operation lasted. Response times for different operations are separated. (default False)
+
+-b|--bandwidth
+
+If true save bandwidth data to a csv file. First value is number of seconds after start of the thest. Second value is bandwidth[kB/s]. Recorded values are for sequential reads (read), random reads (randread), random writes (randwrite) and sequential writes (write). Sequential writes are agregated from append and create operations.
 
 -l|--levels
 
