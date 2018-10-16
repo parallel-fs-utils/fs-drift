@@ -260,14 +260,17 @@ def random_read():
                 recsz = random_record_size()
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             if verbosity & 0x2000:
-                print('randread off %u sz %u' % (off, recsz))            
+                print('randread off %u sz %u' % (off, rdsz))            
             total_count = 0
             remaining_sz = stinfo.st_size - off
-            targetsz = recsz
+            targetsz = random_segment_size(stinfo.st_size)
             while total_count < targetsz:
+                recsz = random_record_size()
                 if recsz + total_count > remaining_sz:
                     recsz = remaining_sz - total_count
-                if recsz <= 0:
+                elif recsz + total_count > targetsz:
+                    recsz = rdsz - total_count
+                if recsz == 0:
                     break
                 bytebuf = os.read(fd, recsz)
                 count = len(bytebuf)
@@ -383,6 +386,7 @@ def append():
                 print('append rsz %u' % (recsz))
             count = os.write(fd, buf[offset:offset+recsz])
             offset += count
+
             assert count > 0
             total_appended += count
             write_requests += 1
@@ -416,30 +420,26 @@ def random_write():
         target_write_reqs = random.randint(1, opts.max_random_writes)
         if verbosity & 0x20000:
             print('randwrite %s reqs %u' % (fn, target_write_reqs))
-        target_sz = random_file_size()
-        refresh_buf(target_write_reqs * max(opts.fix_record_size_kb,
-                                            opts.max_record_size_kb) * BYTES_PER_KB)
         time_before = time.time()
         while total_write_reqs < target_write_reqs:
             if opts.fix_record_size_kb:
                 recsz = opts.fix_record_size_kb * BYTES_PER_KB
             else:
-                recsz = random_record_size()        
+                recsz = random_record_size()
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             total_count = 0
-            offset = 0
+            wrsz = random_segment_size(stinfo.st_size)
             if verbosity & 0x20000:
-                print('randwrite off %u sz %u' % (off, recsz))
-            targetsz = recsz
-            while total_count < targetsz:
-                #if recsz + total_count > wrsz: recsz = wrsz - total_count
-                count = os.write(fd, buf[offset:recsz])
+                print('randwrite off %u sz %u' % (off, wrsz))
+            while total_count < wrsz:
+                recsz = random_record_size()
+                if recsz + total_count > wrsz:
+                    recsz = wrsz - total_count
+                count = os.write(fd, buf[0:recsz])
                 if verbosity & 0x20000:
                     print('randwrite count=%u recsz=%u' % (count, recsz))
                 assert count > 0
                 total_count += count
-                offset += count
-                recsz -= count
             total_write_reqs += 1
             randwrite_requests += 1
             randwrite_bytes += total_count
