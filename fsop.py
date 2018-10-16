@@ -248,7 +248,7 @@ def random_read():
         fd = os.open(fn, os.O_RDONLY)
         stinfo = os.fstat(fd)
         total_read_reqs = 0
-        target_read_reqs = random.randint(0, opts.max_random_reads)
+        target_read_reqs = random.randint(1, opts.max_random_reads)
         if verbosity & 0x2000:
             print('randread %s filesize %u reqs %u' % (
                 fn, stinfo.st_size, target_read_reqs))
@@ -406,7 +406,7 @@ def random_write():
         fd = os.open(fn, os.O_WRONLY)
         stinfo = os.fstat(fd)
         total_write_reqs = 0
-        target_write_reqs = random.randint(0, opts.max_random_writes)
+        target_write_reqs = random.randint(1, opts.max_random_writes)
         if verbosity & 0x20000:
             print('randwrite %s reqs %u' % (fn, target_write_reqs))
         time_before = time.time()
