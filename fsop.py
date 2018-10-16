@@ -222,8 +222,8 @@ def read():
             read_requests += 1
             read_bytes += count
             if verbosity & 0x4000:
-                print('seq. read off %u sz %u got %u' %
-                      (total_read, rdsz, count))
+                print('seq. read off %u sz %u got %u' %\
+                    (total_read, rdsz, count))
             total_read += len(bytes)
         time_after = time.time()
         have_read += 1
@@ -258,9 +258,9 @@ def random_read():
                 recsz = opts.fix_record_size_kb * BYTES_PER_KB
             else:
                 recsz = random_record_size()
-            if verbosity & 0x2000:
-                print('randread off %u sz %u' % (off, recsz))
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
+            if verbosity & 0x2000:
+                print('randread off %u sz %u' % (off, recsz))            
             total_count = 0
             remaining_sz = stinfo.st_size - off
             targetsz = recsz
@@ -421,13 +421,13 @@ def random_write():
                                             opts.max_record_size_kb) * BYTES_PER_KB)
         time_before = time.time()
         while total_write_reqs < target_write_reqs:
-            off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
-            total_count = 0
-            offset = 0
             if opts.fix_record_size_kb:
                 recsz = opts.fix_record_size_kb * BYTES_PER_KB
             else:
-                recsz = random_record_size()
+                recsz = random_record_size()        
+            off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
+            total_count = 0
+            offset = 0
             if verbosity & 0x20000:
                 print('randwrite off %u sz %u' % (off, recsz))
             targetsz = recsz
