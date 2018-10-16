@@ -254,6 +254,10 @@ def random_read():
                 fn, stinfo.st_size, target_read_reqs))
         time_before = time.time()
         while total_read_reqs < target_read_reqs:
+            if opts.fix_record_size_kb:
+                recsz = opts.fix_record_size_kb * BYTES_PER_KB
+            else:
+                recsz = random_record_size()
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             rdsz = random_segment_size(stinfo.st_size)
             if verbosity & 0x2000:
@@ -411,6 +415,10 @@ def random_write():
             print('randwrite %s reqs %u' % (fn, target_write_reqs))
         time_before = time.time()
         while total_write_reqs < target_write_reqs:
+            if opts.fix_record_size_kb:
+                recsz = opts.fix_record_size_kb * BYTES_PER_KB
+            else:
+                recsz = random_record_size()
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             total_count = 0
             wrsz = random_segment_size(stinfo.st_size)
