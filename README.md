@@ -77,7 +77,7 @@ If true, save response time data to a .csv file. First value is number of second
 
 -b|--bandwidth
 
-If truem save bandwidth data to a csv file. First value is number of seconds after start of the thest. Second value is bandwidth[kB/s]. Recorded values are for sequential reads (read), random reads (randread), random writes (randwrite) and sequential writes (write). Sequential writes are agregated from append and create operations.
+If true save bandwidth data to a csv file. First value is number of seconds after start of the thest. Second value is bandwidth[kB/s]. Recorded values are for sequential reads (read), random reads (randread), random writes (randwrite) and sequential writes (write). Sequential writes are agregated from append and create operations.
 
 -l|--levels
 
