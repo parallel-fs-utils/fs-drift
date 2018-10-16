@@ -19,11 +19,13 @@ def usage(msg):
     print('-f|--max-files')
     print('-s|--max-file-size-kb')
     print('-r|--max-record-size-kb')
+    print('-+r|--fix-record-size-kb')
     print('-R|--max-random-reads')
     print('-W|--max-random-writes')
     print('-Y|--fsyncs')
     print('-y|--fdatasyncs')
     print('-T|--response-times')
+    print('-b|--bandwidth')
     print('-l|--levels')
     print('-D|--dirs-per-level')
     print('-w|--workload-table')
@@ -46,6 +48,7 @@ duration = 1
 max_files = 20
 max_file_size_kb = 10
 max_record_size_kb = 1
+fix_record_size_kb = 0
 max_random_reads = 2
 max_random_writes = 2
 fdatasync_probability_pct = 10
@@ -54,6 +57,7 @@ short_stats = False
 levels = 2
 dirs_per_level = 3
 rsptimes = False
+bw = False
 workload_table_filename = None
 stats_report_interval = 0
 # new parameters related to gaussian filename distribution
@@ -69,7 +73,7 @@ pause_file = '/var/tmp/pause'
 
 def parseopts():
     global top_directory, starting_gun_file, opcount, max_files, max_file_size_kb, duration, short_stats
-    global max_record_size_kb, max_random_reads, max_random_writes, rsptimes
+    global max_record_size_kb, fix_record_size_kb, max_random_reads, max_random_writes, rsptimes, bw
     global fsync_probability_pct, fdatasync_probability_pct, workload_table_filename
     global stats_report_interval, levels, dirs_per_level
     global rand_distr_type, rand_distr_type_str, mean_index_velocity, gaussian_stddev, create_stddevs_ahead
@@ -99,6 +103,8 @@ def parseopts():
                 max_file_size_kb = int(val)
             elif nm == '--max-record-size-kb' or nm == '-r':
                 max_record_size_kb = int(val)
+            elif nm == '--fix-record-size-kb' or nm == '-+r':
+                fix_record_size_kb = int(val)
             elif nm == '--max-random-reads' or nm == '-R':
                 max_random_reads = int(val)
             elif nm == '--max-random-writes' or nm == '-W':
@@ -118,6 +124,9 @@ def parseopts():
             elif nm == '--response-times' or nm == '-T':
                 v = val.lower()
                 rsptimes = (v == 'true' or v == 'yes' or v == 'on')
+            elif nm == '--bandwidth' or nm == '-b':
+                v = val.lower()
+                bw = (v == 'true' or v == 'yes' or v == 'on')
             elif nm == '--random-distribution' or nm == '-+D':
                 v = val.lower()
                 if v == 'uniform':
@@ -148,6 +157,7 @@ def parseopts():
         '%11s%9d = maximum files\n'
         '%11s%9d = maximum file size (KB)\n'
         '%11s%9d = maximum record size (KB)\n'
+        '%11s%9d = fix record size (KB)\n'
         '%11s%9d = maximum random reads\n'
         '%11s%9d = maximum random writes\n'
         '%11s%9d = fdatasync percentage\n'
@@ -159,17 +169,18 @@ def parseopts():
         '%11s%9.1f = gaussian stddev\n'
         '%11s%9.1f = create stddevs ahead\n'
         '%20s = save response times\n'
+        '%20s = save bandwidth\n'
         % (top_directory, str(starting_gun_file), '', opcount, '', duration, '', max_files, '', max_file_size_kb,
-           '', max_record_size_kb, '', max_random_reads, '', max_random_writes,
+           '', max_record_size_kb, '', fix_record_size_kb, '', max_random_reads, '', max_random_writes,
            '', fdatasync_probability_pct, '', fsync_probability_pct,
            '', levels, '', dirs_per_level,
            rand_distr_type_str, '', mean_index_velocity, '', gaussian_stddev, '', create_stddevs_ahead,
-           str(rsptimes))))
+           str(rsptimes), str(bw))))
     if workload_table_filename != None:
         print('%20s = workload table filename' % workload_table_filename)
     if stats_report_interval > 0:
-        print('%11s%9d = statistics report intervalpercentage' % (
-            '', stats_report_interval))
+        print('%11s%9d = statistics report intervalpercentage' %
+              ('', stats_report_interval))
     if (duration == 1):
         print('do "python fs-drift.py --help" for list of command line parameters')
     sys.stdout.flush()
