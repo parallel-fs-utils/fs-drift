@@ -19,7 +19,7 @@ def usage(msg):
     print('-f|--max-files')
     print('-s|--max-file-size-kb')
     print('-r|--max-record-size-kb')
-    print('-+r|--max-record-size-kb')
+    print('-+r|--fix-record-size-kb')
     print('-R|--max-random-reads')
     print('-W|--max-random-writes')
     print('-Y|--fsyncs')
