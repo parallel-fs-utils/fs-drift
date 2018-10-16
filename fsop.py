@@ -259,16 +259,16 @@ def random_read():
             else:
                 recsz = random_record_size()
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
-            rdsz = random_segment_size(stinfo.st_size)
             if verbosity & 0x2000:
-                print('randread off %u sz %u' % (off, rdsz))
+                print('randread off %u sz %u' % (off, rdsz))            
             total_count = 0
             remaining_sz = stinfo.st_size - off
-            while total_count < rdsz:
+            targetsz = random_segment_size(stinfo.st_size)
+            while total_count < targetsz:
                 recsz = random_record_size()
                 if recsz + total_count > remaining_sz:
                     recsz = remaining_sz - total_count
-                elif recsz + total_count > rdsz:
+                elif recsz + total_count > targetsz:
                     recsz = rdsz - total_count
                 if recsz == 0:
                     break
@@ -314,6 +314,7 @@ def create():
     fd = FD_UNDEFINED
     fn = gen_random_fn(is_create=True)
     target_sz = random_file_size()
+    refresh_buf(target_sz)
     if verbosity & 0x1000:
         print('create %s sz %s' % (fn, target_sz))
     subdir = os.path.dirname(fn)
@@ -330,12 +331,14 @@ def create():
     try:
         fd = os.open(fn, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         total_sz = 0
+        offset = 0
         time_before = time.time()
         while total_sz < target_sz:
             recsz = random_record_size()
             if recsz + total_sz > target_sz:
                 recsz = target_sz - total_sz
-            count = os.write(fd, buf[0:recsz])
+            count = os.write(fd, buf[offset:offset+recsz])
+            offset += count
             assert count > 0
             if verbosity & 0x1000:
                 print('create sz %u written %u' % (recsz, count))
@@ -364,6 +367,7 @@ def append():
     s = OK
     fn = gen_random_fn()
     target_sz = random_file_size()
+    refresh_buf(target_sz)
     if verbosity & 0x8000:
         print('append %s sz %s' % (fn, target_sz))
     fd = FD_UNDEFINED
@@ -371,6 +375,7 @@ def append():
         fd = os.open(fn, os.O_WRONLY)
         have_appended += 1
         total_appended = 0
+        offset = 0
         time_before = time.time()
         while total_appended < target_sz:
             recsz = random_record_size()
@@ -379,7 +384,9 @@ def append():
             assert recsz > 0
             if verbosity & 0x8000:
                 print('append rsz %u' % (recsz))
-            count = os.write(fd, buf[0:recsz])
+            count = os.write(fd, buf[offset:offset+recsz])
+            offset += count
+
             assert count > 0
             total_appended += count
             write_requests += 1
