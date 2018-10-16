@@ -114,7 +114,7 @@ if opts.rsptimes:
     rsptime_file = open(rsptime_filename, "w")
 
 if opts.bw:
-    bw_filename = '/var/tmp/fs-drift_bw_%d_%d_bw.csv' % (
+    bw_filename = '/var/tmp/fs-drift_%d_%d_bw.csv' % (
         int(time.time()), os.getpid())
     bw_file = open(bw_filename, "w")
 
