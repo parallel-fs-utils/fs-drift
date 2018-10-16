@@ -112,6 +112,11 @@ if opts.rsptimes:
     rsptime_filename = '/var/tmp/fs-drift_%d_%d_rspt.csv' % (
         int(time.time()), os.getpid())
     rsptime_file = open(rsptime_filename, "w")
+    
+if opts.bw:
+    bw_filename = '/var/tmp/fs-drift_%d_%d_bw.csv' % (
+        int(time.time()), os.getpid())
+    bw_file = open(bw_filename, "w")    
 
 os.chdir(opts.top_directory)
 sys.stdout.flush()
