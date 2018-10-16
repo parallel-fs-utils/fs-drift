@@ -122,8 +122,6 @@ os.chdir(opts.top_directory)
 sys.stdout.flush()
 
 op = 0
-bandwidth = {'read': 'read', 'random_read': 'random_read',
-             'create': 'write', 'random_write': 'random_write', 'append': 'write'}
 
 last_stat_time = time.time()
 last_drift_time = time.time()
@@ -188,7 +186,7 @@ while True:
                 refresh_counters()
                 total_size = counters[name] - bytes_before
                 bw_file.write('%9.3f , %9.6f , %s\n' % (
-                    before - start_time,  (total_size / total_time)/BYTES_PER_KB, bandwidth[name]))
+                    before - start_time,  (total_size / total_time)/BYTES_PER_KB, name))
     except KeyboardInterrupt as e:
         print("received SIGINT (control-C) signal, aborting...")
         break
