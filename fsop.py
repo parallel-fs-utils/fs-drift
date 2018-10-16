@@ -214,6 +214,7 @@ def read():
         if verbosity & 0x4000:
             print('read file %s sz %u' % (fn, stinfo.st_size))
         total_read = 0
+        time_before = time.time()
         while total_read < stinfo.st_size:
             rdsz = random_record_size()
             bytes = os.read(fd, rdsz)
@@ -224,6 +225,7 @@ def read():
                 print('seq. read off %u sz %u got %u' %\
                     (total_read, rdsz, count))
             total_read += len(bytes)
+        time_after = time.time()
         have_read += 1
     except os.error as e:
         if e.errno == errno.ENOENT:
@@ -237,7 +239,7 @@ def read():
 
 def random_read():
     global e_file_not_found, have_randomly_read, randread_requests, randread_bytes
-    global time_before, time_after    
+    global time_before, time_after
     s = OK
     fd = FD_UNDEFINED
     have_randomly_read += 1
@@ -250,6 +252,7 @@ def random_read():
         if verbosity & 0x2000:
             print('randread %s filesize %u reqs %u' % (
                 fn, stinfo.st_size, target_read_reqs))
+        time_before = time.time()
         while total_read_reqs < target_read_reqs:
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             rdsz = random_segment_size(stinfo.st_size)
@@ -274,6 +277,7 @@ def random_read():
                 randread_bytes += count
             total_read_reqs += 1
             randread_requests += 1
+        time_after = time.time()
         have_randomly_read += 1
     except os.error as e:
         if e.errno == errno.ENOENT:
@@ -301,7 +305,7 @@ def maybe_fsync(fd):
 def create():
     global have_created, e_already_exists, write_requests, write_bytes, dirs_created
     global e_no_dir_space, e_no_inode_space, e_no_space
-    global time_before, time_after    
+    global time_before, time_after
     s = OK
     fd = FD_UNDEFINED
     fn = gen_random_fn(is_create=True)
@@ -322,6 +326,7 @@ def create():
     try:
         fd = os.open(fn, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         total_sz = 0
+        time_before = time.time()
         while total_sz < target_sz:
             recsz = random_record_size()
             if recsz + total_sz > target_sz:
@@ -333,6 +338,7 @@ def create():
             total_sz += count
             write_requests += 1
             write_bytes += count
+        time_after = time.time()
         maybe_fsync(fd)
         have_created += 1
     except os.error as e:
@@ -350,7 +356,7 @@ def create():
 def append():
     global have_appended, write_requests, write_bytes, e_file_not_found
     global e_no_space
-    global time_before, time_after    
+    global time_before, time_after
     s = OK
     fn = gen_random_fn()
     target_sz = random_file_size()
@@ -361,6 +367,7 @@ def append():
         fd = os.open(fn, os.O_WRONLY)
         have_appended += 1
         total_appended = 0
+        time_before = time.time()
         while total_appended < target_sz:
             recsz = random_record_size()
             if recsz + total_appended > target_sz:
@@ -373,6 +380,7 @@ def append():
             total_appended += count
             write_requests += 1
             write_bytes += count
+        time_after = time.time()
         maybe_fsync(fd)
         have_appended += 1
     except os.error as e:
@@ -390,7 +398,7 @@ def append():
 def random_write():
     global have_randomly_written, randwrite_requests, randwrite_bytes, e_file_not_found
     global e_no_space
-    global time_before, time_after    
+    global time_before, time_after
     s = OK
     fd = FD_UNDEFINED
     fn = gen_random_fn()
@@ -401,6 +409,7 @@ def random_write():
         target_write_reqs = random.randint(0, opts.max_random_writes)
         if verbosity & 0x20000:
             print('randwrite %s reqs %u' % (fn, target_write_reqs))
+        time_before = time.time()
         while total_write_reqs < target_write_reqs:
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             total_count = 0
@@ -419,7 +428,8 @@ def random_write():
             total_write_reqs += 1
             randwrite_requests += 1
             randwrite_bytes += total_count
-            maybe_fsync(fd)
+        time_after = time.time()
+        maybe_fsync(fd)
         have_randomly_written += 1
     except os.error as e:
         if e.errno == errno.ENOENT:
@@ -435,7 +445,7 @@ def random_write():
 
 def truncate():
     global have_truncated, e_file_not_found
-    global time_before, time_after    
+    global time_before, time_after
     fd = FD_UNDEFINED
     s = OK
     fn = gen_random_fn()
@@ -443,8 +453,10 @@ def truncate():
         print('truncate %s' % fn)
     try:
         new_file_size = random_file_size()/3
+        time_before = time.time()
         fd = os.open(fn, os.O_RDWR)
         os.ftruncate(fd, new_file_size)
+        time_after = time.time()
         have_truncated += 1
     except os.error as e:
         if e.errno == errno.ENOENT:
@@ -458,7 +470,7 @@ def truncate():
 
 def link():
     global have_linked, e_file_not_found, e_already_exists
-    global time_before, time_after    
+    global time_before, time_after
     fn = gen_random_fn()
     fn2 = gen_random_fn() + link_suffix
     if verbosity & 0x10000:
@@ -467,7 +479,9 @@ def link():
         e_file_not_found += 1
         return OK
     try:
+        time_before = time.time()
         rc = os.symlink(fn, fn2)
+        time_after = time.time()
         have_linked += 1
     except os.error as e:
         if e.errno == errno.EEXIST:
@@ -483,7 +497,7 @@ def link():
 
 def hlink():
     global have_hlinked, e_file_not_found, e_already_exists
-    global time_before, time_after    
+    global time_before, time_after
     fn = gen_random_fn()
     fn2 = gen_random_fn() + hlink_suffix
     if verbosity & 0x10000:
@@ -492,7 +506,9 @@ def hlink():
         e_file_not_found += 1
         return OK
     try:
+        time_before = time.time()
         rc = os.link(fn, fn2)
+        time_after = time.time()
         have_hlinked += 1
     except os.error as e:
         if e.errno == errno.EEXIST:
@@ -508,12 +524,13 @@ def hlink():
 
 def delete():
     global have_deleted, e_file_not_found
-    global time_before, time_after    
+    global time_before, time_after
     fn = gen_random_fn()
     if verbosity & 0x20000:
         print('delete %s' % (fn))
     try:
         linkfn = fn + link_suffix
+        time_before = time.time()
         if os.path.isfile(linkfn):
             if verbosity & 0x20000:
                 print('delete soft link %s' % (linkfn))
@@ -524,6 +541,7 @@ def delete():
                 print('delete hard link %s' % (hlinkfn))
             os.unlink(hlinkfn)
         os.unlink(fn)
+        time_after = time.time()
         have_deleted += 1
     except os.error as e:
         if e.errno == errno.ENOENT:
@@ -536,13 +554,15 @@ def delete():
 
 def rename():
     global have_renamed, e_file_not_found
-    global time_before, time_after    
+    global time_before, time_after
     fn = gen_random_fn()
     fn2 = gen_random_fn()
     if verbosity & 0x20000:
         print('rename %s to %s' % (fn, fn2))
     try:
+        time_before = time.time()
         os.rename(fn, fn2)
+        time_after = time.time()
         have_renamed += 1
     except os.error as e:
         if e.errno == errno.ENOENT:
