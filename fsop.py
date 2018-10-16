@@ -171,7 +171,7 @@ def gen_random_fn(is_create=False):
 
 
 def random_file_size():
-    return random.randint(0, opts.max_file_size_kb * BYTES_PER_KB)
+    return random.randint(1, opts.max_file_size_kb * BYTES_PER_KB)
 
 
 def random_record_size():
