@@ -6,6 +6,7 @@ import os
 import os.path
 import random
 import errno
+import time
 import random_buffer
 # my modules
 import common
@@ -39,6 +40,10 @@ randwrite_bytes = 0
 fsyncs = 0
 fdatasyncs = 0
 dirs_created = 0
+
+# time counters
+time_before = 0
+time_after = 0
 
 # error counters
 e_already_exists = 0
@@ -75,6 +80,9 @@ def init_buf():
     global buf
     buf = random_buffer.gen_buffer(opts.max_record_size_kb*BYTES_PER_KB)
 
+def refresh_buf(size):
+    global buf
+    buf = random_buffer.gen_buffer(size)
 
 def scallerr(msg, fn, syscall_exception):
     err = syscall_exception.errno
