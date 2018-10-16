@@ -112,18 +112,17 @@ if opts.rsptimes:
     rsptime_filename = '/var/tmp/fs-drift_%d_%d_rspt.csv' % (
         int(time.time()), os.getpid())
     rsptime_file = open(rsptime_filename, "w")
-    
+
 if opts.bw:
     bw_filename = '/var/tmp/fs-drift_%d_%d_bw.csv' % (
         int(time.time()), os.getpid())
-    bw_file = open(bw_filename, "w")    
+    bw_file = open(bw_filename, "w")
 
 os.chdir(opts.top_directory)
 sys.stdout.flush()
 
 op = 0
-rsptimes = {'read': [], 'random_read': [], 'create': [], 'random_write': [], 'append': [
-], 'link': [], 'delete': [], 'rename': [], 'truncate': [], 'hardlink': []}
+
 last_stat_time = time.time()
 last_drift_time = time.time()
 stop_file = opts.top_directory + os.sep + 'stop-file'
@@ -169,14 +168,25 @@ while True:
     if common.verbosity & 0x1:
         print()
         print(x, name)
-    before = time.time()
     before_drift = time.time()
     curr_e_exists, curr_e_not_found = fsop.e_already_exists, fsop.e_file_not_found
+    refresh_counters()
+    if name in counters:
+        bytes_before = counters[name]
     try:
         rc = fn()
-        after = time.time()
+        after = fsop.time_after
+        before = fsop.time_before
         if curr_e_exists == fsop.e_already_exists and curr_e_not_found == fsop.e_file_not_found:
-            rsptimes[name].append((before - start_time, after - before))
+            total_time = float(after - before)
+            if opts.rsptimes:
+                rsptime_file.write('%9.3f , %9.6f , %s\n' %
+                                   (before - start_time,  total_time, name))
+            if name in counters and opts.bw:
+                refresh_counters()
+                total_size = counters[name] - bytes_before
+                bw_file.write('%9.3f , %9.6f , %s\n' % (
+                    before - start_time,  (total_size / total_time)/BYTES_PER_KB, name))
     except KeyboardInterrupt as e:
         print("received SIGINT (control-C) signal, aborting...")
         break
@@ -194,12 +204,12 @@ while True:
         last_drift_time = before_drift
 
 if opts.rsptimes:
-    for key, ls in list(rsptimes.items()):
-        rsptime_file.write(key+'\n')
-        for (reltime, rspt) in ls:
-            rsptime_file.write('%9.3f , %9.6f\n' % (reltime,  rspt))
     rsptime_file.close()
     print('response time file is %s' % rsptime_filename)
+
+if opts.bw:
+    bw_file.close()
+    print('bandwidth file is %s' % bw_filename)
 
 print_stats()
 if opts.starting_gun_file:
