@@ -63,6 +63,10 @@ Set a limit on how many random reads in a row are done to a file per random read
 
 Set a limit on how many random writes in a row can be done to a file per random write op.(default 2)
 
+-+s|--singleIO
+
+If true, use only one IO per request on random operations. If false, use segment approach.
+
 -Y|--fsyncs
 
 If true, allows fsync() call to be done every so often when files are written. Value is probability in percent. (default 20)

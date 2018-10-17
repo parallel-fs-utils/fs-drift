@@ -22,6 +22,7 @@ def usage(msg):
     print('-+r|--fix-record-size-kb')
     print('-R|--max-random-reads')
     print('-W|--max-random-writes')
+    print('-+s|--singleIO')
     print('-Y|--fsyncs')
     print('-y|--fdatasyncs')
     print('-T|--response-times')
@@ -51,6 +52,7 @@ max_record_size_kb = 1
 fix_record_size_kb = 0
 max_random_reads = 2
 max_random_writes = 2
+singleIO = False
 fdatasync_probability_pct = 10
 fsync_probability_pct = 20
 short_stats = False
@@ -73,7 +75,7 @@ pause_file = '/var/tmp/pause'
 
 def parseopts():
     global top_directory, starting_gun_file, opcount, max_files, max_file_size_kb, duration, short_stats
-    global max_record_size_kb, fix_record_size_kb, max_random_reads, max_random_writes, rsptimes, bw
+    global max_record_size_kb, fix_record_size_kb, max_random_reads, max_random_writes, singleIO, rsptimes, bw
     global fsync_probability_pct, fdatasync_probability_pct, workload_table_filename
     global stats_report_interval, levels, dirs_per_level
     global rand_distr_type, rand_distr_type_str, mean_index_velocity, gaussian_stddev, create_stddevs_ahead
@@ -109,6 +111,8 @@ def parseopts():
                 max_random_reads = int(val)
             elif nm == '--max-random-writes' or nm == '-W':
                 max_random_writes = int(val)
+            elif nm == '--singleIO' or nm == '-+s':
+                singleIO = True
             elif nm == '--fdatasync_pct' or nm == '-y':
                 fdatasync_probability_pct = int(val)
             elif nm == '--fsync_pct' or nm == '-Y':
@@ -160,6 +164,7 @@ def parseopts():
         '%11s%9d = fix record size (KB)\n'
         '%11s%9d = maximum random reads\n'
         '%11s%9d = maximum random writes\n'
+        '%11s%9d = single IO random operations\n'
         '%11s%9d = fdatasync percentage\n'
         '%11s%9d = fsync percentage\n'
         '%11s%9d = directory levels\n'
@@ -171,7 +176,7 @@ def parseopts():
         '%20s = save response times\n'
         '%20s = save bandwidth\n'
         % (top_directory, str(starting_gun_file), '', opcount, '', duration, '', max_files, '', max_file_size_kb,
-           '', max_record_size_kb, '', fix_record_size_kb, '', max_random_reads, '', max_random_writes,
+           '', max_record_size_kb, '', fix_record_size_kb, '', max_random_reads, '', max_random_writes, '', singleIO,
            '', fdatasync_probability_pct, '', fsync_probability_pct,
            '', levels, '', dirs_per_level,
            rand_distr_type_str, '', mean_index_velocity, '', gaussian_stddev, '', create_stddevs_ahead,
