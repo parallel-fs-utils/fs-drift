@@ -269,7 +269,7 @@ def random_read():
                 if recsz + total_count > remaining_sz:
                     recsz = remaining_sz - total_count
                 elif recsz + total_count > targetsz:
-                    recsz = rdsz - total_count
+                    recsz = targetsz - total_count
                 if recsz == 0:
                     break
                 bytebuf = os.read(fd, recsz)
