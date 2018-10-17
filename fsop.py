@@ -345,8 +345,8 @@ def create():
             total_sz += count
             write_requests += 1
             write_bytes += count
-        time_after = time.time()
         maybe_fsync(fd)
+        time_after = time.time()
         have_created += 1
     except os.error as e:
         if e.errno == errno.EEXIST:
@@ -391,8 +391,8 @@ def append():
             total_appended += count
             write_requests += 1
             write_bytes += count
-        time_after = time.time()
         maybe_fsync(fd)
+        time_after = time.time()
         have_appended += 1
     except os.error as e:
         if e.errno == errno.ENOENT:
@@ -443,8 +443,8 @@ def random_write():
             total_write_reqs += 1
             randwrite_requests += 1
             randwrite_bytes += total_count
-        time_after = time.time()
         maybe_fsync(fd)
+        time_after = time.time()
         have_randomly_written += 1
     except os.error as e:
         if e.errno == errno.ENOENT:
