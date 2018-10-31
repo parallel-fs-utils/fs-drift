@@ -221,7 +221,7 @@ def read():
         total_read = 0
         time_before = time.time()
         while total_read < stinfo.st_size:
-            rdsz = random_record_size()
+            rdsz = get_recsz()
             bytes = os.read(fd, rdsz)
             count = len(bytes)
             read_requests += 1
@@ -337,7 +337,7 @@ def create():
         offset = 0
         time_before = time.time()
         while total_sz < target_sz:
-            recsz = random_record_size()
+            recsz = get_recsz()
             if recsz + total_sz > target_sz:
                 recsz = target_sz - total_sz
             count = os.write(fd, buf[offset:offset+recsz])
@@ -381,7 +381,7 @@ def append():
         offset = 0
         time_before = time.time()
         while total_appended < target_sz:
-            recsz = random_record_size()
+            recsz = get_recsz()
             if recsz + total_appended > target_sz:
                 recsz = target_sz - total_appended
             assert recsz > 0
