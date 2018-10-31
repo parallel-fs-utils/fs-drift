@@ -201,6 +201,11 @@ def try_to_close(closefd, filename):
             return False
     return True
 
+def get_recsz():
+    if opts.fix_record_size_kb:
+        return opts.fix_record_size_kb * BYTES_PER_KB
+    else:
+        return random_record_size()
 
 def read():
     global e_file_not_found, have_read, read_requests, read_bytes
@@ -216,7 +221,7 @@ def read():
         total_read = 0
         time_before = time.time()
         while total_read < stinfo.st_size:
-            rdsz = random_record_size()
+            rdsz = get_recsz()
             bytes = os.read(fd, rdsz)
             count = len(bytes)
             read_requests += 1
@@ -254,18 +259,16 @@ def random_read():
                 fn, stinfo.st_size, target_read_reqs))
         time_before = time.time()
         while total_read_reqs < target_read_reqs:
-            if opts.fix_record_size_kb:
-                recsz = opts.fix_record_size_kb * BYTES_PER_KB
-            else:
-                recsz = random_record_size()
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             if verbosity & 0x2000:
                 print('randread off %u sz %u' % (off, rdsz))            
             total_count = 0
             remaining_sz = stinfo.st_size - off
             targetsz = random_segment_size(stinfo.st_size)
+            if opts.singleIO:
+                targetsz = get_recsz()
             while total_count < targetsz:
-                recsz = random_record_size()
+                recsz = get_recsz()
                 if recsz + total_count > remaining_sz:
                     recsz = remaining_sz - total_count
                 elif recsz + total_count > targetsz:
@@ -334,7 +337,7 @@ def create():
         offset = 0
         time_before = time.time()
         while total_sz < target_sz:
-            recsz = random_record_size()
+            recsz = get_recsz()
             if recsz + total_sz > target_sz:
                 recsz = target_sz - total_sz
             count = os.write(fd, buf[offset:offset+recsz])
@@ -378,7 +381,7 @@ def append():
         offset = 0
         time_before = time.time()
         while total_appended < target_sz:
-            recsz = random_record_size()
+            recsz = get_recsz()
             if recsz + total_appended > target_sz:
                 recsz = target_sz - total_appended
             assert recsz > 0
@@ -422,19 +425,17 @@ def random_write():
             print('randwrite %s reqs %u' % (fn, target_write_reqs))
         time_before = time.time()
         while total_write_reqs < target_write_reqs:
-            if opts.fix_record_size_kb:
-                recsz = opts.fix_record_size_kb * BYTES_PER_KB
-            else:
-                recsz = random_record_size()
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             total_count = 0
-            wrsz = random_segment_size(stinfo.st_size)
+            targetsz = random_segment_size(stinfo.st_size)
+            if opts.singleIO:
+                targetsz = get_recsz() 
             if verbosity & 0x20000:
-                print('randwrite off %u sz %u' % (off, wrsz))
-            while total_count < wrsz:
-                recsz = random_record_size()
-                if recsz + total_count > wrsz:
-                    recsz = wrsz - total_count
+                print('randwrite off %u sz %u' % (off, targetsz))
+            while total_count < targetsz:
+                recsz = get_recsz()
+                if recsz + total_count > targetsz:
+                    recsz = targetsz - total_count
                 count = os.write(fd, buf[0:recsz])
                 if verbosity & 0x20000:
                     print('randwrite count=%u recsz=%u' % (count, recsz))
