@@ -33,3 +33,9 @@ e = os.getenv("VERBOSITY")
 if e != None:
     verbosity = int(e)
     print('verbosity = %u (0x%08x)' % (verbosity, verbosity))
+
+# exception class so you know where exception came from
+
+class FsDriftException(Exception):
+    pass
+
