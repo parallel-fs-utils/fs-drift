@@ -89,23 +89,23 @@ def print_stats():
 # the main program
 
 
-opts.parseopts()
-event.parse_weights()
+params = opts.parseopts()
+event.parse_weights(params)
 event.normalize_weights()
 total_errors = 0
-fsop.init_buf()
+fsop.init_buf(params)
 
 try:
-    os.mkdir(opts.top_directory)
+    os.mkdir(params.top_directory)
 except os.error as e:
     if e.errno != errno.EEXIST:
         raise e
-if opts.rsptimes:
+if params.rsptimes:
     rsptime_filename = '/var/tmp/fs-drift_%d_%d_rspt.csv' % (
         int(time.time()), os.getpid())
     rsptime_file = open(rsptime_filename, "w")
 
-os.chdir(opts.top_directory)
+os.chdir(params.top_directory)
 sys.stdout.flush()
 
 op = 0
@@ -113,13 +113,13 @@ rsptimes = {'read': [], 'random_read': [], 'create': [], 'random_write': [], 'ap
 ], 'link': [], 'delete': [], 'rename': [], 'truncate': [], 'hardlink': []}
 last_stat_time = time.time()
 last_drift_time = time.time()
-stop_file = opts.top_directory + os.sep + 'stop-file'
+stop_file = params.top_directory + os.sep + 'stop-file'
 
 # we have to synchronize threads across multiple hosts somehow, we do this with a
 # file in a shared file system.
 
-if opts.starting_gun_file:
-    while not os.access(opts.starting_gun_file, os.R_OK):
+if params.starting_gun_file:
+    while not os.access(params.starting_gun_file, os.R_OK):
         time.sleep(1)
 time.sleep(2)  # give everyone else a chance to see that start-file is there
 start_time = time.time()
@@ -128,7 +128,7 @@ event_count = 0
 while True:
     # if there is pause file present, do nothing
 
-    if os.path.isfile(opts.pause_file):
+    if os.path.isfile(params.pause_file):
         time.sleep(5)
         continue
 
@@ -140,16 +140,16 @@ while True:
 
     # if using operation count to limit test
 
-    if opts.opcount > 0:
-        if op >= opts.opcount:
+    if params.opcount > 0:
+        if op >= params.opcount:
             break
         op += 1
 
     # if using duration to limit test
 
-    if opts.duration > 0:
+    if params.duration > 0:
         elapsed = time.time() - start_time
-        if elapsed > opts.duration:
+        if elapsed > params.duration:
             break
     x = event.gen_event()
     (fn, name) = fsop.rq_map[x]
@@ -160,7 +160,7 @@ while True:
     before_drift = time.time()
     curr_e_exists, curr_e_not_found = fsop.e_already_exists, fsop.e_file_not_found
     try:
-        rc = fn()
+        rc = fn(params)
         after = time.time()
         if curr_e_exists == fsop.e_already_exists and curr_e_not_found == fsop.e_file_not_found:
             rsptimes[name].append((before - start_time, after - before))
@@ -170,17 +170,17 @@ while True:
     if rc != OK:
         print("%s returns %d" % (name, rc))
         total_errors += 1
-    if (opts.stats_report_interval > 0) and (before - last_stat_time > opts.stats_report_interval):
-        if opts.short_stats == True:
+    if (params.stats_report_interval > 0) and (before - last_stat_time > params.stats_report_interval):
+        if params.short_stats == True:
             print_short_stats()
         else:
             print_stats()
         last_stat_time = before
-    if (opts.drift_time > 0) and (before_drift - last_drift_time > opts.drift_time):
-        fsop.simulated_time += opts.drift_time
+    if (params.drift_time > 0) and (before_drift - last_drift_time > params.drift_time):
+        fsop.simulated_time += params.drift_time
         last_drift_time = before_drift
 
-if opts.rsptimes:
+if params.rsptimes:
     for key, ls in list(rsptimes.items()):
         rsptime_file.write(key+'\n')
         for (reltime, rspt) in ls:
@@ -189,6 +189,6 @@ if opts.rsptimes:
     print('response time file is %s' % rsptime_filename)
 
 print_stats()
-if opts.starting_gun_file:
-    ensure_deleted(opts.starting_gun_file)
+if params.starting_gun_file:
+    ensure_deleted(params.starting_gun_file)
 ensure_deleted(stop_file)
