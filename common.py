@@ -2,6 +2,11 @@
 
 import os
 
+# exception class so you know where exception came from
+
+class FsDriftException(Exception):
+    pass
+
 NOTOK = 1
 OK = 0
 BYTES_PER_KB = 1 << 10
@@ -20,12 +25,37 @@ class rq:
     RENAME = 7
     TRUNCATE = 8
     HARDLINK = 9
+    REMOUNT = 10
 
 
-class file_access_dist:
-    UNIFORM = 2
-    GAUSSIAN = 3
+# file size can either be fixed or exponential random distribution
 
+class FileSizeDistr:
+    fixed = 0
+    exponential = 1
+
+def FileSizeDistr2str(v):
+    if v == FileSizeDistr.fixed:
+        return "fixed"
+    elif v == FileSizeDistr.exponential:
+        return "exponential"
+    raise FsDriftException(
+        'file size distribution must be one of: fixed, exponential')
+ 
+# files are selected from population with random uniform 
+# or gaussian distribution.
+
+class FileAccessDistr:
+    uniform = 2
+    gaussian = 3
+
+def FileAccessDistr2str(v):
+    if v == FileAccessDistr.uniform:
+        return "uniform"
+    elif v == FileAccessDistr.gaussian:
+        return "gaussian"
+    raise FsDriftException(
+        'file access distribution must be one of: uniform, gaussian')
 
 # bit mask that allows selective enabling of debug messages
 verbosity = 0
@@ -33,9 +63,4 @@ e = os.getenv("VERBOSITY")
 if e != None:
     verbosity = int(e)
     print('verbosity = %u (0x%08x)' % (verbosity, verbosity))
-
-# exception class so you know where exception came from
-
-class FsDriftException(Exception):
-    pass
 
