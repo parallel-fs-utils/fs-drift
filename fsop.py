@@ -9,8 +9,8 @@ import errno
 import random_buffer
 # my modules
 import common
-from common import rq, file_access_dist, verbosity, OK, NOTOK, BYTES_PER_KB, FD_UNDEFINED
-import opts
+from common import rq, FileAccessDistr, FileSizeDistr, verbosity
+from common import OK, NOTOK, BYTES_PER_KB, FD_UNDEFINED
 import numpy  # for gaussian distribution
 import subprocess
 
@@ -26,6 +26,7 @@ have_randomly_read = 0
 have_renamed = 0
 have_truncated = 0
 have_hlinked = 0
+have_remounted = 0
 
 # throughput counters
 read_requests = 0
@@ -46,6 +47,8 @@ e_file_not_found = 0
 e_no_dir_space = 0
 e_no_inode_space = 0
 e_no_space = 0
+e_not_mounted = 0
+e_could_not_mount = 0
 
 # most recent center
 last_center = 0
@@ -71,7 +74,7 @@ simulated_time = SIMULATED_TIME_UNDEFINED  # initialized later
 time_save_rate = 5
 
 
-def init_buf():
+def init_buf(opts):
     global buf
     buf = random_buffer.gen_buffer(opts.max_record_size_kb*BYTES_PER_KB)
 
@@ -84,31 +87,31 @@ def scallerr(msg, fn, syscall_exception):
         a.rstrip('\n'), msg, fn, err, os.strerror(err)))
 
 
-def gen_random_dirname(file_index):
+def gen_random_dirname(opts, file_index):
     d = '.'
-    # multiply file_index ( < opts.max_files) by large number relatively prime to dirs_per_level
+    # multiply file_index ( < opts.max_files) by large number relatively prime to subdirs_per_dir
     index = file_index * large_prime
     for j in range(0, opts.levels):
-        subdir_index = 1 + (index % opts.dirs_per_level)
+        subdir_index = 1 + (index % opts.subdirs_per_dir)
         dname = 'd%04d' % subdir_index
         d = os.path.join(d, dname)
-        index /= opts.dirs_per_level
+        index /= opts.subdirs_per_dir
     return d
 
 
-def gen_random_fn(is_create=False):
+def gen_random_fn(opts, is_create=False):
     global total_dirs
     global simulated_time
     global last_center
     if total_dirs == 1:  # if first time
         for i in range(0, opts.levels):
-            total_dirs *= opts.dirs_per_level
+            total_dirs *= opts.subdirs_per_dir
     max_files_per_dir = opts.max_files // total_dirs
 
-    if opts.rand_distr_type == file_access_dist.UNIFORM:
+    if opts.rand_distr_type == FileAccessDistr.uniform:
         # lower limit 0 means at least 1 file/dir
         index = random.randint(0, max_files_per_dir)
-    elif opts.rand_distr_type == file_access_dist.GAUSSIAN:
+    elif opts.rand_distr_type == FileAccessDistr.gaussian:
 
         # if simulated time is not defined,
         # attempt to read it in from a file, set to zero if no file
@@ -155,23 +158,23 @@ def gen_random_fn(is_create=False):
         index = 'invalid-distribution-type'  # should never happen
     if verbosity & 0x20:
         print('next file index %u out of %u' % (index, max_files_per_dir))
-    dirpath = gen_random_dirname(index)
+    dirpath = gen_random_dirname(opts, index)
     fn = os.path.join(dirpath, 'f%09d' % index)
     if verbosity & 0x20:
         print('next pathname %s' % fn)
     return fn
 
 
-def random_file_size():
+def random_file_size(opts):
     return random.randint(0, opts.max_file_size_kb * BYTES_PER_KB)
 
 
-def random_record_size():
+def random_record_size(opts):
     return random.randint(1, opts.max_record_size_kb * BYTES_PER_KB)
 
 
-def random_segment_size(filesz):
-    segsize = 2*random_record_size()
+def random_segment_size(opts, filesz):
+    segsize = 2*random_record_size(opts)
     if segsize > filesz:
         segsize = filesz//7
     return segsize
@@ -191,11 +194,11 @@ def try_to_close(closefd, filename):
     return True
 
 
-def read():
+def read(opts):
     global e_file_not_found, have_read, read_requests, read_bytes
     s = OK
     fd = FD_UNDEFINED
-    fn = gen_random_fn()
+    fn = gen_random_fn(opts)
     try:
         fd = os.open(fn, os.O_RDONLY)
         stinfo = os.fstat(fd)
@@ -203,7 +206,7 @@ def read():
             print('read file %s sz %u' % (fn, stinfo.st_size))
         total_read = 0
         while total_read < stinfo.st_size:
-            rdsz = random_record_size()
+            rdsz = random_record_size(opts)
             bytes = os.read(fd, rdsz)
             count = len(bytes)
             read_requests += 1
@@ -223,12 +226,12 @@ def read():
     return s
 
 
-def random_read():
+def random_read(opts):
     global e_file_not_found, have_randomly_read, randread_requests, randread_bytes
     s = OK
     fd = FD_UNDEFINED
     have_randomly_read += 1
-    fn = gen_random_fn()
+    fn = gen_random_fn(opts)
     try:
         fd = os.open(fn, os.O_RDONLY)
         stinfo = os.fstat(fd)
@@ -239,13 +242,13 @@ def random_read():
                 fn, stinfo.st_size, target_read_reqs))
         while total_read_reqs < target_read_reqs:
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
-            rdsz = random_segment_size(stinfo.st_size)
+            rdsz = random_segment_size(opts, stinfo.st_size)
             if verbosity & 0x2000:
                 print('randread off %u sz %u' % (off, rdsz))
             total_count = 0
             remaining_sz = stinfo.st_size - off
             while total_count < rdsz:
-                recsz = random_record_size()
+                recsz = random_record_size(opts)
                 if recsz + total_count > remaining_sz:
                     recsz = remaining_sz - total_count
                 elif recsz + total_count > rdsz:
@@ -272,7 +275,7 @@ def random_read():
     return s
 
 
-def maybe_fsync(fd):
+def maybe_fsync(opts, fd):
     global fsyncs, fdatasyncs
     percent = random.randint(0, 100)
     if percent > opts.fsync_probability_pct + opts.fdatasync_probability_pct:
@@ -285,13 +288,13 @@ def maybe_fsync(fd):
         os.fsync(fd)
 
 
-def create():
+def create(opts):
     global have_created, e_already_exists, write_requests, write_bytes, dirs_created
     global e_no_dir_space, e_no_inode_space, e_no_space
     s = OK
     fd = FD_UNDEFINED
-    fn = gen_random_fn(is_create=True)
-    target_sz = random_file_size()
+    fn = gen_random_fn(opts, is_create=True)
+    target_sz = random_file_size(opts)
     if verbosity & 0x1000:
         print('create %s sz %s' % (fn, target_sz))
     subdir = os.path.dirname(fn)
@@ -309,7 +312,7 @@ def create():
         fd = os.open(fn, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         total_sz = 0
         while total_sz < target_sz:
-            recsz = random_record_size()
+            recsz = random_record_size(opts)
             if recsz + total_sz > target_sz:
                 recsz = target_sz - total_sz
             count = os.write(fd, buf[0:recsz])
@@ -319,7 +322,7 @@ def create():
             total_sz += count
             write_requests += 1
             write_bytes += count
-        maybe_fsync(fd)
+        maybe_fsync(opts, fd)
         have_created += 1
     except os.error as e:
         if e.errno == errno.EEXIST:
@@ -333,12 +336,12 @@ def create():
     return s
 
 
-def append():
+def append(opts):
     global have_appended, write_requests, write_bytes, e_file_not_found
     global e_no_space
     s = OK
-    fn = gen_random_fn()
-    target_sz = random_file_size()
+    fn = gen_random_fn(opts)
+    target_sz = random_file_size(opts)
     if verbosity & 0x8000:
         print('append %s sz %s' % (fn, target_sz))
     fd = FD_UNDEFINED
@@ -347,7 +350,7 @@ def append():
         have_appended += 1
         total_appended = 0
         while total_appended < target_sz:
-            recsz = random_record_size()
+            recsz = random_record_size(opts)
             if recsz + total_appended > target_sz:
                 recsz = target_sz - total_appended
             assert recsz > 0
@@ -358,7 +361,7 @@ def append():
             total_appended += count
             write_requests += 1
             write_bytes += count
-        maybe_fsync(fd)
+        maybe_fsync(opts, fd)
         have_appended += 1
     except os.error as e:
         if e.errno == errno.ENOENT:
@@ -372,12 +375,12 @@ def append():
     return s
 
 
-def random_write():
+def random_write(opts):
     global have_randomly_written, randwrite_requests, randwrite_bytes, e_file_not_found
     global e_no_space
     s = OK
     fd = FD_UNDEFINED
-    fn = gen_random_fn()
+    fn = gen_random_fn(opts)
     try:
         fd = os.open(fn, os.O_WRONLY)
         stinfo = os.fstat(fd)
@@ -388,11 +391,11 @@ def random_write():
         while total_write_reqs < target_write_reqs:
             off = os.lseek(fd, random_seek_offset(stinfo.st_size), 0)
             total_count = 0
-            wrsz = random_segment_size(stinfo.st_size)
+            wrsz = random_segment_size(opts, stinfo.st_size)
             if verbosity & 0x20000:
                 print('randwrite off %u sz %u' % (off, wrsz))
             while total_count < wrsz:
-                recsz = random_record_size()
+                recsz = random_record_size(opts)
                 if recsz + total_count > wrsz:
                     recsz = wrsz - total_count
                 count = os.write(fd, buf[0:recsz])
@@ -403,7 +406,7 @@ def random_write():
             total_write_reqs += 1
             randwrite_requests += 1
             randwrite_bytes += total_count
-            maybe_fsync(fd)
+            maybe_fsync(opts, fd)
         have_randomly_written += 1
     except os.error as e:
         if e.errno == errno.ENOENT:
@@ -417,15 +420,15 @@ def random_write():
     return s
 
 
-def truncate():
+def truncate(opts):
     global have_truncated, e_file_not_found
     fd = FD_UNDEFINED
     s = OK
-    fn = gen_random_fn()
+    fn = gen_random_fn(opts)
     if verbosity & 0x40000:
         print('truncate %s' % fn)
     try:
-        new_file_size = random_file_size()/3
+        new_file_size = random_file_size(opts)/3
         fd = os.open(fn, os.O_RDWR)
         os.ftruncate(fd, new_file_size)
         have_truncated += 1
@@ -439,10 +442,10 @@ def truncate():
     return s
 
 
-def link():
+def link(opts):
     global have_linked, e_file_not_found, e_already_exists
-    fn = gen_random_fn()
-    fn2 = gen_random_fn() + link_suffix
+    fn = gen_random_fn(opts)
+    fn2 = gen_random_fn(opts) + link_suffix
     if verbosity & 0x10000:
         print('link to %s from %s' % (fn, fn2))
     if not os.path.isfile(fn):
@@ -463,10 +466,10 @@ def link():
     return OK
 
 
-def hlink():
+def hlink(opts):
     global have_hlinked, e_file_not_found, e_already_exists
-    fn = gen_random_fn()
-    fn2 = gen_random_fn() + hlink_suffix
+    fn = gen_random_fn(opts)
+    fn2 = gen_random_fn(opts) + hlink_suffix
     if verbosity & 0x10000:
         print('hard link to %s from %s' % (fn, fn2))
     if not os.path.isfile(fn):
@@ -487,9 +490,9 @@ def hlink():
     return OK
 
 
-def delete():
+def delete(opts):
     global have_deleted, e_file_not_found
-    fn = gen_random_fn()
+    fn = gen_random_fn(opts)
     if verbosity & 0x20000:
         print('delete %s' % (fn))
     try:
@@ -516,8 +519,8 @@ def delete():
 
 def rename():
     global have_renamed, e_file_not_found
-    fn = gen_random_fn()
-    fn2 = gen_random_fn()
+    fn = gen_random_fn(opts)
+    fn2 = gen_random_fn(opts)
     if verbosity & 0x20000:
         print('rename %s to %s' % (fn, fn2))
     try:
@@ -532,6 +535,40 @@ def rename():
     return OK
 
 
+# unmounting is so risky that we shouldn't try to figure it out
+# make the user tell us the entire mount command
+# we will get mountpoint from last token on the command line
+# assumption: mountpoint comes last on the mount command
+
+def remount(opts):
+    if opts.mount_command == None:
+        return
+    global e_not_mounted, e_could_not_unmount, e_could_not_mount
+    mountpoint = opts.mount_command.split()[-1].strip()
+    if not opts.topdir.startswith(mountpoint):
+        raise common.FsDriftException(
+                'mountpoint %s does not contain topdir %s' % 
+                (mountpoint, topdir))
+    with open('/proc/mounts', 'r') as mount_f:
+        mounts = [ l.strip().split() for l in mount_f.readlines() ]
+    mount_entry = None
+    for m in mounts:
+        if m[1] == mountpoint:
+            mount_entry = m
+            break
+    if mount_entry == None:
+        e_not_mounted += 1
+    else:
+        os.chdir('/tmp')
+        rc = os.system('umount %s' % opts.mountpoint)
+        if rc != OK:
+            e_could_not_unmount += 1
+            return
+    rc = os.system(opts.mount_command)
+    if rc != OK:
+        e_could_not_mount += 1
+        return
+
 rq_map = \
     {rq.READ: (read, "read"),
      rq.RANDOM_READ: (random_read, "random_read"),
@@ -542,24 +579,25 @@ rq_map = \
      rq.DELETE: (delete, "delete"),
      rq.RENAME: (rename, "rename"),
      rq.TRUNCATE: (truncate, "truncate"),
-     rq.HARDLINK: (hlink, "hardlink")
+     rq.HARDLINK: (hlink, "hardlink"),
+     rq.REMOUNT: (remount, "remount")
      }
 
 
 if __name__ == "__main__":
-    opts.parseopts()
+    options = opts.parseopts()
     buckets = 20
     histogram = [0 for x in range(0, buckets)]
     with open('/tmp/filenames.list', 'w') as filenames:
-        for i in range(0, opts.opcount):
-            fn = gen_random_fn()
+        for i in range(0, options.opcount):
+            fn = gen_random_fn(opts)
             filenames.write(fn + '\n')
             # print(fn)
             namelist = fn.split('/')
             fname = namelist[len(namelist)-1].split('.')[0]
             # print(fname)
             num = int(fname[1:])
-            bucket = num*len(histogram)/opts.max_files
+            bucket = num*len(histogram)/options.max_files
             histogram[bucket] += 1
     print(histogram)
-    assert(sum(histogram) == opts.opcount)
+    assert(sum(histogram) == options.opcount)
