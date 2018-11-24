@@ -7,7 +7,6 @@ import random
 import common
 from common import rq
 import fsop
-import opts
 
 # normalize weights and compute table that maps random # into rq type
 # FIXME: read weights in from user
@@ -20,7 +19,7 @@ weights = {rq.READ: 10, rq.RANDOM_READ: 2, rq.CREATE: 4, rq.RANDOM_WRITE: 2,
 normalized_weights = {}
 
 
-def parse_weights():
+def parse_weights(opts):
     global weights
     linenum = 1
     if opts.workload_table_filename != None:
