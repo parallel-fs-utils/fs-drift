@@ -9,82 +9,14 @@ import time
 import sys
 import random
 import event
+import errno
+import pickle
+
 import fsop
 import common
 from common import rq, OK, NOTOK
 import opts
-import errno
-
-# instead of looking up before deletion, do reverse, delete and catch exception
-
-
-def ensure_deleted(file_path):
-    try:
-        os.unlink(file_path)
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise e
-
-# print out counters for the interval that just completed.
-
-
-def print_short_stats():
-    print('elapsed time: %9.1f' % (time.time() - start_time))
-    print('\n'\
-        '%9u = center\n' \
-        '%9u = files created\t' \
-        '%9u = files appended to\n' \
-        '%9u = files random write\t' \
-        '%9u = files read\n' \
-        '%9u = files randomly read\n' \
-        % (fsop.last_center, fsop.have_created, fsop.have_appended, fsop.have_randomly_written,
-           fsop.have_read, fsop.have_randomly_read))
-    sys.stdout.flush()
-
-
-def print_stats():
-    print()
-    print('elapsed time: %9.1f' % (time.time() - start_time))
-    print('\n\n'\
-        '%9u = center\n' \
-        '%9u = files created\n' \
-        '%9u = files appended to\n' \
-        '%9u = files randomly written to\n' \
-        '%9u = files read\n' \
-        '%9u = files randomly read\n' \
-        '%9u = files truncated\n' \
-        '%9u = files deleted\n' \
-        '%9u = files renamed\n' \
-        '%9u = softlinks created\n' \
-        '%9u = hardlinks created\n' \
-        % (fsop.last_center, fsop.have_created, fsop.have_appended, fsop.have_randomly_written,
-           fsop.have_read, fsop.have_randomly_read, fsop.have_truncated,
-           fsop.have_deleted, fsop.have_renamed, fsop.have_linked, fsop.have_hlinked))
-
-    print('%9u = read requests\n' \
-        '%9u = read bytes\n'\
-        '%9u = random read requests\n' \
-        '%9u = random read bytes\n' \
-        '%9u = write requests\n' \
-        '%9u = write bytes\n'\
-        '%9u = random write requests\n' \
-        '%9u = random write bytes\n' \
-        '%9u = fdatasync calls\n' \
-        '%9u = fsync calls\n' \
-        '%9u = leaf directories created\n' \
-        % (fsop.read_requests, fsop.read_bytes, fsop.randread_requests, fsop.randread_bytes,
-           fsop.write_requests, fsop.write_bytes, fsop.randwrite_requests, fsop.randwrite_bytes,
-           fsop.fdatasyncs, fsop.fsyncs, fsop.dirs_created))
-
-    print('%9u = no create -- file already existed\n'\
-        '%9u = file not found\n'\
-        % (fsop.e_already_exists, fsop.e_file_not_found))
-    print('%9u = no directory space\n'\
-        '%9u = no space for new inode\n'\
-        '%9u = no space for write data\n'\
-        % (fsop.e_no_dir_space, fsop.e_no_inode_space, fsop.e_no_space))
-    print('%9u = total errors' % total_errors)
-    sys.stdout.flush()
+import output_results
 
 # the main program
 
@@ -94,17 +26,22 @@ event.parse_weights(params)
 event.normalize_weights()
 total_errors = 0
 fsop.init_buf(params)
+if len(params.top_directory) < 6:
+    raise FsDriftException(
+            'top directory %s too short, may be system directory' % 
+            params.top_directory)
 
 try:
-    os.mkdir(params.top_directory)
+    os.mkdir(params.network_shared_path)
 except os.error as e:
     if e.errno != errno.EEXIST:
         raise e
-if params.rsptimes:
-    rsptime_filename = '/var/tmp/fs-drift_%d_%d_rspt.csv' % (
-        int(time.time()), os.getpid())
-    rsptime_file = open(rsptime_filename, "w")
 
+# save params in a place where remote workload generators can read them
+
+with open(params.param_pickle_path, 'w') as pickle_f:
+    pickle.dump(params, pickle_f)
+    
 os.chdir(params.top_directory)
 sys.stdout.flush()
 
@@ -113,15 +50,15 @@ rsptimes = {'read': [], 'random_read': [], 'create': [], 'random_write': [], 'ap
 ], 'link': [], 'delete': [], 'rename': [], 'truncate': [], 'hardlink': []}
 last_stat_time = time.time()
 last_drift_time = time.time()
-stop_file = params.top_directory + os.sep + 'stop-file'
+stop_file = params.stop_file_path
 
 # we have to synchronize threads across multiple hosts somehow, we do this with a
 # file in a shared file system.
 
-if params.starting_gun_file:
-    while not os.access(params.starting_gun_file, os.R_OK):
-        time.sleep(1)
-time.sleep(2)  # give everyone else a chance to see that start-file is there
+#if params.starting_gun_file:
+#    while not os.access(params.starting_gun_file, os.R_OK):
+#        time.sleep(1)
+#time.sleep(2)  # give everyone else a chance to see that start-file is there
 start_time = time.time()
 event_count = 0
 
@@ -172,9 +109,9 @@ while True:
         total_errors += 1
     if (params.stats_report_interval > 0) and (before - last_stat_time > params.stats_report_interval):
         if params.short_stats == True:
-            print_short_stats()
+            output_results.print_short_stats(start_time)
         else:
-            print_stats()
+            output_results.print_stats(start_time, total_errors)
         last_stat_time = before
     if (params.drift_time > 0) and (before_drift - last_drift_time > params.drift_time):
         fsop.simulated_time += params.drift_time
@@ -188,7 +125,7 @@ if params.rsptimes:
     rsptime_file.close()
     print('response time file is %s' % rsptime_filename)
 
-print_stats()
+output_results.print_stats(start_time, total_errors)
 if params.starting_gun_file:
-    ensure_deleted(params.starting_gun_file)
-ensure_deleted(stop_file)
+    common.ensure_deleted(params.starting_gun_file)
+common.ensure_deleted(stop_file)
