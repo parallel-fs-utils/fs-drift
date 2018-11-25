@@ -15,7 +15,6 @@ from parser_data_types import host_set, file_access_distrib, directory_list
 
 class FsDriftOpts:
     def __init__(self):
-        self.starting_gun_file = None
         self.top_directory = '/tmp/foo'
         self.opcount = 0
         self.duration = 1
@@ -128,6 +127,19 @@ def parseopts():
     o.mean_index_velocity = args.mean_velocity
     o.gaussian_stddev = args.gaussian_stddev
     o.create_stddevs_ahead = args.create_stddevs_ahead
+
+    # some fields derived from user inputs
+
+    o.network_shared_path = os.path.join(o.top_directory, 'network-shared')
+    o.starting_gun_file = os.path.join(o.network_shared_path, 'starting-gun.tmp')
+    o.stop_file_path = os.path.join(o.network_shared_path, 'stop-file.tmp')
+    o.json_output_path = os.path.join(o.network_shared_path, 'results.json')
+    o.param_pickle_path = os.path.join(o.network_shared_path, 'params.pickle')
+    o.rsptime_path = os.path.join(o.network_shared_path, 'host-%s_thrd-%d_%%d_%%d_rspt.csv')
+
+    # output params resulting from parse
+    # even if user didn't specify them
+
     print('')
     print(
         '%20s = top directory\n'
