@@ -62,7 +62,7 @@ def normalize_weights():
         (fn, name) = fsop.rq_map[typ]
         print('%20s  %9u   %5.3f      %5.3f' %\
             (name, weight, cum_probability, probability))
-    print()
+    print('')
 
 
 def gen_event():
@@ -72,7 +72,7 @@ def gen_event():
     for (opcode, cumulative_probability) in list(normalized_weights.items()):
         (fn, opname) = fsop.rq_map[opcode]
         if common.verbosity & 0x100:
-            print(opcode, opname, cumulative_probability)
+            print('%d, %s, %f' % (opcode, opname, cumulative_probability))
         if r < cumulative_probability:
             return opcode
     return opcode
