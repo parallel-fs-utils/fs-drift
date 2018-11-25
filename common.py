@@ -1,6 +1,6 @@
 # common.py - shared symbols and globals
 
-import os
+import os, errno
 
 # exception class so you know where exception came from
 
@@ -63,4 +63,15 @@ e = os.getenv("VERBOSITY")
 if e != None:
     verbosity = int(e)
     print('verbosity = %u (0x%08x)' % (verbosity, verbosity))
+
+
+# instead of looking up before deletion, do reverse, delete and catch exception
+
+def ensure_deleted(file_path):
+    try:
+        os.unlink(file_path)
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise e
+
 
