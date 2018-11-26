@@ -75,3 +75,10 @@ def ensure_deleted(file_path):
             raise e
 
 
+# just create an empty file
+# leave exception handling to caller
+
+def touch(fn):
+    open(fn, 'w').close()
+
+
