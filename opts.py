@@ -30,6 +30,9 @@ class FsDriftOpts:
         self.rsptimes = False
         self.workload_table_filename = None
         self.stats_report_interval = 0
+        self.pause_between_ops = 100
+        self.thread_fraction_done = 0.05
+        self.incompressible = False
         # new parameters related to gaussian filename distribution
         self.rand_distr_type = common.FileAccessDistr.uniform
         self.mean_index_velocity = 0.0  # default is a fixed mean for the distribution
@@ -63,6 +66,9 @@ def parseopts():
     add('--max-file-size-kb', help='maximum file size in KB',
             type=positive_integer, 
             default=o.max_file_size_kb)
+    add('--pause-between-ops', help='delay between ops in microsec',
+            type=non_negative_integer,
+            default=200)
     add('--max-record-size-kb', help='maximum read/write size in KB',
             type=positive_integer, 
             default=o.max_record_size_kb)
@@ -90,6 +96,9 @@ def parseopts():
     add('--response-times', help='if True then save response times to CSV file',
             type=boolean, 
             default=o.rsptimes)
+    add('--incompressible', help='if True then write incompressible data',
+            type=boolean,
+            default=o.incompressible)
     add('--random-distribution', help='either "uniform" or "gaussian"',
             type=file_access_distrib, 
             default=common.FileAccessDistr.uniform)
@@ -102,6 +111,9 @@ def parseopts():
     add('--create-stddevs-ahead', help='file creation ahead of other opts by this many stddevs',
             type=float, 
             default=o.create_stddevs_ahead)
+    add('--thread-fraction-done', help='measurement done when this fraction of threads done',
+            type=positive_float,
+            default=o.thread_fraction_done)
     add('--pause-file', help='file access will be suspended when this file appears',
             default=o.pause_file)
 
@@ -122,6 +134,9 @@ def parseopts():
     o.fsync_probability_pct = args.fsync_pct
     o.levels = args.levels
     o.subdirs_per_dir = args.dirs_per_level
+    o.incompressible = args.incompressible
+    o.pause_between_ops = args.pause_between_ops
+    o.thread_fraction_done = args.thread_fraction_done
     o.response_times = args.response_times
     o.random_distribution = args.random_distribution
     o.mean_index_velocity = args.mean_velocity
@@ -131,7 +146,7 @@ def parseopts():
     # some fields derived from user inputs
 
     o.network_shared_path = os.path.join(o.top_directory, 'network-shared')
-    o.starting_gun_file = os.path.join(o.network_shared_path, 'starting-gun.tmp')
+    o.starting_gun_path = os.path.join(o.network_shared_path, 'starting-gun.tmp')
     o.stop_file_path = os.path.join(o.network_shared_path, 'stop-file.tmp')
     o.json_output_path = os.path.join(o.network_shared_path, 'results.json')
     o.param_pickle_path = os.path.join(o.network_shared_path, 'params.pickle')
@@ -141,7 +156,7 @@ def parseopts():
     # even if user didn't specify them
 
     print('')
-    print(
+    print((
         '%20s = top directory\n'
         '%20s = JSON output file\n'
         '%20s = pause file\n'
@@ -158,6 +173,9 @@ def parseopts():
         '%11s%9f = fsync percentage\n'
         '%11s%9d = directory levels\n'
         '%11s%9d = directories per level\n'
+        '%20s = incompressible\n'
+        '%11s%9d = pause between ops\n'
+        '%11s%9.7f = thread fraction done\n'
         '%20s = filename random distribution\n'
         '%11s%9.1f = mean index velocity\n'
         '%11s%9.1f = gaussian stddev\n'
@@ -179,11 +197,14 @@ def parseopts():
            '', o.fsync_probability_pct, 
            '', o.levels, 
            '', o.subdirs_per_dir,
+           str(o.incompressible),
+           '', o.pause_between_ops,
+           '', o.thread_fraction_done,
            common.FileAccessDistr2str(o.random_distribution), 
            '', o.mean_index_velocity, 
            '', o.gaussian_stddev, 
            '', o.create_stddevs_ahead, 
-       str(o.rsptimes))
+           str(o.rsptimes)))
     sys.stdout.flush()
     return o
 
