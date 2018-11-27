@@ -20,11 +20,11 @@ class rq:
     CREATE = 2
     RANDOM_WRITE = 3
     APPEND = 4
-    LINK = 5
-    DELETE = 6
-    RENAME = 7
-    TRUNCATE = 8
-    HARDLINK = 9
+    SOFTLINK = 5
+    HARDLINK = 6
+    DELETE = 7
+    RENAME = 8
+    TRUNCATE = 9
     REMOUNT = 10
 
 
@@ -82,3 +82,22 @@ def touch(fn):
     open(fn, 'w').close()
 
 
+# create directory if it's not already there
+
+def ensure_dir_exists(dirpath):
+    if not os.path.exists(dirpath):
+        parent_path = os.path.dirname(dirpath)
+        if parent_path == dirpath:
+            raise FsDriftException(
+                'ensure_dir_exists: cannot obtain parent path of non-existent path: ' +
+                dirpath)
+        ensure_dir_exists(parent_path)
+        try:
+            os.mkdir(dirpath)
+        except os.error as e:
+            if e.errno != errno.EEXIST:  # workaround for filesystem bug
+                raise e
+    else:
+        if not os.path.isdir(dirpath):
+            raise FsDriftException('%s already exists and is not a directory!'
+                            % dirpath)
