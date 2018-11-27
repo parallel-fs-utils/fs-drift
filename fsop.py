@@ -14,13 +14,54 @@ import subprocess
 import common
 from common import rq, FileAccessDistr, FileSizeDistr, verbosity
 from common import OK, NOTOK, BYTES_PER_KB, FD_UNDEFINED
-import counters
 
 link_suffix = '.s'
 hlink_suffix = '.h'
 rename_suffix = '.r'
 
 large_prime = 12373
+
+# define class for counters so we can 
+# easily export them or convert them to JSON
+
+class FSOPCounters:
+
+    def __init__(self):
+        # operation counters, incremented by op function below
+        self.have_created = 0
+        self.have_deleted = 0
+        self.have_softlinked = 0
+        self.have_hardlinked = 0
+        self.have_appended = 0
+        self.have_randomly_written = 0
+        self.have_read = 0
+        self.have_randomly_read = 0
+        self.have_renamed = 0
+        self.have_truncated = 0
+        self.have_remounted = 0
+        
+        # throughput counters
+        self.read_requests = 0
+        self.read_bytes = 0
+        self.randread_requests = 0
+        self.randread_bytes = 0
+        self.write_requests = 0
+        self.write_bytes = 0
+        self.randwrite_requests = 0
+        self.randwrite_bytes = 0
+        self.fsyncs = 0
+        self.fdatasyncs = 0
+        self.dirs_created = 0
+        
+        # error counters
+        self.e_already_exists = 0
+        self.e_file_not_found = 0
+        self.e_no_dir_space = 0
+        self.e_no_inode_space = 0
+        self.e_no_space = 0
+        self.e_not_mounted = 0
+        self.e_could_not_mount = 0
+        
 
 # for gaussian distribution with moving mean, we need to remember simulated time
 # so we can pick up where we left off with moving mean
@@ -32,7 +73,7 @@ class FSOPCtx:
     time_save_rate = 5
 
     def __init__(self, params, log):
-        self.ctrs = counters.FSOPCounters()
+        self.ctrs = FSOPCounters()
         self.params = params
         self.log = log
         self.buf = random_buffer.gen_buffer(params.max_record_size_kb*BYTES_PER_KB)
@@ -152,7 +193,7 @@ class FSOPCtx:
                 return False
         return True
 
-    def read(self):
+    def op_read(self):
         c = self.ctrs
         s = OK
         fd = FD_UNDEFINED
@@ -185,12 +226,10 @@ class FSOPCtx:
         self.try_to_close(fd, fn)
         return s
 
-    def random_read(self):
-        global e_file_not_found, have_randomly_read, randread_requests, randread_bytes
+    def op_random_read(self):
         c = self.ctrs
         s = OK
         fd = FD_UNDEFINED
-        c.have_randomly_read += 1
         fn = self.gen_random_fn()
         try:
             total_read_reqs = 0
@@ -250,7 +289,7 @@ class FSOPCtx:
             rc = os.fsync(fd)
         return rc
 
-    def create(self):
+    def op_create(self):
         c = self.ctrs
         s = OK
         fd = FD_UNDEFINED
@@ -297,7 +336,7 @@ class FSOPCtx:
         return s
 
 
-    def append(self):
+    def op_append(self):
         c = self.ctrs
         s = OK
         fn = self.gen_random_fn()
@@ -307,7 +346,6 @@ class FSOPCtx:
         fd = FD_UNDEFINED
         try:
             fd = os.open(fn, os.O_WRONLY)
-            c.have_appended += 1
             total_appended = 0
             while total_appended < target_sz:
                 recsz = self.random_record_size()
@@ -322,6 +360,7 @@ class FSOPCtx:
                 c.write_requests += 1
                 c.write_bytes += count
             rc = self.maybe_fsync(fd)
+            c.have_appended += 1
         except os.error as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
@@ -334,7 +373,7 @@ class FSOPCtx:
         return s
 
 
-    def random_write(self):
+    def op_random_write(self):
         c = self.ctrs
         s = OK
         fd = FD_UNDEFINED
@@ -378,7 +417,7 @@ class FSOPCtx:
         return s
 
 
-    def truncate(self):
+    def op_truncate(self):
         c = self.ctrs
         fd = FD_UNDEFINED
         s = OK
@@ -400,7 +439,7 @@ class FSOPCtx:
         return s
 
 
-    def link(self):
+    def op_softlink(self):
         c = self.ctrs
         fn = self.gen_random_fn()
         fn2 = self.gen_random_fn() + link_suffix
@@ -411,7 +450,7 @@ class FSOPCtx:
             return OK
         try:
             rc = os.symlink(fn, fn2)
-            c.have_linked += 1
+            c.have_softlinked += 1
         except os.error as e:
             if e.errno == errno.EEXIST:
                 c.e_already_exists += 1
@@ -424,7 +463,7 @@ class FSOPCtx:
         return OK
 
 
-    def hlink(self):
+    def op_hardlink(self):
         c = self.ctrs
         fn = self.gen_random_fn()
         fn2 = self.gen_random_fn() + hlink_suffix
@@ -435,7 +474,7 @@ class FSOPCtx:
             return OK
         try:
             rc = os.link(fn, fn2)
-            c.have_hlinked += 1
+            c.have_hardlinked += 1
         except os.error as e:
             if e.errno == errno.EEXIST:
                 c.e_already_exists += 1
@@ -448,7 +487,7 @@ class FSOPCtx:
         return OK
 
 
-    def delete(self):
+    def op_delete(self):
         c = self.ctrs
         fn = self.gen_random_fn()
         if self.verbosity & 0x20000:
@@ -481,7 +520,7 @@ class FSOPCtx:
         return OK
 
 
-    def rename(self):
+    def op_rename(self):
         c = self.ctrs
         fn = self.gen_random_fn()
         fn2 = self.gen_random_fn()
@@ -504,7 +543,7 @@ class FSOPCtx:
     # we will get mountpoint from last token on the command line
     # assumption: mountpoint comes last on the mount command
     
-    def remount(self):
+    def op_remount(self):
         c = self.ctrs
         if self.params.mount_command == None:
             self.log.warn('you did not specify mount command for remount option')
@@ -536,39 +575,35 @@ class FSOPCtx:
             c.e_could_not_mount += 1
             return
 
+    # this is taking advantage of python closures to
+    # allow passing class members as functions to call
+    # without calling from a instance of that class
 
     def gen_rq_map(self):
         
         return {
-         rq.READ: (self.read, "read"),
-         rq.RANDOM_READ: (self.random_read, "random_read"),
-         rq.CREATE: (self.create, "create"),
-         rq.RANDOM_WRITE: (self.random_write, "random_write"),
-         rq.APPEND: (self.append, "append"),
-         rq.LINK: (self.link, "link"),
-         rq.DELETE: (self.delete, "delete"),
-         rq.RENAME: (self.rename, "rename"),
-         rq.TRUNCATE: (self.truncate, "truncate"),
-         rq.HARDLINK: (self.hlink, "hardlink"),
-         rq.REMOUNT: (self.remount, "remount")
+         rq.READ: (self.op_read, "read"),
+         rq.RANDOM_READ: (self.op_random_read, "random_read"),
+         rq.CREATE: (self.op_create, "create"),
+         rq.RANDOM_WRITE: (self.op_random_write, "random_write"),
+         rq.APPEND: (self.op_append, "append"),
+         rq.SOFTLINK: (self.op_softlink, "softlink"),
+         rq.HARDLINK: (self.op_hardlink, "hardlink"),
+         rq.DELETE: (self.op_delete, "delete"),
+         rq.RENAME: (self.op_rename, "rename"),
+         rq.TRUNCATE: (self.op_truncate, "truncate"),
+         rq.REMOUNT: (self.op_remount, "remount")
          }
 
 
-def start_log():
-    log = logging.getLogger('fsop-unittest')
-    h = logging.StreamHandler()
-    log_format = ('fsop-unittest %(asctime)s - %(levelname)s - %(message)s')
-    formatter = logging.Formatter(log_format)
-    h.setFormatter(formatter)
-    log.addHandler(h)
-    log.setLevel(logging.DEBUG)
-    return log
+# unit test
 
 if __name__ == "__main__":
     import logging
     import opts
+    import fsd_log
     options = opts.parseopts()
-    log = start_log()
+    log = fsd_log.start_log('fsop-unittest')
     log.info('hi there')
     if not options.top_directory.__contains__('/tmp/'):
         raise FSDriftException('bad top directory')
@@ -577,33 +612,34 @@ if __name__ == "__main__":
     os.chdir(options.top_directory)
     log.info('chdir to %s' % options.top_directory)
     ctx = FSOPCtx(options, log)
-    rc = ctx.create()
+    rc = ctx.op_create()
     assert(rc == OK)
-    rc = ctx.read()
+    rc = ctx.op_read()
     assert(rc == OK)
-    rc = ctx.random_read()
+    rc = ctx.op_random_read()
     assert(rc == OK)
-    rc = ctx.append()
+    rc = ctx.op_append()
     assert(rc == OK)
-    rc = ctx.random_write()
+    rc = ctx.op_random_write()
     assert(rc == OK)
-    rc = ctx.truncate()
+    rc = ctx.op_truncate()
     assert(rc == OK)
-    rc = ctx.link()
+    rc = ctx.op_softlink()
     assert(rc == OK)
-    rc = ctx.hlink()
+    rc = ctx.op_hardlink()
     assert(rc == OK)
-    rc = ctx.delete()
+    rc = ctx.op_delete()
     assert(rc == OK)
-    rc = ctx.rename()
+    rc = ctx.op_rename()
     assert(rc == OK)
-    rc = ctx.remount()
+    rc = ctx.op_remount()
     assert(rc != OK)
-    map = ctx.gen_rq_map()
-    oplist = [ rq.CREATE, rq.READ, rq.RANDOM_READ, rq.RANDOM_WRITE, rq.APPEND, 
-                rq.LINK, rq.DELETE, rq.RENAME, rq.TRUNCATE, rq.HARDLINK, rq.REMOUNT ]
+
+    rq_map = ctx.gen_rq_map()
+    oplist = rq_map.keys()
     for j in range(0, 200):
         for k in oplist:
-            (func, name) = map[oplist[k]]
+            (func, name) = rq_map[oplist[k]]
             rc = func()
+            # remount not implemented yet
             assert(rc == OK or oplist[k] == rq.REMOUNT)
