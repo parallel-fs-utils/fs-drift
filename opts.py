@@ -41,6 +41,7 @@ class FsDriftOpts:
         self.create_stddevs_ahead = 3.0
         self.drift_time = -1
         self.pause_file = '/var/tmp/pause'
+        self.mount_command = None
 
 
 def parseopts():
@@ -116,7 +117,8 @@ def parseopts():
             default=o.thread_fraction_done)
     add('--pause-file', help='file access will be suspended when this file appears',
             default=o.pause_file)
-
+    add('--mount-command', help='command to mount the filesystem containing top directory',
+            default=o.mount_command)
     # parse the command line and update opts
     args = parser.parse_args()
     o.top_directory = args.top
@@ -142,6 +144,7 @@ def parseopts():
     o.mean_index_velocity = args.mean_velocity
     o.gaussian_stddev = args.gaussian_stddev
     o.create_stddevs_ahead = args.create_stddevs_ahead
+    o.mount_command = args.mount_command
 
     # some fields derived from user inputs
 
@@ -180,6 +183,7 @@ def parseopts():
         '%11s%9.1f = mean index velocity\n'
         '%11s%9.1f = gaussian stddev\n'
         '%11s%9.1f = create stddevs ahead\n'
+        '%20s = mount command\n'
         '%20s = save response times\n') % (
            o.top_directory, 
            o.output_json,
@@ -204,6 +208,7 @@ def parseopts():
            '', o.mean_index_velocity, 
            '', o.gaussian_stddev, 
            '', o.create_stddevs_ahead, 
+           o.mount_command,
            str(o.rsptimes)))
     sys.stdout.flush()
     return o
