@@ -42,6 +42,10 @@ def parse_weights(opts, rq_map):
             raise FsDriftException(
                 'could not parse %s at line %d : %s' % (
                     opts.workload_table_filename, linenum, str(e)))
+    else:
+        raise FsDriftException('user must provide workload table')
+    if len(weights) == 0:
+        raise FsDriftException('workload table must not be empty')
     return weights
 
 
@@ -91,9 +95,10 @@ def normalize_weights(weights):
 def gen_event(normalized_weights):
     r = random.uniform(0.0, 1.0)
     for (opcode, cumulative_probability) in normalized_weights:
+        last_opcode = opcode
         if r < cumulative_probability:
             return opcode
-    return opcode
+    return last_opcode
 
 # unit test
 
