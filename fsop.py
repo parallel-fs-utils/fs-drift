@@ -62,12 +62,47 @@ class FSOPCounters:
         self.e_not_mounted = 0
         self.e_could_not_mount = 0
         
-
-# for gaussian distribution with moving mean, we need to remember simulated time
-# so we can pick up where we left off with moving mean
+    def __str__(self):
+        tuple_list = [
+            ('created', self.have_created),
+            ('deleted', self.have_deleted),
+            ('softlinked', self.have_softlinked),
+            ('hardlinked', self.have_hardlinked),
+            ('appended', self.have_appended),
+            ('randomly_written', self.have_randomly_written),
+            ('read', self.have_read),
+            ('randomly_read', self.have_randomly_read),
+            ('renamed', self.have_renamed),
+            ('truncated', self.have_truncated),
+            ('remounted', self.have_remounted),
+            ('read_requests', self.read_requests),
+            ('read_bytes', self.read_bytes),
+            ('randread_requests', self.randread_requests),
+            ('randread_bytes', self.randread_bytes),
+            ('write_requests', self.write_requests),
+            ('write_bytes', self.write_bytes),
+            ('randwrite_requests', self.randwrite_requests),
+            ('randwrite_bytes', self.randwrite_bytes),
+            ('fsyncs', self.fsyncs),
+            ('fdatasyncs', self.fdatasyncs),
+            ('dirs_created', self.dirs_created),
+            ('e_already_exists', self.e_already_exists),
+            ('e_file_not_found', self.e_file_not_found),
+            ('e_no_dir_space', self.e_no_dir_space),
+            ('e_no_inode_space', self.e_no_inode_space),
+            ('e_no_space', self.e_no_space),
+            ('e_not_mounted', self.e_not_mounted),
+            ('e_could_not_mount', self.e_could_not_mount)
+            ]
+        field_list = [ '%20s = %d' % f for f in tuple_list ]
+        return '\n'.join(field_list)
 
 
 class FSOPCtx:
+
+    # for gaussian distribution with moving mean, we need to remember simulated time
+    # so we can pick up where we left off with moving mean
+
     simtime_filename = 'fs-drift-simtime.tmp'
     SIMULATED_TIME_UNDEFINED = None
     time_save_rate = 5
@@ -210,6 +245,8 @@ class FSOPCtx:
                 rdsz = self.random_record_size()
                 bytes = os.read(fd, rdsz)
                 count = len(bytes)
+                if count < 1:
+                    break
                 c.read_requests += 1
                 c.read_bytes += count
                 if self.verbosity & 0x4000:
@@ -221,7 +258,7 @@ class FSOPCtx:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             else:
-                scallerr('close', filename, e)
+                self.scallerr('close', filename, e)
                 s = NOTOK
         self.try_to_close(fd, fn)
         return s
@@ -258,7 +295,8 @@ class FSOPCtx:
                         break
                     bytebuf = os.read(fd, recsz)
                     count = len(bytebuf)
-                    assert count > 0
+                    if count < 1:
+                        break
                     if verbosity & 0x2000:
                         print('randread recsz %u count %u' % (recsz, count))
                     total_count += count
@@ -270,7 +308,7 @@ class FSOPCtx:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             else:
-                scallerr('random_read', fn, e)
+                self.scallerr('random_read', fn, e)
                 s = NOTOK
         self.try_to_close(fd, fn)
         return s
@@ -305,7 +343,7 @@ class FSOPCtx:
                 if e.errno == errno.ENOSPC:
                     c.e_no_dir_space += 1
                     return OK
-                scallerr('create', fn, e)
+                self.scallerr('create', fn, e)
                 return NOTOK
             c.dirs_created += 1
         try:
@@ -316,7 +354,7 @@ class FSOPCtx:
                 if recsz + total_sz > target_sz:
                     recsz = target_sz - total_sz
                 count = os.write(fd, self.buf[0:recsz])
-                assert count > 0
+                assert count == recsz 
                 if self.verbosity & 0x1000:
                     self.log.debug('create sz %u written %u' % (recsz, count))
                 total_sz += count
@@ -355,7 +393,7 @@ class FSOPCtx:
                 if verbosity & 0x8000:
                     print('append rsz %u' % (recsz))
                 count = os.write(fd, self.buf[0:recsz])
-                assert count > 0
+                assert count == recsz
                 total_appended += count
                 c.write_requests += 1
                 c.write_bytes += count
@@ -367,7 +405,7 @@ class FSOPCtx:
             elif e.errno == errno.ENOSPC:
                 c.e_no_space += 1
             else:
-                scallerr('append', fn, e)
+                self.scallerr('append', fn, e)
                 s = NOTOK
         self.try_to_close(fd, fn)
         return s
@@ -398,7 +436,7 @@ class FSOPCtx:
                     count = os.write(fd, self.buf[0:recsz])
                     if verbosity & 0x20000:
                         print('randwrite count=%u recsz=%u' % (count, recsz))
-                    assert count > 0
+                    assert count == recsz
                     total_count += count
                 total_write_reqs += 1
                 c.randwrite_requests += 1
@@ -411,7 +449,7 @@ class FSOPCtx:
             elif e.errno == errno.ENOSPC:
                 c.e_no_space += 1
             else:
-                scallerr('random write', fn, e)
+                self.scallerr('random write', fn, e)
                 s = NOTOK
         self.try_to_close(fd, fn)
         return s
@@ -433,7 +471,7 @@ class FSOPCtx:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             else:
-                scallerr('truncate', fn, e)
+                self.scallerr('truncate', fn, e)
                 s = NOTOK
         self.try_to_close(fd, fn)
         return s
@@ -458,7 +496,7 @@ class FSOPCtx:
             elif e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
                 return OK
-            scallerr('link', fn, e)
+            self.scallerr('link', fn, e)
             return NOTOK
         return OK
 
@@ -482,7 +520,7 @@ class FSOPCtx:
             elif e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
                 return OK
-            scallerr('link', fn, e)
+            self.scallerr('link', fn, e)
             return NOTOK
         return OK
 
@@ -515,7 +553,7 @@ class FSOPCtx:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
                 return OK
-            scallerr('delete', fn, e)
+            self.scallerr('delete', fn, e)
             return NOTOK
         return OK
 
@@ -533,7 +571,7 @@ class FSOPCtx:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
                 return OK
-            scallerr('rename', fn, e)
+            self.scallerr('rename', fn, e)
             return NOTOK
         return OK
 
@@ -634,6 +672,9 @@ if __name__ == "__main__":
     assert(rc == OK)
     rc = ctx.op_remount()
     assert(rc != OK)
+
+    # output FSOPCounter object
+    print(ctx.ctrs)
 
     rq_map = ctx.gen_rq_map()
     oplist = rq_map.keys()
