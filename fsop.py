@@ -122,10 +122,9 @@ class FSOPCtx:
 
     def scallerr(self, msg, fn, syscall_exception):
         err = syscall_exception.errno
-        a = subprocess.Popen("date", shell=True,
-                             stdout=subprocess.PIPE).stdout.read()
-        self.log.error('%s: %s: %s syscall errno %d(%s)' % (
-            a.rstrip('\n'), msg, fn, err, os.strerror(err)))
+        self.log.error('%s: %s syscall errno %d(%s)' % (
+            msg, fn, err, os.strerror(err)))
+        self.log.exception(syscall_exception)
 
     def gen_random_dirname(self, file_index):
         subdirs_per_dir = self.params.subdirs_per_dir
@@ -343,8 +342,9 @@ class FSOPCtx:
                 if e.errno == errno.ENOSPC:
                     c.e_no_dir_space += 1
                     return OK
-                self.scallerr('create', fn, e)
-                return NOTOK
+                elif e.errno != errno.EEXIST:
+                    self.scallerr('create', fn, e)
+                    return NOTOK
             c.dirs_created += 1
         try:
             fd = os.open(fn, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -479,7 +479,7 @@ class FSOPCtx:
 
     def op_softlink(self):
         c = self.ctrs
-        fn = self.gen_random_fn()
+        fn = os.getcwd() + os.sep + self.gen_random_fn()
         fn2 = self.gen_random_fn() + link_suffix
         if self.verbosity & 0x10000:
             self.log.debug('link to %s from %s' % (fn, fn2))
