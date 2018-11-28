@@ -28,7 +28,7 @@ class FsDriftOpts:
         self.levels = 2
         self.subdirs_per_dir = 3
         self.rsptimes = False
-        self.workload_table_filename = None
+        self.workload_table_csv_path = None
         self.stats_report_interval = 0
         self.pause_between_ops = 100
         self.thread_fraction_done = 0.05
