@@ -5,9 +5,6 @@ import pickle
 import shutil
 import time
 
-import smallfile
-
-
 def write_sync_file(fpath, contents):
     with open(fpath, 'w') as sgf:
         sgf.write(contents)
@@ -25,7 +22,7 @@ def write_pickle(fpath, obj):
 def create_top_dirs(prm):
     is_multi_host = (prm.host_set != [])
     sharepath = prm.network_shared_path
-    if os.path.exists(sharepath)
+    if os.path.exists(sharepath):
         shutil.rmtree(sharepath)
         if is_multi_host:
             # so all remote clients see that directory was recreated
