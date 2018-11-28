@@ -345,8 +345,9 @@ class FsDriftWorkload:
                     sz = 0
             threads_done = sz / len(elapsed_time_str)
             if threads_done > self.threads_done_limit:
-                self.log.info('thread %s on host %s saw that %d threads completed'
-                              % (self.tid, get_hostname(None)))
+                self.log.info(
+                    'thread %s on host %s saw that %d out of %d threads completed'
+                    % (self.tid, socket.gethostname(), threads_done, self.threads_done_limit))
 
     def test_ended(self):
         return self.end_time > self.start_time
@@ -635,8 +636,6 @@ if __name__ == '__main__':
                     'truncate, 0.05',
                     'rename, 1',
                     'create, 4']
-        workload_table = [
-                    'create, 4']
     
         # abort routine just cleans up threads
 
@@ -651,7 +650,7 @@ if __name__ == '__main__':
                 w_f.write( '\n'.join(Test.workload_table))
             self.params = opts.parseopts()
             self.params.duration = 3
-            self.params.workload_table_filename = '/tmp/weights.csv'
+            self.params.workload_table_csv_path = '/tmp/weights.csv'
     
         def deltree(self, topdir):
             if not os.path.exists(topdir):
