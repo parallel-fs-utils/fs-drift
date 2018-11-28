@@ -62,8 +62,8 @@ class FSOPCounters:
         self.e_not_mounted = 0
         self.e_could_not_mount = 0
         
-    def __str__(self):
-        tuple_list = [
+    def kvtuplelist(self):
+        return [
             ('created', self.have_created),
             ('deleted', self.have_deleted),
             ('softlinked', self.have_softlinked),
@@ -94,9 +94,16 @@ class FSOPCounters:
             ('e_not_mounted', self.e_not_mounted),
             ('e_could_not_mount', self.e_could_not_mount)
             ]
-        field_list = [ '%20s = %d' % f for f in tuple_list ]
+
+    def __str__(self):
+        field_list = [ '%20s = %d' % f for f in self.kvtuplelist() ]
         return '\n'.join(field_list)
 
+    def json_dict(self):
+        d = {}
+        for (k, v) in self.kvtuplelist():
+            d[k] = v
+        return d
 
 class FSOPCtx:
 
@@ -675,7 +682,9 @@ if __name__ == "__main__":
 
     # output FSOPCounter object
     print(ctx.ctrs)
+    print(ctx.ctrs.json_dict())
 
+    # simulate a mixed-workload run
     rq_map = ctx.gen_rq_map()
     oplist = rq_map.keys()
     for j in range(0, 200):
