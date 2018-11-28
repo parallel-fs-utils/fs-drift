@@ -2,6 +2,7 @@
 
 import os
 import os.path
+import json
 import sys
 import common
 from common import OK, NOTOK
@@ -16,7 +17,7 @@ from parser_data_types import host_set, file_access_distrib, directory_list
 class FsDriftOpts:
     def __init__(self):
         self.top_directory = '/tmp/foo'
-        self.opcount = 0
+        self.output_json_path = None  # filled in later
         self.duration = 1
         self.max_files = 20
         self.max_file_size_kb = 10
@@ -40,9 +41,49 @@ class FsDriftOpts:
         # just a guess, most files will be created before they are read
         self.create_stddevs_ahead = 3.0
         self.drift_time = -1
-        self.pause_file = '/var/tmp/pause'
+        self.pause_path = '/var/tmp/pause'
         self.mount_command = None
+        # not settable
+        self.is_slave = False
+        self.as_host = None
 
+    def kvtuplelist(self):
+        return [
+            ('top directory', self.top_directory),
+            ('JSON output file', self.output_json_path),
+            ('pause path', self.pause_path),
+            ('stats report interval', self.stats_report_interval),
+            ('workload table csv path', self.workload_table_csv_path),
+            ('test duration', self.duration),
+            ('maximum file count', self.max_files),
+            ('maximum file size (KB)', self.max_file_size_kb),
+            ('maximum record size (KB)', self.max_record_size_kb),
+            ('maximum random reads per op', self.max_random_reads),
+            ('maximum random writes per op', self.max_random_writes),
+            ('fsync probability pct', self.fsync_probability_pct),
+            ('fdatasync probability pct', self.fdatasync_probability_pct),
+            ('directory levels', self.levels),
+            ('subdirectories per directory', self.subdirs_per_dir),
+            ('incompressible data', self.incompressible),
+            ('pause between opts (usec)', self.pause_between_ops),
+            ('thread fraction done', self.thread_fraction_done),
+            ('distribution', common.FileAccessDistr2str(self.random_distribution)),
+            ('mean index velocity', self.mean_index_velocity),
+            ('gaussian std. dev.', self.gaussian_stddev),
+            ('create stddevs ahead', self.create_stddevs_ahead),
+            ('mount command', self.mount_command),
+            ('save response times?', self.rsptimes)
+            ]
+
+    def __str__(self):
+        kvlist = [ '%-20s : %s' % (k, str(v)) for (k, v) in self.kvtuplelist() ]
+        return ','.join(kvlist)
+
+    def to_json(self, indent=4):
+        d = {}
+        for (k, v) in self.kvtuplelist():
+            d[k] = v
+        return json.dumps(d, indent=indent)
 
 def parseopts():
     o = FsDriftOpts()
@@ -55,9 +96,6 @@ def parseopts():
             default=None)
     add('--workload-table', help='CSV file containing workload mix',
             default=None)
-    add('--operation-count', help='number of ops to perform',
-            type=positive_integer, 
-            default=o.opcount)
     add('--duration', help='seconds to run test',
             type=positive_integer, 
             default=o.duration)
@@ -116,13 +154,13 @@ def parseopts():
             type=positive_float,
             default=o.thread_fraction_done)
     add('--pause-file', help='file access will be suspended when this file appears',
-            default=o.pause_file)
+            default=o.pause_path)
     add('--mount-command', help='command to mount the filesystem containing top directory',
             default=o.mount_command)
     # parse the command line and update opts
     args = parser.parse_args()
     o.top_directory = args.top
-    o.output_json = args.output_json
+    o.output_json_path = args.output_json
     o.pause_file = args.pause_file
     o.report_interval = args.report_interval
     o.workload_table_csv_path = args.workload_table
@@ -151,67 +189,14 @@ def parseopts():
     o.network_shared_path = os.path.join(o.top_directory, 'network-shared')
     o.starting_gun_path = os.path.join(o.network_shared_path, 'starting-gun.tmp')
     o.stop_file_path = os.path.join(o.network_shared_path, 'stop-file.tmp')
-    o.json_output_path = os.path.join(o.network_shared_path, 'results.json')
     o.param_pickle_path = os.path.join(o.network_shared_path, 'params.pickle')
     o.rsptime_path = os.path.join(o.network_shared_path, 'host-%s_thrd-%d_%%d_%%d_rspt.csv')
 
-    # output params resulting from parse
-    # even if user didn't specify them
-
-    print('')
-    print((
-        '%20s = top directory\n'
-        '%20s = JSON output file\n'
-        '%20s = pause file\n'
-        '%11s%9d = statistics report interval\n'
-        '%20s = workload table\n'
-        '%11s%9d = duration\n'
-        '%11s%9d = operation count\n'
-        '%11s%9d = maximum files\n'
-        '%11s%9d = maximum file size (KB)\n'
-        '%11s%9d = maximum record size (KB)\n'
-        '%11s%9d = maximum random reads\n'
-        '%11s%9d = maximum random writes\n'
-        '%11s%9f = fdatasync percentage\n'
-        '%11s%9f = fsync percentage\n'
-        '%11s%9d = directory levels\n'
-        '%11s%9d = directories per level\n'
-        '%20s = incompressible\n'
-        '%11s%9d = pause between ops\n'
-        '%11s%9.7f = thread fraction done\n'
-        '%20s = filename random distribution\n'
-        '%11s%9.1f = mean index velocity\n'
-        '%11s%9.1f = gaussian stddev\n'
-        '%11s%9.1f = create stddevs ahead\n'
-        '%20s = mount command\n'
-        '%20s = save response times\n') % (
-           o.top_directory, 
-           o.output_json,
-           o.pause_file, 
-           '', o.stats_report_interval,
-           str(o.workload_table_csv_path),
-           '', o.duration, 
-           '', o.opcount, 
-           '', o.max_files, 
-           '', o.max_file_size_kb, 
-           '', o.max_record_size_kb, 
-           '', o.max_random_reads, 
-           '', o.max_random_writes, 
-           '', o.fdatasync_probability_pct, 
-           '', o.fsync_probability_pct, 
-           '', o.levels, 
-           '', o.subdirs_per_dir,
-           str(o.incompressible),
-           '', o.pause_between_ops,
-           '', o.thread_fraction_done,
-           common.FileAccessDistr2str(o.random_distribution), 
-           '', o.mean_index_velocity, 
-           '', o.gaussian_stddev, 
-           '', o.create_stddevs_ahead, 
-           o.mount_command,
-           str(o.rsptimes)))
-    sys.stdout.flush()
     return o
+
+# unit test
 
 if __name__ == "__main__":
     options = parseopts()
+    print(options)
+    print(options.to_json(indent=2))
