@@ -17,9 +17,9 @@ import fsop
 def parse_weights(opts, rq_map):
     linenum = 0
     weights = {}
-    if opts.workload_table_filename != None:
+    if opts.workload_table_csv_path != None:
         try:
-            f = open(opts.workload_table_filename, 'r')
+            f = open(opts.workload_table_csv_path, 'r')
             lines = f.readlines()
             f.close()
             for l in lines:
@@ -35,13 +35,13 @@ def parse_weights(opts, rq_map):
                         weights[opcode] = float(relweight)
                         if weights[opcode] < 0.0:
                             raise FsDriftException('%s: negative weights not allowed' % 
-                                                    opts.workload_table_filename)
+                                                    opts.workload_table_csv_path)
                 if not saw_name_in_table:
                     raise FsDriftException('%s: unrecognized opname' % opname)
         except IOError as e:
             raise FsDriftException(
                 'could not parse %s at line %d : %s' % (
-                    opts.workload_table_filename, linenum, str(e)))
+                    opts.workload_table_csv_path, linenum, str(e)))
     else:
         raise FsDriftException('user must provide workload table')
     if len(weights) == 0:
@@ -123,7 +123,7 @@ if __name__ == '__main__':
             'remount,0.01',
             ]))
     params = opts.parseopts()
-    params.workload_table_filename = '/tmp/weights.csv'
+    params.workload_table_csv_path = '/tmp/weights.csv'
     weights = {}
     log = fsd_log.start_log('fsdevent')
     fsop_ctx = fsop.FSOPCtx(params, log)
