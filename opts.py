@@ -76,8 +76,8 @@ class FsDriftOpts:
             ]
 
     def __str__(self):
-        kvlist = [ '%-20s : %s' % (k, str(v)) for (k, v) in self.kvtuplelist() ]
-        return ','.join(kvlist)
+        kvlist = [ '%s=%s' % (k, str(v)) for (k, v) in self.kvtuplelist() ]
+        return ', '.join(kvlist)
 
     def to_json(self, indent=4):
         d = {}
