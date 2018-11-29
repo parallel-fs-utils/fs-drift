@@ -101,3 +101,20 @@ def ensure_dir_exists(dirpath):
         if not os.path.isdir(dirpath):
             raise FsDriftException('%s already exists and is not a directory!'
                             % dirpath)
+
+# careful with this one
+
+def deltree(topdir):
+    if len(topdir) < 6:
+        raise FsDriftException('are you sure you want to delete %s ?' % topdir)
+    if not os.path.exists(topdir):
+        return
+    if not os.path.isdir(topdir):
+        return
+    for (dir, subdirs, files) in os.walk(topdir, topdown=False):
+        for f in files:
+            os.unlink(os.path.join(dir, f))
+        for d in subdirs:
+            os.rmdir(os.path.join(dir, d))
+    os.rmdir(topdir)
+
