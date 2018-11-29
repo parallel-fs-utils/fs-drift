@@ -38,7 +38,7 @@ import pickle
 
 import common
 from common import touch, FsDriftException, FileSizeDistr, FileAccessDistr
-from common import ensure_dir_exists
+from common import ensure_dir_exists, deltree
 import event
 import fsop
 import fsd_log
@@ -141,6 +141,14 @@ class FsDriftWorkload:
         self.rq_final = 0  # how many reads/writes completed when test ended
         self.abort = False
         self.status = OK
+        # every 10 seconds we see if there is a verbosity file 
+        # in network_shared_path, and if it has changed, if it has
+        # then we reload verbosity from this file
+        # so you can turn on debug logging in different areas 
+        # during a run!
+        self.verbosity = 0
+        self.verbosity_last_checked = 0
+        self.verbosity_poll_rate = 1
         self.pause_sec = self.params.pause_between_ops / MICROSEC_PER_SEC
 
         # to measure per-thread elapsed time
@@ -152,21 +160,6 @@ class FsDriftWorkload:
         self.op_start_time = None
         self.rsptimes = []
 
-    # given a set of top-level directories (e.g. for NFS benchmarking)
-    # set up shop in them
-    # we only use one directory for network synchronization
-
-    def set_top(self, top_dirs, network_dir=None):
-        self.top_dirs = top_dirs
-        # create/read files here
-        self.src_dirs = [join(d, 'file_srcdir') for d in top_dirs]
-        # rename files to here
-        self.dest_dirs = [join(d, 'file_dstdir') for d in top_dirs]
-
-        # directory for synchronization files shared across hosts
-        self.network_dir = join(top_dirs[0], 'network_shared')
-        if network_dir:
-            self.network_dir = network_dir
 
     # create per-thread log file
     # we have to avoid getting the logger for self.tid more than once,
@@ -184,10 +177,44 @@ class FsDriftWorkload:
         h.setFormatter(formatter)
         self.log.addHandler(h)
         self.loglevel = logging.INFO
-        if os.getenv("LOGLEVEL_DEBUG"):
-            self.loglevel = logging.DEBUG
         self.log.setLevel(self.loglevel)
         self.log.info('starting log')
+
+    # update verbosity if necessary
+
+    def update_verbosity(self):
+        # only check if it hasn't been checked in the last 10 sec
+        now = time.time()
+        if now - self.verbosity_last_checked < self.verbosity_poll_rate:
+            return
+        self.verbosity_last_checked = now
+        vpath = os.path.join(self.params.network_shared_path, 'verbosity')
+        v = 0
+        try:
+            with open(vpath, 'r') as vpath_f:
+                vstr = vpath_f.readline().strip()
+                if vstr.startswith('0x'):
+                    v = int(vstr, 16)
+                else:
+                    v = int(vstr)
+            if self.verbosity & 0x40000000:
+                self.log.debug('read in verbosity 0x%x from %s' % (v, vpath))
+            if v != self.verbosity:
+                if v != 0:
+                    self.log.setLevel(logging.DEBUG)
+                else:
+                    self.log.setLevel(logging.INFO)
+                self.log.debug('changing verbosity from 0x%x to 0x%x' % (self.verbosity, v))
+                self.verbosity = v
+                if self.ctx is not None:
+                    self.ctx.verbosity = v
+        except ValueError:
+            self.log.error('could not parse verbosity %s in file %s' % (vstr, vpath))
+            os.unlink(vpath)
+        except IOError as e:
+            if e.errno != errno.ENOENT:
+                self.log.exception(e)
+                raise e
 
     # indicate start of an operation
 
@@ -499,6 +526,7 @@ class FsDriftWorkload:
         with open(self.params.param_pickle_path, 'r') as pickle_f:
             self.params = pickle.load(pickle_f)
         ensure_dir_exists(self.params.network_shared_path)
+        # FIXME: worker_thread doesn't use this buf!
         self.init_random_seed()
         self.biggest_buf = self.create_biggest_buf(False)
         # retrieve params from pickle file so that 
@@ -522,6 +550,8 @@ class FsDriftWorkload:
 
         try:
           while True:
+            self.update_verbosity()
+
             # if there is pause file present, do nothing
 
             if os.path.isfile(self.params.pause_file):
@@ -557,14 +587,7 @@ class FsDriftWorkload:
             if (self.params.drift_time > 0):
                 self.ctx.add_to_simulated_time(self.params.drift_time)
 
-            # if using operation count to limit test
-
-            if self.params.opcount > 0:
-                if op >= self.params.opcount:
-                    break
-            op += 1
-
-            # if using duration to limit test
+            # use duration to limit test
 
             if self.params.duration > 0:
                 elapsed = time.time() - start_time
@@ -588,6 +611,7 @@ class FsDriftWorkload:
             self.save_rsptimes()
         if self.status != ok:
             self.log.error('invocation did not complete cleanly')
+        self.log.info('worker_thread do_workload finished')
         return self.status
 
 # below are unit tests for SmallfileWorkload
@@ -649,20 +673,8 @@ if __name__ == '__main__':
             with open('/tmp/weights.csv', 'w') as w_f:
                 w_f.write( '\n'.join(Test.workload_table))
             self.params = opts.parseopts()
-            self.params.duration = 3
+            self.params.duration = 5
             self.params.workload_table_csv_path = '/tmp/weights.csv'
-    
-        def deltree(self, topdir):
-            if not os.path.exists(topdir):
-                return
-            if not os.path.isdir(topdir):
-                return
-            for (dir, subdirs, files) in os.walk(topdir, topdown=False):
-                for f in files:
-                    os.unlink(join(dir, f))
-                for d in subdirs:
-                    os.rmdir(join(dir, d))
-            os.rmdir(topdir)
     
         def file_size(self, fn):
             st = os.stat(fn)
@@ -671,8 +683,8 @@ if __name__ == '__main__':
         def cleanup_files(self):
             sys.stderr.flush()
             sys.stdout.flush()
-            self.deltree(self.params.network_shared_path)
-            self.deltree(self.params.top_directory)
+            deltree(self.params.network_shared_path)
+            deltree(self.params.top_directory)
             ensure_dir_exists(self.params.top_directory)
             ensure_dir_exists(self.params.network_shared_path)
     
