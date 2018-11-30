@@ -18,6 +18,8 @@ class FsDriftOpts:
     def __init__(self):
         self.top_directory = '/tmp/foo'
         self.output_json_path = None  # filled in later
+        self.host_set = [] # default is local test
+        self.is_slave = False
         self.duration = 1
         self.max_files = 20
         self.max_file_size_kb = 10
@@ -54,6 +56,7 @@ class FsDriftOpts:
             ('pause path', self.pause_path),
             ('stats report interval', self.stats_report_interval),
             ('workload table csv path', self.workload_table_csv_path),
+            ('host set', ','.join(self.host_set)),
             ('test duration', self.duration),
             ('maximum file count', self.max_files),
             ('maximum file size (KB)', self.max_file_size_kb),
@@ -99,6 +102,9 @@ def parseopts():
     add('--duration', help='seconds to run test',
             type=positive_integer, 
             default=o.duration)
+    add('--host-set', help='comma-delimited list of host names/ips',
+            type=host_set,
+            default=o.host_set)
     add('--max-files', help='maximum number of files to access',
             type=positive_integer, 
             default=o.max_files)
@@ -162,6 +168,7 @@ def parseopts():
     o.top_directory = args.top
     o.output_json_path = args.output_json
     o.pause_file = args.pause_file
+    o.host_set = args.host_set
     o.report_interval = args.report_interval
     o.workload_table_csv_path = args.workload_table
     o.duration = args.duration
@@ -187,10 +194,23 @@ def parseopts():
     # some fields derived from user inputs
 
     o.network_shared_path = os.path.join(o.top_directory, 'network-shared')
-    o.starting_gun_path = os.path.join(o.network_shared_path, 'starting-gun.tmp')
-    o.stop_file_path = os.path.join(o.network_shared_path, 'stop-file.tmp')
-    o.param_pickle_path = os.path.join(o.network_shared_path, 'params.pickle')
-    o.rsptime_path = os.path.join(o.network_shared_path, 'host-%s_thrd-%d_%%d_%%d_rspt.csv')
+
+    nsjoin = lambda fn : os.path.join(o.network_shared_path, fn)
+    o.starting_gun_path     = nsjoin('starting-gun.tmp')
+    o.stop_file_path        = nsjoin('stop-file.tmp')
+    o.param_pickle_path     = nsjoin('params.pickle')
+    o.rsptime_path          = nsjoin('host-%s_thrd-%d_%%d_%%d_rspt.csv')
+    o.abort_path            = nsjoin('abort.tmp')
+    o.checkerflag_path      = nsjoin('checkered_flag.tmp')
+
+    o.is_slave = sys.argv[0].endswith('fs-drift-remote.py')
+ 
+    # validate results of parse
+
+    if len(o.top_directory) < 6:
+        raise FsDriftException(
+            'top directory %s too short, may be system directory' % 
+            o.top_directory)
 
     return o
 
