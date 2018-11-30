@@ -9,8 +9,9 @@ class FsDriftException(Exception):
 
 NOTOK = 1
 OK = 0
-BYTES_PER_KB = 1 << 10
-BYTES_PER_MB = 1 << 20
+BYTES_PER_KiB = 1 << 10
+BYTES_PER_MiB = 1 << 20
+KiB_PER_GiB = 1 << 20
 FD_UNDEFINED = -1
 
 
