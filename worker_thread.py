@@ -255,41 +255,10 @@ class FsDriftWorkload:
     def gen_thread_ready_fname(self, tid, hostname=None):
         return join(self.tmp_dir, 'thread_ready.' + tid + '.tmp')
 
-    # each host uses this to signal that it is
-    # ready to immediately begin generating workload
-    # each host places this file in a directory shared by all hosts
-    # to indicate that this host is ready
-
-    def gen_host_ready_fname(self, hostname=None):
-        if not hostname:
-            hostname = self.onhost
-        return join(self.params.network_shared_path, 'host_ready.' + hostname + '.tmp')
-
-    # abort file tells other threads not to start test
-    # because something has already gone wrong
-
-    def abort_fn(self):
-        return join(self.params.network_shared_path, 'abort.tmp')
-
-    # checkered-flag file stops test measurement
-    # sort of like a race where people know the race is won
-    # but they don't just slam on the brakes
-    # (does not stop worker thread unless --finish N is used)
-
-    def checkerflag_fn(self):
-        return join(self.params.network_shared_path, 'checkered_flag.tmp')
-
     # log file for this worker thread goes here
 
     def log_fn(self):
         return join(self.tmp_dir, 'fsd.%s.log' % self.tid)
-
-    # file for result stored as pickled python object
-
-    def host_result_filename(self, result_host=None):
-        if result_host is None:
-            result_host = self.onhost
-        return join(self.params.network_shared_path, result_host + '_result.pickle')
 
     # we use the seed function to control per-thread random sequence
     # we want seed to be saved
@@ -335,7 +304,7 @@ class FsDriftWorkload:
             gateReady = self.gen_thread_ready_fname(self.tid)
             touch(gateReady)
             while not os.path.exists(self.params.starting_gun_path):
-                if os.path.exists(self.abort_fn()):
+                if os.path.exists(self.params.abort_path):
                     raise FsDriftException(
                         'thread ' + str(self.tid) + ' saw abort flag')
                 time.sleep(0.3)
@@ -362,12 +331,12 @@ class FsDriftWorkload:
             # must be fixed-length string so we can compute threads done from file size
             elapsed_time_str = self.thread_done_record()
             try:
-                with open(self.checkerflag_fn(), 'a+') as chflg_f:
+                with open(self.params.checkerflag_path, 'a+') as chflg_f:
                     chflg_f.write(elapsed_time_str)
                     sz = os.fstat(chflg_f.fileno()).st_size
             except IOError:
                 try:
-                    sz = os.stat(self.checkerflag_fn())
+                    sz = os.stat(self.params.checkerflag_path)
                 except OSError:
                     sz = 0
             threads_done = sz / len(elapsed_time_str)
@@ -386,7 +355,7 @@ class FsDriftWorkload:
         if self.params.stop_when_thrds_done and self.filenum % self.files_between_checks == 0:
             if not self.test_ended():
                 try:
-                    sz = os.stat(self.checkerflag_fn()).st_size
+                    sz = os.stat(self.params.checkerflag_path).st_size
                 except OSError as e:
                     if e.errno != errno.ENOENT:
                         raise e
@@ -661,19 +630,11 @@ if __name__ == '__main__':
                     'rename, 1',
                     'create, 4']
     
-        # abort routine just cleans up threads
-
-        def abort_test(abort_fn, thread_list):
-            if not os.path.exists(abort_fn):
-                common.touch(abort_fn)
-            for t in thread_list:
-                t.terminate()
-
         def setUp(self):
             with open('/tmp/weights.csv', 'w') as w_f:
                 w_f.write( '\n'.join(Test.workload_table))
             self.params = opts.parseopts()
-            self.params.duration = 5
+            self.params.duration = 3
             self.params.workload_table_csv_path = '/tmp/weights.csv'
     
         def file_size(self, fn):
