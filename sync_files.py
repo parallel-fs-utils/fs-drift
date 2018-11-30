@@ -4,6 +4,8 @@ import os
 import pickle
 import shutil
 import time
+# from fs-drift...
+import common
 
 def write_sync_file(fpath, contents):
     with open(fpath, 'w') as sgf:
