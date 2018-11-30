@@ -13,7 +13,7 @@ import subprocess
 # my modules
 import common
 from common import rq, FileAccessDistr, FileSizeDistr, verbosity
-from common import OK, NOTOK, BYTES_PER_KB, FD_UNDEFINED
+from common import OK, NOTOK, BYTES_PER_KiB, FD_UNDEFINED, FsDriftException
 
 link_suffix = '.s'
 hlink_suffix = '.h'
@@ -118,7 +118,7 @@ class FSOPCtx:
         self.ctrs = FSOPCounters()
         self.params = params
         self.log = log
-        self.buf = random_buffer.gen_buffer(params.max_record_size_kb*BYTES_PER_KB)
+        self.buf = random_buffer.gen_buffer(params.max_record_size_kb*BYTES_PER_KiB)
         self.total_dirs = 1
         self.verbosity = -1
         for i in range(0, self.params.levels):
@@ -208,11 +208,11 @@ class FSOPCtx:
 
 
     def random_file_size(self):
-        return random.randint(0, self.params.max_file_size_kb * BYTES_PER_KB)
+        return random.randint(0, self.params.max_file_size_kb * BYTES_PER_KiB)
 
 
     def random_record_size(self):
-        return random.randint(1, self.params.max_record_size_kb * BYTES_PER_KB)
+        return random.randint(1, self.params.max_record_size_kb * BYTES_PER_KiB)
 
 
     def random_segment_size(self, filesz):
@@ -591,8 +591,7 @@ class FSOPCtx:
     def op_remount(self):
         c = self.ctrs
         if self.params.mount_command == None:
-            self.log.warn('you did not specify mount command for remount option')
-            return
+            raise FsDriftException('you did not specify mount command for remount option')
         if self.verbosity & 0x40000:
             self.log.debug('remount: %s' % self.params.mount_command)
         mountpoint = self.params.mount_command.split()[-1].strip()
@@ -677,8 +676,8 @@ if __name__ == "__main__":
     assert(rc == OK)
     rc = ctx.op_rename()
     assert(rc == OK)
-    rc = ctx.op_remount()
-    assert(rc != OK)
+    #rc = ctx.op_remount()
+    #assert(rc != OK)
 
     # output FSOPCounter object
     print(ctx.ctrs)
@@ -690,6 +689,6 @@ if __name__ == "__main__":
     for j in range(0, 200):
         for k in oplist:
             (func, name) = rq_map[oplist[k]]
-            rc = func()
-            # remount not implemented yet
-            assert(rc == OK or oplist[k] == rq.REMOUNT)
+            if oplist[k] != rq.REMOUNT:
+                rc = func()
+            assert(rc == OK)
