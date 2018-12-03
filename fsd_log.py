@@ -15,9 +15,9 @@ def start_log(prefix):
 
     h2 = logging.FileHandler('/var/tmp/fsd.%s.log' % prefix)
     h2.setFormatter(formatter)
-    h2.setLevel(logging.DEBUG)
+    h2.setLevel(logging.INFO)
     if os.getenv('LOGLEVEL_DEBUG'):
         h2.setLevel(logging.DEBUG)
     log.addHandler(h2)
-
+    log.info('starting log')
     return log
