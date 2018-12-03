@@ -34,14 +34,15 @@ import threading
 import socket
 import errno
 import codecs
-import pickle
 
+# fs-drift modules
 import common
 from common import touch, FsDriftException, FileSizeDistr, FileAccessDistr
-from common import ensure_dir_exists, deltree
+from common import ensure_dir_exists, deltree, OK
 import event
 import fsop
 import fsd_log
+from sync_files import write_pickle, read_pickle
 
 # process exit status for success and failure
 OK = 0
@@ -125,6 +126,9 @@ class FsDriftWorkload:
         # default to different sequence every time
         self.randstate = random.Random()
 
+        self.total_threads = len(self.params.host_set) * self.params.threads
+        self.threads_done_limit = max(1, int(self.total_threads * self.params.thread_fraction_done))
+
         # reset object state variables
 
         self.reset()
@@ -137,15 +141,14 @@ class FsDriftWorkload:
     def reset(self):
 
         # results returned in variables below
-        self.rq = 0  # how many reads/writes have been attempted so far
-        self.rq_final = 0  # how many reads/writes completed when test ended
         self.abort = False
         self.status = OK
-        # every 10 seconds we see if there is a verbosity file 
+
+        # every few seconds we see if there is a verbosity file 
         # in network_shared_path, and if it has changed, if it has
         # then we reload verbosity from this file
-        # so you can turn on debug logging in different areas 
-        # during a run!
+        # so you can turn on/off debug logging in different areas 
+        # in the middle of a run
         self.verbosity = 0
         self.verbosity_last_checked = 0
         self.verbosity_poll_rate = 1
@@ -155,7 +158,6 @@ class FsDriftWorkload:
         self.end_time = 0.0
         self.start_time = 0.0
         self.elapsed_time = 0.0
-        self.threads_done_limit = max(1, int(self.total_threads * self.params.thread_fraction_done))
         # to measure file operation response times
         self.op_start_time = None
         self.rsptimes = []
@@ -324,7 +326,6 @@ class FsDriftWorkload:
     # record info needed to compute test statistics
 
     def end_test(self):
-        self.rq_final = self.rq
         self.end_time = time.time()
         self.elapsed_time = self.end_time - self.start_time
         if self.elapsed_time > self.params.duration:
@@ -384,7 +385,7 @@ class FsDriftWorkload:
         return True
 
     def chk_status(self):
-        if self.status != ok:
+        if self.status != OK:
             raise FsDriftException(
                 'test failed, check log file %s' % self.log_fn())
 
@@ -491,9 +492,8 @@ class FsDriftWorkload:
     def do_workload(self):
 
         self.start_log()
+        self.params = read_pickle(self.params.param_pickle_path)
         self.ctx = fsop.FSOPCtx(self.params, self.log)
-        with open(self.params.param_pickle_path, 'r') as pickle_f:
-            self.params = pickle.load(pickle_f)
         ensure_dir_exists(self.params.network_shared_path)
         # FIXME: worker_thread doesn't use this buf!
         self.init_random_seed()
@@ -578,7 +578,7 @@ class FsDriftWorkload:
         self.end_test()
         if self.params.rsptimes:
             self.save_rsptimes()
-        if self.status != ok:
+        if self.status != OK:
             self.log.error('invocation did not complete cleanly')
         self.log.info('worker_thread do_workload finished')
         return self.status
@@ -588,8 +588,6 @@ class FsDriftWorkload:
 # this should be designed to run without any user intervention
 # to run just one of these tests do
 #   python -m unittest2 smallfile.Test.your-unit-test
-
-ok = 0
 
 # so you can just do "python worker_thread.py " to test it
 
@@ -651,7 +649,8 @@ if __name__ == '__main__':
     
         def test_a_runthread(self):
             self.cleanup_files()
-            pickle.dump(self.params, open(self.params.param_pickle_path, 'w'))
+
+            write_pickle(self.params.param_pickle_path, self.params)
             fsd = FsDriftWorkload(self.params)
             fsd.tid = 'worker_thread'
             fsd.verbose = True
@@ -662,7 +661,7 @@ if __name__ == '__main__':
 
         def test_b_run2threads(self):
             self.cleanup_files()
-            pickle.dump(self.params, open(self.params.param_pickle_path, 'w'))
+            write_pickle(self.params.param_pickle_path, self.params)
             t1 = TestThread(FsDriftWorkload(self.params), 'fsdthr-1')
             t2 = TestThread(FsDriftWorkload(self.params), 'fsdthr-2')
             threads = [ t1, t2 ]
