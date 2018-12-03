@@ -70,7 +70,7 @@ class FSOPCounters:
             ('hardlinked', self.have_hardlinked),
             ('appended', self.have_appended),
             ('randomly_written', self.have_randomly_written),
-            ('read', self.have_read),
+            ('sequentially_read', self.have_read),
             ('randomly_read', self.have_randomly_read),
             ('renamed', self.have_renamed),
             ('truncated', self.have_truncated),
