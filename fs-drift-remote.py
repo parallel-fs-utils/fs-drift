@@ -17,6 +17,7 @@ import socket
 
 import multi_thread_workload
 import common
+from sync_files import read_pickle
 
 # parse command line and return unpickled test params
 # pass via --network-sync-dir option
@@ -37,9 +38,7 @@ def parse():
     param_pickle_fname = os.path.join(args.network_sync_dir, 'params.pickle')
     if not os.path.exists(param_pickle_fname):
         time.sleep(1.1)
-    params = None
-    with open(param_pickle_fname, 'rb') as pickled_params:
-        params = pickle.load(pickled_params)
+    params = read_pickle(param_pickle_fname)
     params.is_slave = True
     params.as_host = args.as_host
     return params
