@@ -5,7 +5,10 @@ import logging
 
 def start_log(prefix):
     log = logging.getLogger(prefix)
-    log.setLevel(logging.DEBUG)
+    if os.getenv('LOGLEVEL_DEBUG') != None:
+        log.setLevel(logging.DEBUG)
+    else:
+        log.setLevel(logging.INFO)
     log_format = prefix + ' %(asctime)s - %(levelname)s - %(message)s'
     formatter = logging.Formatter(log_format)
 
