@@ -19,6 +19,7 @@ class FsDriftOpts:
         self.top_directory = '/tmp/foo'
         self.output_json_path = None  # filled in later
         self.host_set = [] # default is local test
+        self.threads = 2 #  number of subprocesses per host
         self.is_slave = False
         self.duration = 1
         self.max_files = 20
@@ -53,10 +54,11 @@ class FsDriftOpts:
         return [
             ('top directory', self.top_directory),
             ('JSON output file', self.output_json_path),
-            ('pause path', self.pause_path),
+            ('save response times?', self.rsptimes),
             ('stats report interval', self.stats_report_interval),
             ('workload table csv path', self.workload_table_csv_path),
             ('host set', ','.join(self.host_set)),
+            ('threads', self.threads),
             ('test duration', self.duration),
             ('maximum file count', self.max_files),
             ('maximum file size (KB)', self.max_file_size_kb),
@@ -75,18 +77,21 @@ class FsDriftOpts:
             ('gaussian std. dev.', self.gaussian_stddev),
             ('create stddevs ahead', self.create_stddevs_ahead),
             ('mount command', self.mount_command),
-            ('save response times?', self.rsptimes)
+            ('pause path', self.pause_path),
             ]
 
-    def __str__(self):
-        kvlist = [ '%s=%s' % (k, str(v)) for (k, v) in self.kvtuplelist() ]
-        return ', '.join(kvlist)
+    def __str__(self, use_newline=True, indentation='  '):
+        kvlist = [ '%s = %s' % (k, str(v)) for (k, v) in self.kvtuplelist() ]
+        if use_newline:
+            return ('\n%s' % indentation).join(kvlist)
+        else:
+            return ' , '.join(kvlist)
 
     def to_json(self, indent=4):
         d = {}
         for (k, v) in self.kvtuplelist():
             d[k] = v
-        return json.dumps(d, indent=indent)
+        return json.dumps(d, indent=indent, sort_keys=True)
 
 def parseopts():
     o = FsDriftOpts()
@@ -105,6 +110,9 @@ def parseopts():
     add('--host-set', help='comma-delimited list of host names/ips',
             type=host_set,
             default=o.host_set)
+    add('--threads', help='number of subprocesses per host',
+            type=positive_integer,
+            default=o.threads)
     add('--max-files', help='maximum number of files to access',
             type=positive_integer, 
             default=o.max_files)
@@ -169,6 +177,7 @@ def parseopts():
     o.output_json_path = args.output_json
     o.pause_file = args.pause_file
     o.host_set = args.host_set
+    o.threads = args.threads
     o.report_interval = args.report_interval
     o.workload_table_csv_path = args.workload_table
     o.duration = args.duration
@@ -203,6 +212,10 @@ def parseopts():
     o.abort_path            = nsjoin('abort.tmp')
     o.checkerflag_path      = nsjoin('checkered_flag.tmp')
 
+    o.remote_pgm_dir = os.path.dirname(sys.argv[0])
+    if o.remote_pgm_dir == '.':
+        o.remote_pgm_dir = os.getcwd()
+
     o.is_slave = sys.argv[0].endswith('fs-drift-remote.py')
  
     # validate results of parse
@@ -211,6 +224,22 @@ def parseopts():
         raise FsDriftException(
             'top directory %s too short, may be system directory' % 
             o.top_directory)
+
+    if o.workload_table_csv_path == None:
+        o.workload_table_csv_path = '/tmp/example_workload_table.csv'
+        workload_table = [
+                    'read, 2',
+                    'random_read, 1',
+                    'random_write, 1',
+                    'append, 4',
+                    'delete, 0.1',
+                    'hardlink, 0.01',
+                    'softlink, 0.02',
+                    'truncate, 0.05',
+                    'rename, 1',
+                    'create, 4']
+        with open(o.workload_table_csv_path, 'w') as w_f:
+            w_f.write( '\n'.join(workload_table))
 
     return o
 
