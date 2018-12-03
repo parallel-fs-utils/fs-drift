@@ -5,6 +5,7 @@ import logging
 
 def start_log(prefix):
     log = logging.getLogger(prefix)
+    log.setLevel(logging.DEBUG)
     log_format = prefix + ' %(asctime)s - %(levelname)s - %(message)s'
     formatter = logging.Formatter(log_format)
 
@@ -15,9 +16,15 @@ def start_log(prefix):
 
     h2 = logging.FileHandler('/var/tmp/fsd.%s.log' % prefix)
     h2.setFormatter(formatter)
-    h2.setLevel(logging.INFO)
-    if os.getenv('LOGLEVEL_DEBUG'):
-        h2.setLevel(logging.DEBUG)
     log.addHandler(h2)
-    log.info('starting log')
+
+    log.info('starting log %s','foo' )
     return log
+
+if __name__ == '__main__':
+    log = start_log('fsd_log_test')
+    log.error('level %s', 'error')
+    log.warn('level %s', 'warn')
+    log.info('level %s', 'info')
+    log.debug('level %s', 'debug')
+
