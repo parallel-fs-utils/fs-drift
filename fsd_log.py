@@ -21,7 +21,7 @@ def start_log(prefix):
     h2.setFormatter(formatter)
     log.addHandler(h2)
 
-    log.info('starting log %s','foo' )
+    log.info('starting log')
     return log
 
 if __name__ == '__main__':
