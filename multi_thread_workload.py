@@ -47,30 +47,31 @@ def abort_test(abort_fn, thread_list):
 # to indicate that this host is ready
 
 def gen_host_ready_fname(params, hostname):
-    return join(params.network_shared_path, 'host_ready.' + hostname + '.tmp')
+    return os.path.join(params.network_shared_path, 'host_ready.' + hostname + '.tmp')
 
 
 # file for result stored as pickled python object
 
 def host_result_filename(params, result_host):
-    return join(params.network_shared_path, result_host + '_result.pickle')
+    return os.path.join(params.network_shared_path, result_host + '_result.pickle')
 
 
 # what follows is code that gets done on each host
 
 def run_multi_thread_workload(prm):
 
-    host = socket.gethostname()
+    host = prm.as_host
     prm_slave = (prm.host_set != [])
     # FIXME: get coherent logging level interface
     verbose = os.getenv('LOGLEVEL_DEBUG' != None)
+    host_startup_timeout = 5  + len(prm.host_set) / 3
 
     # for each thread set up SmallfileWorkload instance,
     # create a thread instance, and delete the thread-ready file
 
     thread_list = create_worker_list(prm)
     my_host_invoke = thread_list[0].invoke
-    my_log = fsd_log.start_log('fsd.%s' % host)
+    my_log = fsd_log.start_log('fsd.%s.master' % host)
     my_log.debug(prm)
 
     # start threads, wait for them to reach starting gate
@@ -96,7 +97,8 @@ def run_multi_thread_workload(prm):
             t = thread_list[k]
             fn = t.invoke.gen_thread_ready_fname(t.invoke.tid)
             if not os.path.exists(fn):
-                my_log.debug('thread %d thread-ready file %s not found...' % (k, fn))
+                my_log.debug('thread %d thread-ready file %s not found yet with %f sec left' % 
+                            (k, fn, (startup_timeout - sec)))
                 break
             thread_to_wait_for = k + 1
             # we only timeout if no more threads have reached starting gate
@@ -119,10 +121,9 @@ def run_multi_thread_workload(prm):
     # declare that this host is at the starting gate
 
     if prm_slave:
-        host_ready_fn = my_host_invoke.gen_host_ready_fname()
-        if verbose:
-            my_log.debug('host %s creating ready file %s' %
-                  (my_host_invoke.onhost, host_ready_fn))
+        host_ready_fn = gen_host_ready_fname(prm, prm.as_host)
+        my_log.debug('host %s creating ready file %s' %
+                     (my_host_invoke.onhost, host_ready_fn))
         common.touch(host_ready_fn)
 
     sg = prm.starting_gun_path
@@ -135,17 +136,20 @@ def run_multi_thread_workload(prm):
 
     if prm_slave:
         my_log.debug('awaiting ' + sg)
-        for sec in range(0, prm.host_startup_timeout + 10):
+        for sec in range(0, host_startup_timeout+3):
             # hack to ensure that directory is up to date
             #   ndlist = os.listdir(my_host_invoke.network_dir)
             # if verbose: print(str(ndlist))
             if os.path.exists(sg):
                 break
-            time.sleep(0.5)
+            if os.path.exists(prm.abort_path):
+                log.info('saw abort file %s, aborting test' % prm.abort_path)
+                break
+            time.sleep(1)
         if not os.path.exists(sg):
-            abort_test(my_host_invoke.abort_fn(), thread_list)
+            abort_test(prm.abort_path, thread_list)
             raise Exception('starting signal not seen within %d seconds'
-                            % prm.host_startup_timeout)
+                            % host_startup_timeout)
     if verbose:
         print('starting test on host ' + host + ' in 2 seconds')
     time.sleep(2 + random.random())  # let other hosts see starting gate file
@@ -163,28 +167,22 @@ def run_multi_thread_workload(prm):
 
     # if not a slave of some other host, print results (for this host)
 
-    exit_status = OK
     if not prm_slave:
         try:
             output_results.output_results(prm, thread_list)
         except FsDriftException as e:
             print('ERROR: ' + str(e))
-            exit_status = NOTOK
+            return NOTOK
     else:
 
         # if we are participating in a multi-host test
         # then write out this host's result in pickle format
         # so test driver can pick up result
 
-        result_filename = \
-            master_invoke.host_result_filename(prm.as_host)
-        my_log.debug('writing invokes to: ' + result_filename)
-        invok_list = [t.invoke for t in thread_list]
+        result_filename = host_result_filename(prm, prm.as_host)
         my_log.debug('saving result to filename %s' % result_filename)
-        for ivk in invok_list:
-            ivk.buf = None
-            ivk.biggest_buf = None
-        sync_files.write_pickle(result_filename, invok_list)
+        worker_list = [ t.invoke for t in thread_list ]
+        sync_files.write_pickle(result_filename, worker_list)
         time.sleep(1.2)  # for benefit of NFS with actimeo=1
 
-    sys.exit(exit_status)
+    return OK
