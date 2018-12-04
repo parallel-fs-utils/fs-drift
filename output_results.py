@@ -18,13 +18,15 @@ def output_results(params, subprocess_list):
     total_files = 0
     total_ios = 0
     total_MiB = 0.0
-    max_elapsed_time = 0.0
     rslt = {}
     rslt['hosts'] = {}
     print('host, thread, elapsed, files, I/O requests, MiB, status')
     fmt = '%s, %s, %f, %d, %d, %9.3f, %s'
+
+    max_elapsed_time = 0.0
     for p in subprocess_list:
         max_elapsed_time = max(max_elapsed_time, p.elapsed_time)
+
     for p in subprocess_list:
 
         # add up work that it did
