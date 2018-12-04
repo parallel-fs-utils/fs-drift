@@ -114,8 +114,8 @@ class FSOPCtx:
     SIMULATED_TIME_UNDEFINED = None
     time_save_rate = 5
 
-    def __init__(self, params, log):
-        self.ctrs = FSOPCounters()
+    def __init__(self, params, log, ctrs):
+        self.ctrs = ctrs
         self.params = params
         self.log = log
         self.buf = random_buffer.gen_buffer(params.max_record_size_kb*BYTES_PER_KiB)
@@ -655,7 +655,8 @@ if __name__ == "__main__":
     os.makedirs(options.top_directory)
     os.chdir(options.top_directory)
     log.info('chdir to %s' % options.top_directory)
-    ctx = FSOPCtx(options, log)
+    ctrs = FSOPCounters()
+    ctx = FSOPCtx(options, log, ctrs)
     rc = ctx.op_create()
     assert(rc == OK)
     rc = ctx.op_read()
@@ -680,8 +681,8 @@ if __name__ == "__main__":
     #assert(rc != OK)
 
     # output FSOPCounter object
-    print(ctx.ctrs)
-    print(ctx.ctrs.json_dict())
+    print(ctrs)
+    print(ctrs.json_dict())
 
     # simulate a mixed-workload run
     rq_map = ctx.gen_rq_map()
