@@ -52,8 +52,6 @@ def run_multi_host_workload(prm, log):
 
     # construct list of ssh threads to invoke in parallel
 
-    sync_files.create_top_dirs(prm)
-    sync_files.write_pickle(prm.param_pickle_path, prm)
     if os.getenv('PYPY'):
         python_prog = os.getenv('PYPY')
     elif sys.version.startswith('2'):
@@ -76,8 +74,8 @@ def run_multi_host_workload(prm, log):
 
         this_remote_cmd += ' --as-host %s' % remote_host
         log.debug(this_remote_cmd)
-        remote_thread_list.append(ssh_thread.ssh_thread(remote_host,
-                                                        this_remote_cmd))
+        remote_thread_list.append(
+            ssh_thread.ssh_thread(log, remote_host, this_remote_cmd))
 
     # start them, pacing starts so that we don't get ssh errors
 
@@ -94,28 +92,33 @@ def run_multi_host_workload(prm, log):
     abortfn = prm.abort_path
     sec_delta = 0.5
     # timeout if no host replies in next host_timeout seconds
-    host_timeout = 10
+    per_host_timeout = 10
+    all_host_timeout = 5 + len(prm.host_set) / 3
+    if all_host_timeout < per_host_timeout:
+        per_host_timeout = all_host_timeout / 2
 
     hosts_ready = False  # set scope outside while loop
     last_host_seen = -1
     sec = 0.0
+    start_loop_start = time.time()
     try:
-        while sec < host_timeout:
+        while sec < per_host_timeout:
             # HACK to force directory entry coherency for Gluster
             #ndirlist = os.listdir(prm.network_shared_path)
             #log.debug('shared dir list: ' + str(ndirlist))
             hosts_ready = True
             if os.path.exists(abortfn):
-                raise Exception('worker host signaled abort')
+                raise FsDriftException('worker host signaled abort')
             for j in range(last_host_seen + 1, len(prm.host_set)):
                 h = prm.host_set[j]
-                fn = multi_thread_workload.gen_host_ready_fname(h.strip())
+                fn = multi_thread_workload.gen_host_ready_fname(prm, h.strip())
                 log.debug('checking for host filename ' + fn)
                 if not os.path.exists(fn):
                     hosts_ready = False
                     break
+                log.debug('saw host filename ' + fn)
                 last_host_seen = j  # saw this host's ready file
-                # we exit while loop only if no hosts in host_timeout seconds
+                # we exit while loop only if no hosts in per_host_timeout seconds
                 sec = 0.0
             if hosts_ready:
                 break
@@ -137,22 +140,27 @@ def run_multi_host_workload(prm, log):
 
             time.sleep(sec_delta)
             sec += sec_delta
-            sec_delta += 1
+            #sec_delta += 1
+            time_since_loop_start = time.time() - start_loop_start
             log.debug('last_host_seen=%d sec=%d' % (last_host_seen, sec))
+            if time_since_loop_start > all_host_timeout:
+                kill_remaining_threads = True
+                break
     except KeyboardInterrupt as e:
         log.error('saw SIGINT signal, aborting test')
         exception_seen = e
     except Exception as e:
         exception_seen = e
+        log.exception(e)
         hosts_ready = False
     if not hosts_ready:
         multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)
         if not exception_seen:
-            raise FsDriftException('hosts did not reach starting gate ' +
-                            'within %d seconds' % host_timeout)
+            log.info(
+                'hosts did not reach starting gate within %d seconds' % all_host_timeout)
+            return NOTOK
         else:
-            log.exception(e)
-            raise e
+            raise exception_seen
     else:
 
         # ask all hosts to start the test
@@ -180,7 +188,6 @@ def run_multi_host_workload(prm, log):
     # with counters and times that we need
 
     try:
-        all_ok = NOTOK
         invoke_list = []
         one_shot_delay = True
         for h in prm.host_set:  # for each host in test
@@ -188,7 +195,7 @@ def run_multi_host_workload(prm, log):
             # read results for each thread run in that host
             # from python pickle of the list of SmallfileWorkload objects
 
-            pickle_fn = multi_thread_workload.host_result_filename(h)
+            pickle_fn = multi_thread_workload.host_result_filename(prm, h)
             log.debug('reading pickle file: %s' % pickle_fn)
             host_invoke_list = []
             try:
@@ -210,16 +217,17 @@ def run_multi_host_workload(prm, log):
                 log.error('  pickle file %s not found' % pickle_fn)
 
         output_results.output_results(prm, invoke_list)
-        all_ok = OK
     except IOError as e:
         log.exception(e)
         log.error('host %s filename %s: %s' % (h, pickle_fn, str(e)))
+        return NOTOK
     except KeyboardInterrupt as e:
         log.error('control-C signal seen (SIGINT)')
+        return NOTOK
     except FsDriftException as e:
         log.exception(e)
-
-    sys.exit(all_ok)
+        return NOTOK
+    return(OK)
 
 
 # main routine that does everything for this workload
@@ -268,4 +276,4 @@ def run_workload():
 # because windows doesn't support fork().
 
 if __name__ == '__main__':
-    run_workload()
+    sys.exit(run_workload())
