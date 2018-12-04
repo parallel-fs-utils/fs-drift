@@ -37,24 +37,23 @@ class ssh_thread(threading.Thread):
         tmpdir = os.getenv('TMPDIR')
         if tmpdir == None:
             tmpdir = '/tmp'
-        self.pidfile = os.path.join(tmpdir, self.remote_host + '_ssh.pid')
         self.popen_obj = None  # filled in latter
 
     def run(self):
-        try:
-            os.unlink(self.pidfile)
-        except OSError as e:
-            if e.errno != errno.ENOENT:
-                raise e
         self.log.info(self.args)
         self.popen_obj = subprocess.Popen(self.args)
-        with open(self.pidfile, 'w') as pid_f:
-            pid_f.write('%d' % self.popen_obj.pid)
         self.popen_obj.wait()
         self.status = self.popen_obj.returncode
 
     def terminate(self):
-        self.popen_obj.terminate()
+        if self.popen_obj != None:
+            try:
+                self.popen_obj.terminate()
+            except OSError as e:
+                if e.errno != errno.ESRCH:
+                    raise e
+                self.log.debug('tried to kill non existent process %d', 
+                               self.popen_obj.pid)
         self.status = NOTOK
 
 if __name__ == '__main__':
