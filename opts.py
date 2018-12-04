@@ -48,7 +48,7 @@ class FsDriftOpts:
         self.mount_command = None
         # not settable
         self.is_slave = False
-        self.as_host = None
+        self.as_host = None  # filled in by worker host
 
     def kvtuplelist(self):
         return [
@@ -87,11 +87,11 @@ class FsDriftOpts:
         else:
             return ' , '.join(kvlist)
 
-    def to_json(self, indent=4):
+    def to_json_obj(self):
         d = {}
         for (k, v) in self.kvtuplelist():
             d[k] = v
-        return json.dumps(d, indent=indent, sort_keys=True)
+        return d
 
 def parseopts():
     o = FsDriftOpts()
@@ -248,4 +248,4 @@ def parseopts():
 if __name__ == "__main__":
     options = parseopts()
     print(options)
-    print(options.to_json(indent=2))
+    print(json.dumps(options.to_json_obj(), indent=2, sort_keys=True))
