@@ -88,6 +88,7 @@ class FsDriftWorkload:
 
         self.params = params
         self.ctx = None
+        self.ctrs = fsop.FSOPCounters()
 
         # total_threads is thread count across entire distributed test
         # FIXME: take into account thread count and multiple hosts running threads
@@ -389,115 +390,15 @@ class FsDriftWorkload:
             raise FsDriftException(
                 'test failed, check log file %s' % self.log_fn())
 
-    # generate buffer contents, use these on writes and
-    # compare against them for reads where random data is used,
-
-    def create_biggest_buf(self, contents_random):
-
-        # generate random byte sequence if desired.
-
-        random_segment_size = 1 << self.random_seg_size_bits
-        if not self.params.incompressible:
-
-            # generate a random byte sequence of length 2^random_seg_size_bits
-            # and then repeat the sequence
-            # until we get to size 2^biggest_buf_size_bits in length
-
-            if contents_random:
-                biggest_buf = bytearray([self.randstate.randrange(0, 127)
-                                         for k in
-                                         range(0, random_segment_size)])
-            else:
-                biggest_buf = bytearray([k % 128 for k in
-                                         range(0, random_segment_size)])
-
-            # to prevent confusion in python when printing out buffer contents
-            # WARNING: this line breaks PythonTidy utility
-            biggest_buf = biggest_buf.replace(b'\\', b'!')
-
-            # keep doubling buffer size until it is big enough
-
-            next_power_2 = (self.biggest_buf_size_bits -
-                            self.random_seg_size_bits)
-            for j in range(0, next_power_2):
-                biggest_buf.extend(biggest_buf[:])
-
-        else:  # if incompressible
-
-            # for buffer to be incompressible,
-            # we can't repeat the same (small) random sequence
-            # FIXME: why shouldn't we always do it this way?
-
-            # initialize to a single random byte
-            biggest_buf = bytearray([self.randstate.randrange(0, 255)])
-            assert len(biggest_buf) == 1
-            powerof2 = 1
-            powersum = 1
-            for j in range(0, self.biggest_buf_size_bits - 1):
-                assert len(biggest_buf) == powersum
-                powerof2 *= 2
-                powersum += powerof2
-                # biggest_buf length is now 2^j - 1
-                biggest_buf.extend(
-                    bytearray([self.randstate.randrange(0, 255)
-                              for k in range(0, powerof2)]))
-            biggest_buf.extend(
-                bytearray([self.randstate.randrange(0, 255)]))
-
-        # add extra space at end
-        # so that we can get different buffer contents
-        # by just using different offset into biggest_buf
-
-        biggest_buf.extend(biggest_buf[0:self.buf_offset_range])
-        assert (len(biggest_buf) ==
-                self.biggest_buf_size + self.buf_offset_range)
-        return biggest_buf
-
-    # allocate buffer of correct size with offset based on filenum, tid, etc.
-
-    def prepare_buf(self):
-
-        # determine max record size of I/Os
-
-        total_space_kb = self.record_sz_kb
-        if self.record_sz_kb == 0:
-            if self.filesize_distr != self.fsdistr_fixed:
-                total_space_kb = self.total_sz_kb * self.random_size_limit
-            else:
-                total_space_kb = self.total_sz_kb
-
-        total_space = total_space_kb * self.BYTES_PER_KB
-        if total_space > SmallfileWorkload.biggest_buf_size:
-            total_space = SmallfileWorkload.biggest_buf_size
-
-        # ensure pre-allocated pre-initialized buffer space
-        # big enough for xattr ops
-        # use +, not *, see way buffers are used
-
-        total_xattr_space = self.xattr_size + self.xattr_count
-        if total_xattr_space > total_space:
-            total_space = total_xattr_space
-
-        # create a buffer with somewhat unique contents for this file,
-        # so we'll know if there is a read error
-        # FIXME: think harder about this
-
-        unique_offset = (hash(self.tid) + self.filenum) % 1024
-        assert total_space + unique_offset < len(self.biggest_buf)
-        # NOTE: this means self.biggest_buf must be
-        # 1K larger than SmallfileWorkload.biggest_buf_size
-        self.buf = self.biggest_buf[unique_offset:total_space + unique_offset]
-        # assert len(self.buf) == total_space
-
     def do_workload(self):
 
         self.start_log()
+        #ensure_dir_exists(self.params.network_shared_path)
         self.params = read_pickle(self.params.param_pickle_path)
-        self.ctx = fsop.FSOPCtx(self.params, self.log)
-        ensure_dir_exists(self.params.network_shared_path)
-        # FIXME: worker_thread doesn't use this buf!
         self.init_random_seed()
-        self.biggest_buf = self.create_biggest_buf(False)
+        self.ctx = fsop.FSOPCtx(self.params, self.log, self.ctrs)
+        # FIXME: worker_thread doesn't use this buf!
+        #self.biggest_buf = self.create_biggest_buf(False)
         # retrieve params from pickle file so that 
         # remote workload generators can read them
 
@@ -511,7 +412,7 @@ class FsDriftWorkload:
 
         self.wait_for_gate()
 
-        start_time = time.time()
+        self.start_time = time.time()
         event_count = 0
         total_errors = 0
         weights = event.parse_weights(self.params, rq_map)
@@ -548,7 +449,7 @@ class FsDriftWorkload:
 
             if ( (self.params.stats_report_interval > 0) and 
                  (before - last_stat_time > params.stats_report_interval)):
-                output_results.print_stats(start_time, total_errors)
+                output_results.print_stats(self.start_time, total_errors)
             last_stat_time = self.start_time
 
             # if using moving gaussian file access pattern...
@@ -559,7 +460,7 @@ class FsDriftWorkload:
             # use duration to limit test
 
             if self.params.duration > 0:
-                elapsed = time.time() - start_time
+                elapsed = time.time() - self.start_time
             if elapsed > self.params.duration:
                 break
 
@@ -656,7 +557,7 @@ if __name__ == '__main__':
             fsd.verbose = True
             touch(fsd.params.starting_gun_path)
             fsd.do_workload()
-            print(fsd.ctx.ctrs)
+            print(fsd.ctrs)
             fsd.chk_status()
 
         def test_b_run2threads(self):
@@ -676,7 +577,7 @@ if __name__ == '__main__':
                 t.join()
             mylog.info('threads done')
             for t in threads:
-                print(t.worker.ctx.ctrs)
+                print(t.worker.ctrs)
                 t.worker.chk_status()
     unittest2.main()
 
