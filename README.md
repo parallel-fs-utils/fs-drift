@@ -15,27 +15,64 @@ fs-drift is a program that attempts to stress a filesystem in various ways over 
 Over a long enough period of time it is hoped that this behavior will induce filesystem aging and stress comparable to
 that experienced by filesystems that have run for months or years.
 
-A basic design principle is use of randomness - we do not try to directly control the mix of reads and writes - instead we randomly generate a mix of requests, and over time the system reaches an equilibrium state.  For example, filenames are generated at random (default is uniform distribution).  When the test starts on an empty directory tree, creates succeed and reads fail with "file not found", so the directory tree fills up with files.  As the maximum file count is approached, we start to see create failures of the form "file already exists", or if the test is big enough, create/append failures such as "no space".  On the other hand, as the directory tree fills up, reads, deletes and other operation types are more likely to succeed.  At some point, we reach an equilibrium where total space used stabilizes, create/read mix stabilizes, and then we can run the test forever in this state.
-
-The workload mix file is a .csv-format file , with each record containing an operation type and share (relative fraction) of operations of that type.  Operations are selected randomly in such a way that over a long enough period of time, the share determines the fraction of operations of that type.  
+The workload mix file is a .csv-format file , with each record containing an operation type and share (relative fraction) of operations of that type.  Operations are selected randomly in such a way that over a long enough period of time, the share determines the fraction of operations of that type.
 
 The program outputs counters on a regular (selectable) interval that describe its behavior - for example, one counter is the number of times that a file could not be created because it already existed.  These counters can be converted into .csv format after the test completes using the parse_stress_log.py program, and then the counters can be aggregated, graphed, etc.
+A basic design principle is use of randomness - we do not try to directly control the mix of reads and writes - instead we randomly generate a mix of requests, and over time the system reaches an equilibrium state.  For example, filenames are generated at random (default is uniform distribution).  When the test starts on an empty directory tree, creates succeed and reads fail with "file not found", so the directory tree fills up with files.  As the maximum file count is approached, we start to see create failures of the form "file already exists", or if the test is big enough, create/append failures such as "no space".  On the other hand, as the directory tree fills up, reads, deletes and other operation types are more likely to succeed.  At some point, we reach an equilibrium where total space used stabilizes, create/read mix stabilizes, and then we can run the test forever in this state.  So certain types of filesystem error returns are expected and counted, but any other filesystem errors result in an exception being logged.
 
-Every input parameter has a long form and a short form in traditional Linux style.
+In order for python GIL (Global Interpreter Lock) to not be a bottleneck, we create multiple subprocesses to be workload
+generators, using the python multiprocessing module.
+
+Synchronization between threads (subprocesses) is achieved with a directory shared by all threads and hosts, the network_shared/
+subdirectory within the top directory.  We store the test parameter python object as a "pickle" file in network_shared/, and all subprocesses on all hosts read
+it from there.  Each host announces its readiness by creating a host_ready file there, and when all hosts are ready, the
+fs-drift.py master process broadcasts the start of the test (referred to as the "starting gun") by creating a file
+there.  When a subprocess finishes, it posts its results as a python pickle in there.
+
+Log files are kept in /var/tmp/fsd\*.log . 
+
+Every input parameter name is preceded by "--".  We don't bother with short-form parameter names.
 
 Inputs:
 
+--help
+
+gives you parameter names and brief reminder of what they do.
+
 --top-directory
 
-Default: /tmp/foo -- where fs-drift puts all its files.  Since the design center for fs-drift is distributed filesystems, we don't support multiple top-level directories.  However, you can run multiple instances of fs-drift with different top-level directories and aggregate the results yourself.
+Default: /tmp/foo -- where fs-drift puts all its files.  Since the design center for fs-drift is distributed filesystems, we don't support multiple top-level directories (yet).  fs-drift leaves any existing files or subdirectories in place, so that it can be easily restarted - this is important for a longevity test.  However, the network_shared/ subdirectory inside the top directory is recreated each time it is run.
 
---json-output
+--output-json
 
 Default: None -- if specified, this is the path where JSON counters are output to.
 
+--response-times
+
+Default: False -- If true, save response time data for each thread to a .csv file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values.  The first value is number of seconds after start of the test. The second value is number of seconds the operation lasted. Response times for different operations are separated. 
+
+--workload-table
+
+Default: None (fs-drift will generate one) -- if specified, fs-drift will read the desired workload mix from this file.
+Each record in the file contains 2 comma-separated values, the operation type and a "share" number (floating-pt) that determines the
+fraction of operations of this type.  To compute the fraction, fs-drift adds all the shares together and then divides
+each share by the total to get the fraction.  By doing it this way, the user does not have to calculate
+percentages/fractions and make them all add up to 100/1.
+
 --duration
 
-Default: 1 -- specify test duration in seconds
+Default: 1 -- specify test duration in seconds.
+
+--host-set
+
+Default: None -- specify set of remote hosts to generate workload - fs-drift will start up fs-drift-remote.py processes
+on each of these hosts with same input parameters - assumption here is that you have a shared filesystem.  If no host
+set is specified, subprocesses will be created directly from your fs-drift.py process and run locally.
+
+--threads
+
+Default: 2 -- how many subprocesses/host will be generating workload.  We use subprocesses instead of python threads so that
+we can utilize more than 1 CPU core per host.  But all subprocesses are just running same workload generator loop.
 
 --max-files
 
@@ -64,10 +101,6 @@ Default: 20 -- If true, allows fsync() call to be done every so often when files
 --fdatasync-pct
 
 Default: 10 -- If true, allows fdatasync() call to be done every so often when files are written. Value is probability in percent.
-
---response-times
-
-Default: False -- If true, save response time data for each thread to a .csv file. Each record in this file contains 2 comma-separated floating-point values.  The first value is number of seconds after start of the test. The second value is number of seconds the operation lasted. Response times for different operations are separated. 
 
 --levels
 
@@ -101,6 +134,27 @@ Default: 1000.0 -- For gaussian filename distribution, this parameter controls w
 
 Default: 3.0 -- This parameter is for cache tiering testing.  It allows creates to "lead" all other operations, so that we can create a high probability that read files will be in the set of "hot files".  Otherwise, most read accesses with non-uniform filename distribution will result  in "file not found" errors.
 
---pause
+--pause-between-ops
 
-Default: /var/tmp/pause -- Parameter allows to specify pause file. If this file exists, fs-drift won't perform any I/O operations. NOT IMPLEMENTED YET
+Default: 100 microseconds -- This parameter is there to prevent some threads from getting way ahead of other threads in
+tests where there are a lot of threads running.  It may not prove to be important.
+
+--mount-command
+
+Default: None -- For workload mixes that include the "remount" operation type, fs-drift.py will occasionally remount the
+filesystem.  This tests the ability of the filesystem to respond quickly and correctly to these requests while under load.  
+The user must specify a full mount command to use this operation type.  You must specify the mountpoint directory as the
+last parameter in the command.  This allows fs-drift to do the unmount operation that precedes the mount.
+
+## future enhancements
+
+- logging - is a bit chaotic, done differently in different places, should be simple and user-controllable while the test
+is running.
+
+- dynamic parameter adjustment - want to be able to change parameters while the test is running (to see how the
+  filesystem responds to major expansion/contraction, for example, or to see how different workload mixes impact the
+  filesystem without having to run a whole new test.
+
+- compression control - want to be able to specify buffers with different levels of compressibility
+
+- 
