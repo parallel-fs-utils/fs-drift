@@ -128,7 +128,6 @@ class FsDriftWorkload:
         self.randstate = random.Random()
 
         self.total_threads = len(self.params.host_set) * self.params.threads
-        self.threads_done_limit = max(1, int(self.total_threads * self.params.thread_fraction_done))
 
         # reset object state variables
 
@@ -342,10 +341,6 @@ class FsDriftWorkload:
                 except OSError:
                     sz = 0
             threads_done = sz / len(elapsed_time_str)
-            if threads_done > self.threads_done_limit:
-                self.log.info(
-                    'thread %s on host %s saw that %d out of %d threads completed'
-                    % (self.tid, socket.gethostname(), threads_done, self.threads_done_limit))
 
     def test_ended(self):
         return self.end_time > self.start_time
@@ -364,10 +359,6 @@ class FsDriftWorkload:
                     sz = 0
                 record_len = len(self.thread_done_record())
                 threads_done = sz / record_len
-                if threads_done > self.threads_done_limit:
-                    self.log.info('stopped after ' + str(self.filenum)
-                              + ' iterations')
-                    self.end_test()
                 return False
 
         # if user doesn't want to finish all requests and test has ended, stop
@@ -424,7 +415,7 @@ class FsDriftWorkload:
 
             # if there is pause file present, do nothing
 
-            if os.path.isfile(self.params.pause_file):
+            if event_count % 100 == 0 and os.path.isfile(self.params.pause_path):
                 time.sleep(5)
                 continue
 
