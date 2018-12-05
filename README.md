@@ -31,6 +31,11 @@ there.  When a subprocess finishes, it posts its results as a python pickle in t
 
 Log files are kept in /var/tmp/fsd\*.log . 
 
+To pause a test, just touch network_shared/pause.tmp
+To resume a paused test, just remove network_shared/pause.tmp
+
+## parameters
+
 Every input parameter name is preceded by "--".  We don't bother with short-form parameter names.
 
 Inputs:
