@@ -35,7 +35,6 @@ class FsDriftOpts:
         self.workload_table_csv_path = None
         self.stats_report_interval = 0
         self.pause_between_ops = 100
-        self.thread_fraction_done = 0.05
         self.incompressible = False
         # new parameters related to gaussian filename distribution
         self.rand_distr_type = common.FileAccessDistr.uniform
@@ -44,7 +43,6 @@ class FsDriftOpts:
         # just a guess, most files will be created before they are read
         self.create_stddevs_ahead = 3.0
         self.drift_time = -1
-        self.pause_path = '/var/tmp/pause'
         self.mount_command = None
         # not settable
         self.is_slave = False
@@ -71,7 +69,6 @@ class FsDriftOpts:
             ('subdirectories per directory', self.subdirs_per_dir),
             ('incompressible data', self.incompressible),
             ('pause between opts (usec)', self.pause_between_ops),
-            ('thread fraction done', self.thread_fraction_done),
             ('distribution', common.FileAccessDistr2str(self.random_distribution)),
             ('mean index velocity', self.mean_index_velocity),
             ('gaussian std. dev.', self.gaussian_stddev),
@@ -121,7 +118,7 @@ def parseopts():
             default=o.max_file_size_kb)
     add('--pause-between-ops', help='delay between ops in microsec',
             type=non_negative_integer,
-            default=200)
+            default=o.pause_between_ops)
     add('--max-record-size-kb', help='maximum read/write size in KB',
             type=positive_integer, 
             default=o.max_record_size_kb)
@@ -164,18 +161,12 @@ def parseopts():
     add('--create-stddevs-ahead', help='file creation ahead of other opts by this many stddevs',
             type=float, 
             default=o.create_stddevs_ahead)
-    add('--thread-fraction-done', help='measurement done when this fraction of threads done',
-            type=positive_float,
-            default=o.thread_fraction_done)
-    add('--pause-file', help='file access will be suspended when this file appears',
-            default=o.pause_path)
     add('--mount-command', help='command to mount the filesystem containing top directory',
             default=o.mount_command)
     # parse the command line and update opts
     args = parser.parse_args()
     o.top_directory = args.top
     o.output_json_path = args.output_json
-    o.pause_file = args.pause_file
     o.host_set = args.host_set
     o.threads = args.threads
     o.report_interval = args.report_interval
@@ -192,7 +183,6 @@ def parseopts():
     o.subdirs_per_dir = args.dirs_per_level
     o.incompressible = args.incompressible
     o.pause_between_ops = args.pause_between_ops
-    o.thread_fraction_done = args.thread_fraction_done
     o.response_times = args.response_times
     o.random_distribution = args.random_distribution
     o.mean_index_velocity = args.mean_velocity
@@ -210,6 +200,7 @@ def parseopts():
     o.param_pickle_path     = nsjoin('params.pickle')
     o.rsptime_path          = nsjoin('host-%s_thrd-%d_%%d_%%d_rspt.csv')
     o.abort_path            = nsjoin('abort.tmp')
+    o.pause_path            = nsjoin('pause.tmp')
     o.checkerflag_path      = nsjoin('checkered_flag.tmp')
 
     o.remote_pgm_dir = os.path.dirname(sys.argv[0])
