@@ -416,6 +416,7 @@ class FsDriftWorkload:
             # if there is pause file present, do nothing
 
             if event_count % 100 == 0 and os.path.isfile(self.params.pause_path):
+                self.log.info('pausing test because %s seen' % self.params.pause_path)
                 time.sleep(5)
                 continue
 
