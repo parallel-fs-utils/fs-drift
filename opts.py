@@ -217,7 +217,7 @@ def parseopts():
             o.top_directory)
 
     if o.workload_table_csv_path == None:
-        o.workload_table_csv_path = '/tmp/example_workload_table.csv'
+        o.workload_table_csv_path = os.path.join(o.top_directory, 'example_workload_table.csv')
         workload_table = [
                     'read, 2',
                     'random_read, 1',
