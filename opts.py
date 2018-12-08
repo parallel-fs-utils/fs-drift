@@ -5,7 +5,7 @@ import os.path
 import json
 import sys
 import common
-from common import OK, NOTOK
+from common import OK, NOTOK, FsDriftException
 import argparse
 import parser_data_types
 from parser_data_types import boolean, positive_integer, non_negative_integer
@@ -214,6 +214,11 @@ def parseopts():
     if len(o.top_directory) < 6:
         raise FsDriftException(
             'top directory %s too short, may be system directory' % 
+            o.top_directory)
+
+    if not os.path.isdir(o.top_directory):
+        raise FsDriftException(
+            'top directory %s does not exist, please create it' % 
             o.top_directory)
 
     if o.workload_table_csv_path == None:
