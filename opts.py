@@ -167,6 +167,7 @@ def parseopts():
     args = parser.parse_args()
     o.top_directory = args.top
     o.output_json_path = args.output_json
+    o.rsptimes = args.response_times
     o.host_set = args.host_set
     o.threads = args.threads
     o.report_interval = args.report_interval
@@ -198,7 +199,7 @@ def parseopts():
     o.starting_gun_path     = nsjoin('starting-gun.tmp')
     o.stop_file_path        = nsjoin('stop-file.tmp')
     o.param_pickle_path     = nsjoin('params.pickle')
-    o.rsptime_path          = nsjoin('host-%s_thrd-%d_%%d_%%d_rspt.csv')
+    o.rsptime_path          = nsjoin('host-%s_thrd-%s_rsptimes.csv')
     o.abort_path            = nsjoin('abort.tmp')
     o.pause_path            = nsjoin('pause.tmp')
     o.checkerflag_path      = nsjoin('checkered_flag.tmp')
