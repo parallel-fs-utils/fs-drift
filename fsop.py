@@ -61,6 +61,47 @@ class FSOPCounters:
         self.e_no_space = 0
         self.e_not_mounted = 0
         self.e_could_not_mount = 0
+
+
+    # used to aggregate per-thread counters 
+    # into per-host and per-cluster counters
+
+    def add_to(self, total):
+
+        # operation counters, incremented by op function below
+        total.have_created          += self.have_created
+        total.have_deleted          += self.have_deleted
+        total.have_softlinked       += self.have_softlinked
+        total.have_hardlinked       += self.have_hardlinked
+        total.have_appended         += self.have_appended
+        total.have_randomly_written += self.have_randomly_written
+        total.have_read             += self.have_read
+        total.have_randomly_read    += self.have_randomly_read
+        total.have_renamed          += self.have_renamed
+        total.have_truncated        += self.have_truncated
+        total.have_remounted        += self.have_remounted
+        
+        # throughput counters
+        total.read_requests         += self.read_requests
+        total.read_bytes            += self.read_bytes
+        total.randread_requests     += self.randread_requests
+        total.randread_bytes        += self.randread_bytes
+        total.write_requests        += self.write_requests
+        total.write_bytes           += self.write_bytes
+        total.randwrite_requests    += self.randwrite_requests
+        total.randwrite_bytes       += self.randwrite_bytes
+        total.fsyncs                += self.fsyncs
+        total.fdatasyncs            += self.fdatasyncs
+        total.dirs_created          += self.dirs_created
+        
+        # error counters
+        total.e_already_exists      += self.e_already_exists
+        total.e_file_not_found      += self.e_file_not_found
+        total.e_no_dir_space        += self.e_no_dir_space
+        total.e_no_inode_space      += self.e_no_inode_space
+        total.e_no_space            += self.e_no_space
+        total.e_not_mounted         += self.e_not_mounted
+        total.e_could_not_mount     += self.e_could_not_mount
         
     def kvtuplelist(self):
         return [
@@ -680,10 +721,6 @@ if __name__ == "__main__":
     #rc = ctx.op_remount()
     #assert(rc != OK)
 
-    # output FSOPCounter object
-    print(ctrs)
-    print(ctrs.json_dict())
-
     # simulate a mixed-workload run
     rq_map = ctx.gen_rq_map()
     oplist = rq_map.keys()
@@ -693,3 +730,12 @@ if __name__ == "__main__":
             if oplist[k] != rq.REMOUNT:
                 rc = func()
             assert(rc == OK)
+
+    # output FSOPCounter object
+    print(ctrs)
+    ctrs2 = FSOPCounters()
+    ctrs.add_to(ctrs2)
+    ctrs.add_to(ctrs2)
+    assert(ctrs2.have_read > 0 and ctrs2.have_read == 2 * ctrs.have_read)
+    print(ctrs.json_dict())
+
