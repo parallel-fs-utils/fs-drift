@@ -85,7 +85,7 @@ if __name__ == '__main__':
     
         def setUp(self):
             self.params = opts.parseopts()
-            self.params.duration = 3
+            self.params.duration = 2
             self.params.workload_table_csv_path = '/tmp/weights.csv'
             self.log = fsd_log.start_log('invoke_process')
     
