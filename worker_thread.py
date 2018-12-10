@@ -40,7 +40,7 @@ import common
 from common import touch, FsDriftException, FileSizeDistr, FileAccessDistr
 from common import ensure_dir_exists, deltree, OK
 import event
-import fsop
+from fsop import FSOPCtx
 from fsop_counters import FSOPCounters
 import fsd_log
 from sync_files import write_pickle, read_pickle
@@ -89,7 +89,7 @@ class FsDriftWorkload:
 
         self.params = params
         self.ctx = None
-        self.ctrs = fsop.FSOPCounters()
+        self.ctrs = FSOPCounters()
 
         # total_threads is thread count across entire distributed test
         # FIXME: take into account thread count and multiple hosts running threads
@@ -388,7 +388,7 @@ class FsDriftWorkload:
         #ensure_dir_exists(self.params.network_shared_path)
         self.params = read_pickle(self.params.param_pickle_path)
         self.init_random_seed()
-        self.ctx = fsop.FSOPCtx(self.params, self.log, self.ctrs)
+        self.ctx = FSOPCtx(self.params, self.log, self.ctrs)
         # FIXME: worker_thread doesn't use this buf!
         #self.biggest_buf = self.create_biggest_buf(False)
         # retrieve params from pickle file so that 
@@ -397,7 +397,6 @@ class FsDriftWorkload:
         os.chdir(self.params.top_directory)
 
         op = 0
-        rq_map = self.ctx.gen_rq_map()
         last_stat_time = time.time()
         last_drift_time = time.time()
         stop_file = self.params.stop_file_path
@@ -407,7 +406,7 @@ class FsDriftWorkload:
         self.start_time = time.time()
         event_count = 0
         total_errors = 0
-        weights = event.parse_weights(self.params, rq_map)
+        weights = event.parse_weights(self.params)
         normalized_weights = event.normalize_weights(weights)
 
         try:
@@ -428,11 +427,11 @@ class FsDriftWorkload:
                 break
 
             x = event.gen_event(normalized_weights)
-            (fn, name) = rq_map[x]
+            name = FSOPCtx.opcode_to_opname[x]
             if common.verbosity & 0x1:
-                self.log.debug('event %s name %s' % (x, name))
+                self.log.debug('event %d name %s' % (x, name))
             self.op_starttime()
-            rc = fn()
+            rc = self.ctx.invoke_rq(x)
             self.op_endtime(name)
             if rc != OK:
                 self.log.debug("%s returns %d" % (name, rc))
