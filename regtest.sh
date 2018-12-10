@@ -53,7 +53,7 @@ chk "$PY worker_thread.py"
 chk "$PY invoke_process.py"
 chk "$PY opts.py -h > /tmp/o"
 chk "grep 'optional arguments' /tmp/o"
-mkdir /tmp/x.d
+mkdir -p /tmp/x.d
 chk "$PY opts.py --top /tmp/x.d"
 chkfail "$PY ./opts.py --top /"
 
@@ -61,6 +61,6 @@ chk "./fs-drift.py"
 chk "./fs-drift.py -h"
 grep -iq 'usage: fs-drift.py' $logf || logf_fail
 chkfail "./fs-drift.py --zzz"
-grep -iq 'all options must have a value' $logf || logf_fail
+grep -iq 'usage:' $logf || logf_fail
 
 
