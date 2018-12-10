@@ -243,6 +243,7 @@ def run_workload():
 
     try:
         params = opts.parseopts()
+        params.validate()
     except FsDriftException as e:
         log.error(str(e))
         log.info('use --help option to get CLI syntax')
