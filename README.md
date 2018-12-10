@@ -153,8 +153,16 @@ last parameter in the command.  This allows fs-drift to do the unmount operation
 
 ## future enhancements
 
-- logging - is a bit chaotic, done differently in different places, should be simple and user-controllable while the test
-is running.
+- logging - is a bit chaotic, done differently in different places, too many log files,
+should be simple and user-controllable while the test is running.
+
+- make remounts work
+
+- allow mountpoint per process 
+-- to simulate large client populations
+-- to support block storage tests
+
+- extend number of filesystem operations
 
 - dynamic parameter adjustment - want to be able to change parameters while the test is running (to see how the
   filesystem responds to major expansion/contraction, for example, or to see how different workload mixes impact the
@@ -162,4 +170,5 @@ is running.
 
 - compression control - want to be able to specify buffers with different levels of compressibility
 
+- elastic search - import JSON results into Elastic Search so we can visualize results in Grafana
 - 
