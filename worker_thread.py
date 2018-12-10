@@ -41,6 +41,7 @@ from common import touch, FsDriftException, FileSizeDistr, FileAccessDistr
 from common import ensure_dir_exists, deltree, OK
 import event
 import fsop
+from fsop_counters import FSOPCounters
 import fsd_log
 from sync_files import write_pickle, read_pickle
 
@@ -568,8 +569,12 @@ if __name__ == '__main__':
             for t in threads:
                 t.join()
             mylog.info('threads done')
+            totals = FSOPCounters()
             for t in threads:
                 print(t.worker.ctrs)
+                t.worker.ctrs.add_to(totals)
                 t.worker.chk_status()
+            print('total counters:')
+            print(totals)
     unittest2.main()
 
