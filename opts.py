@@ -90,6 +90,35 @@ class FsDriftOpts:
             d[k] = v
         return d
 
+    def validate(self):
+
+        if len(self.top_directory) < 6:
+            raise FsDriftException(
+                'top directory %s too short, may be system directory' % 
+                self.top_directory)
+
+        if not os.path.isdir(self.top_directory):
+            raise FsDriftException(
+                'top directory %s does not exist, so please create it' %
+                self.top_directory)
+
+        if self.workload_table_csv_path == None:
+            self.workload_table_csv_path = os.path.join(self.top_directory, 
+                                                        'example_workload_table.csv')
+            workload_table = [
+                    'read, 2',
+                    'random_read, 1',
+                    'random_write, 1',
+                    'append, 4',
+                    'delete, 0.1',
+                    'hardlink, 0.01',
+                    'softlink, 0.02',
+                    'truncate, 0.05',
+                    'rename, 1',
+                    'create, 4']
+            with open(self.workload_table_csv_path, 'w') as w_f:
+                w_f.write( '\n'.join(workload_table))
+
 def parseopts():
     o = FsDriftOpts()
 
@@ -210,39 +239,12 @@ def parseopts():
 
     o.is_slave = sys.argv[0].endswith('fs-drift-remote.py')
  
-    # validate results of parse
-
-    if len(o.top_directory) < 6:
-        raise FsDriftException(
-            'top directory %s too short, may be system directory' % 
-            o.top_directory)
-
-    if not os.path.isdir(o.top_directory):
-        raise FsDriftException(
-            'top directory %s does not exist, please create it' % 
-            o.top_directory)
-
-    if o.workload_table_csv_path == None:
-        o.workload_table_csv_path = os.path.join(o.top_directory, 'example_workload_table.csv')
-        workload_table = [
-                    'read, 2',
-                    'random_read, 1',
-                    'random_write, 1',
-                    'append, 4',
-                    'delete, 0.1',
-                    'hardlink, 0.01',
-                    'softlink, 0.02',
-                    'truncate, 0.05',
-                    'rename, 1',
-                    'create, 4']
-        with open(o.workload_table_csv_path, 'w') as w_f:
-            w_f.write( '\n'.join(workload_table))
-
     return o
 
 # unit test
 
 if __name__ == "__main__":
     options = parseopts()
+    options.validate()
     print(options)
     print(json.dumps(options.to_json_obj(), indent=2, sort_keys=True))
