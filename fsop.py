@@ -24,6 +24,34 @@ large_prime = 12373
 
 class FSOPCtx:
 
+    opname_to_opcode = {
+         "read":            rq.READ,
+         "random_read":     rq.RANDOM_READ,
+         "create":          rq.CREATE,
+         "random_write":    rq.RANDOM_WRITE,
+         "append":          rq.APPEND,
+         "softlink":        rq.SOFTLINK,
+         "hardlink":        rq.HARDLINK,
+         "delete":          rq.DELETE,
+         "rename":          rq.RENAME,
+         "truncate":        rq.TRUNCATE,
+         "remount":         rq.REMOUNT
+    }
+    
+    opcode_to_opname = {
+         rq.READ:           "read",
+         rq.RANDOM_READ:    "random_read",
+         rq.CREATE:         "create",
+         rq.RANDOM_WRITE:   "random_write",
+         rq.APPEND:         "append",
+         rq.SOFTLINK:       "softlink",
+         rq.HARDLINK:       "hardlink",
+         rq.DELETE:         "delete",
+         rq.RENAME:         "rename",
+         rq.TRUNCATE:       "truncate",
+         rq.REMOUNT:        "remount"
+    }
+
     # for gaussian distribution with moving mean, we need to remember simulated time
     # so we can pick up where we left off with moving mean
 
@@ -43,6 +71,25 @@ class FSOPCtx:
         # most recent center
         self.last_center = 0
         self.simulated_time = FSOPCtx.SIMULATED_TIME_UNDEFINED  # initialized later
+        self._rqmap = {
+            rq.READ:        self.op_read,
+            rq.RANDOM_READ: self.op_random_read,
+            rq.CREATE:      self.op_create,
+            rq.RANDOM_WRITE: self.op_random_write,
+            rq.APPEND:      self.op_append,
+            rq.SOFTLINK:    self.op_softlink,
+            rq.HARDLINK:    self.op_hardlink,
+            rq.DELETE:      self.op_delete,
+            rq.RENAME:      self.op_rename,
+            rq.TRUNCATE:    self.op_truncate,
+            rq.REMOUNT:     self.op_remount,
+            }
+
+    # clients invoke functions by workload request type code
+    # instead of by function name, using this:
+
+    def invoke_rq(self, rqcode):
+        return self._rqmap[rqcode]()
 
     def scallerr(self, msg, fn, syscall_exception):
         err = syscall_exception.errno
@@ -536,26 +583,6 @@ class FSOPCtx:
             c.e_could_not_mount += 1
             return
 
-    # this is taking advantage of python closures to
-    # allow passing class members as functions to call
-    # without calling from a instance of that class
-
-    def gen_rq_map(self):
-        
-        return {
-         rq.READ: (self.op_read, "read"),
-         rq.RANDOM_READ: (self.op_random_read, "random_read"),
-         rq.CREATE: (self.op_create, "create"),
-         rq.RANDOM_WRITE: (self.op_random_write, "random_write"),
-         rq.APPEND: (self.op_append, "append"),
-         rq.SOFTLINK: (self.op_softlink, "softlink"),
-         rq.HARDLINK: (self.op_hardlink, "hardlink"),
-         rq.DELETE: (self.op_delete, "delete"),
-         rq.RENAME: (self.op_rename, "rename"),
-         rq.TRUNCATE: (self.op_truncate, "truncate"),
-         rq.REMOUNT: (self.op_remount, "remount")
-         }
-
 
 # unit test
 
@@ -598,13 +625,10 @@ if __name__ == "__main__":
     #assert(rc != OK)
 
     # simulate a mixed-workload run
-    rq_map = ctx.gen_rq_map()
-    oplist = rq_map.keys()
     for j in range(0, 200):
-        for k in oplist:
-            (func, name) = rq_map[oplist[k]]
-            if oplist[k] != rq.REMOUNT:
-                rc = func()
+        for k in FSOPCtx.opcode_to_opname.keys():
+            if k != rq.REMOUNT:
+                rc = ctx.invoke_rq(k)
             assert(rc == OK)
 
     # output FSOPCounter object
