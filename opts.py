@@ -22,7 +22,7 @@ class FsDriftOpts:
         self.threads = 2 #  number of subprocesses per host
         self.is_slave = False
         self.duration = 1
-        self.max_files = 20
+        self.max_files = 200
         self.max_file_size_kb = 10
         self.max_record_size_kb = 1
         self.max_random_reads = 2
@@ -128,7 +128,7 @@ def parseopts():
             default=o.top_directory)
     add('--output-json', help='output file containing results in JSON format',
             default=None)
-    add('--workload-table', help='CSV file containing workload mix',
+    add('--workload-table', help='.csv file containing workload mix',
             default=None)
     add('--duration', help='seconds to run test',
             type=positive_integer, 
