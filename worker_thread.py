@@ -525,7 +525,7 @@ if __name__ == '__main__':
             with open('/tmp/weights.csv', 'w') as w_f:
                 w_f.write( '\n'.join(Test.workload_table))
             self.params = opts.parseopts()
-            self.params.duration = 3
+            self.params.duration = 2
             self.params.workload_table_csv_path = '/tmp/weights.csv'
     
         def file_size(self, fn):
