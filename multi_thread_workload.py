@@ -61,6 +61,8 @@ def host_result_filename(params, result_host):
 def run_multi_thread_workload(prm):
 
     host = prm.as_host
+    if host == None:
+        host = 'localhost'
     prm_slave = (prm.host_set != [])
     # FIXME: get coherent logging level interface
     verbose = os.getenv('LOGLEVEL_DEBUG' != None)
@@ -71,7 +73,7 @@ def run_multi_thread_workload(prm):
 
     thread_list = create_worker_list(prm)
     my_host_invoke = thread_list[0].invoke
-    my_log = fsd_log.start_log('fsd.%s.master' % host)
+    my_log = fsd_log.start_log('%s.master' % host)
     my_log.debug(prm)
 
     # start threads, wait for them to reach starting gate
