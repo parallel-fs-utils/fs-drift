@@ -92,10 +92,13 @@ class FSOPCtx:
         return self._rqmap[rqcode]()
 
     def scallerr(self, msg, fn, syscall_exception):
-        err = syscall_exception.errno
-        self.log.error('%s: %s syscall errno %d(%s)' % (
-            msg, fn, err, os.strerror(err)))
         self.log.exception(syscall_exception)
+        try:
+            err = syscall_exception.errno
+            self.log.error('%s: %s syscall errno %d(%s)' % (
+                            msg, fn, err, os.strerror(err)))
+        except Exception:
+            self.log.error('non-OSError exception %s: %s' % (msg, fn))
 
     def gen_random_dirname(self, file_index):
         subdirs_per_dir = self.params.subdirs_per_dir
