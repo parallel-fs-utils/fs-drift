@@ -39,6 +39,16 @@ def non_negative_integer(nonneg_str):
         raise TypeExc( 'non-negative integer value expected')
     return i
 
+def bitmask(int_or_hex_str):
+    try:
+        i = int(int_or_hex_str)
+    except ValueError:
+        try:
+            i = int(int_or_hex_str, 16)
+        except ValueError:
+            raise TypeExc('positive integer or hex string expected')
+    return i
+
 def positive_float(pos_float_str):
     f = float(pos_float_str)
     if f <= 0.0:
