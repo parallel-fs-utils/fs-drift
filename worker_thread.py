@@ -150,7 +150,7 @@ class FsDriftWorkload:
         # then we reload verbosity from this file
         # so you can turn on/off debug logging in different areas 
         # in the middle of a run
-        self.verbosity = 0
+        self.verbosity = self.params.verbosity
         self.verbosity_last_checked = 0
         self.verbosity_poll_rate = 1
         self.pause_sec = self.params.pause_between_ops / MICROSEC_PER_SEC
@@ -170,17 +170,7 @@ class FsDriftWorkload:
     # and cause duplicate log messages in per-invoke log file
 
     def start_log(self):
-        self.log = logging.getLogger(self.tid)
-        if self.log_to_stderr:
-            h = logging.StreamHandler()
-        else:
-            h = logging.FileHandler(self.log_fn())
-        log_format = (' %(asctime)s - %(levelname)s - %(message)s')
-        formatter = logging.Formatter(log_format)
-        h.setFormatter(formatter)
-        self.log.addHandler(h)
-        self.loglevel = logging.INFO
-        self.log.setLevel(self.loglevel)
+        self.log = fsd_log.start_log('thrd.%s' % self.tid, verbosity = self.verbosity)
         self.log.info('starting log')
 
     # update verbosity if necessary
@@ -201,7 +191,7 @@ class FsDriftWorkload:
                 else:
                     v = int(vstr)
             if self.verbosity & 0x40000000:
-                self.log.debug('read in verbosity 0x%x from %s' % (v, vpath))
+                self.log.info('read in verbosity 0x%x from %s' % (v, vpath))
             if v != self.verbosity:
                 if v != 0:
                     self.log.setLevel(logging.DEBUG)
@@ -428,10 +418,16 @@ class FsDriftWorkload:
 
             x = event.gen_event(normalized_weights)
             name = FSOPCtx.opcode_to_opname[x]
-            if common.verbosity & 0x1:
+            if self.verbosity & 0x1:
                 self.log.debug('event %d name %s' % (x, name))
             self.op_starttime()
-            rc = self.ctx.invoke_rq(x)
+            rc = NOTOK
+            try:
+                rc = self.ctx.invoke_rq(x)
+            except FsDriftException as e:
+                self.log.exception(e)
+            except OSError as e:
+                self.log.exception(e)
             time.sleep(self.params.pause_secs)
             self.op_endtime(name)
             if rc != OK:
