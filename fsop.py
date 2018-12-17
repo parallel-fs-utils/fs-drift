@@ -585,7 +585,8 @@ class FSOPCtx:
         if rc != OK:
             c.e_could_not_mount += 1
             return rc
-	return OK
+        c.have_remounted += 1
+        return OK
 
 
 # unit test
