@@ -3,9 +3,9 @@ import logging
 
 # standardize use of logging module in fs-drift
 
-def start_log(prefix):
+def start_log(prefix, verbosity=0):
     log = logging.getLogger(prefix)
-    if os.getenv('LOGLEVEL_DEBUG') != None:
+    if os.getenv('LOGLEVEL_DEBUG') != None or verbosity != 0:
         log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.INFO)
