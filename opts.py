@@ -8,7 +8,7 @@ import common
 from common import OK, NOTOK, FsDriftException
 import argparse
 import parser_data_types
-from parser_data_types import boolean, positive_integer, non_negative_integer
+from parser_data_types import boolean, positive_integer, non_negative_integer, bitmask
 from parser_data_types import positive_float, non_negative_float, positive_percentage
 from parser_data_types import host_set, file_access_distrib, directory_list
 
@@ -48,6 +48,7 @@ class FsDriftOpts:
         # not settable
         self.is_slave = False
         self.as_host = None  # filled in by worker host
+        self.verbosity = 0
 
     def kvtuplelist(self):
         return [
@@ -75,6 +76,7 @@ class FsDriftOpts:
             ('gaussian std. dev.', self.gaussian_stddev),
             ('create stddevs ahead', self.create_stddevs_ahead),
             ('mount command', self.mount_command),
+            ('verbosity', self.verbosity),
             ('pause path', self.pause_path),
             ]
 
@@ -193,6 +195,10 @@ def parseopts():
             default=o.create_stddevs_ahead)
     add('--mount-command', help='command to mount the filesystem containing top directory',
             default=o.mount_command)
+    add('--verbosity', help='decimal or hexadecimal integer bitmask controlling debug logging',
+            type=bitmask,
+            default=o.verbosity)
+
     # parse the command line and update opts
     args = parser.parse_args()
     o.top_directory = args.top
@@ -221,6 +227,7 @@ def parseopts():
     o.gaussian_stddev = args.gaussian_stddev
     o.create_stddevs_ahead = args.create_stddevs_ahead
     o.mount_command = args.mount_command
+    o.verbosity = args.verbosity
 
     # some fields derived from user inputs
 
