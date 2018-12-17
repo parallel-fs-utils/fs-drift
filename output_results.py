@@ -88,6 +88,8 @@ def output_results(params, subprocess_list):
     print('total data = %9.3f GiB' % total_data_gb)
     rslt['cluster-data-GB'] = total_data_gb
 
+    print('remounts = %d' % cluster.have_remounted)
+
     print('elapsed time = %9.3f' % max_elapsed_time)
     rslt['elapsed-time'] = max_elapsed_time
 
