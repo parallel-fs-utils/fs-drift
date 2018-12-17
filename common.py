@@ -60,13 +60,6 @@ def FileAccessDistr2str(v):
     raise FsDriftException(
         'file access distribution must be one of: uniform, gaussian')
 
-# bit mask that allows selective enabling of debug messages
-verbosity = 0
-e = os.getenv("VERBOSITY")
-if e != None:
-    verbosity = int(e)
-    print('verbosity = %u (0x%08x)' % (verbosity, verbosity))
-
 
 # instead of looking up before deletion, do reverse, delete and catch exception
 
