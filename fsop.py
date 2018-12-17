@@ -12,7 +12,7 @@ import subprocess
 
 # my modules
 import common
-from common import rq, FileAccessDistr, FileSizeDistr, verbosity
+from common import rq, FileAccessDistr, FileSizeDistr
 from common import OK, NOTOK, BYTES_PER_KiB, FD_UNDEFINED, FsDriftException
 from fsop_counters import FSOPCounters
 
@@ -138,14 +138,14 @@ class FSOPCtx:
             center = (simulated_time * self.params.mean_index_velocity)
             if is_create:
                 center += (self.params.create_stddevs_ahead * self.params.gaussian_stddev)
-            if verbosity & 0x20:
+            if self.verbosity & 0x20:
                 print('%f = center' % center)
             index_float = numpy.random.normal(
                 loc=center, scale=self.params.gaussian_stddev)
             file_opstr = 'read'
             if is_create:
                 file_opstr = 'create'
-            if verbosity & 0x20:
+            if self.verbosity & 0x20:
                 print('%s gaussian value is %f' % (file_opstr, index_float))
             #index = int(index_float) % max_files_per_dir
             index = int(index_float) % self.params.max_files
