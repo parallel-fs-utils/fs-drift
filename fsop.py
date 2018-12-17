@@ -439,7 +439,7 @@ class FSOPCtx:
         try:
             new_file_size = self.random_file_size()/3
             fd = os.open(fn, os.O_RDWR)
-            s = os.ftruncate(fd, new_file_size)
+            os.ftruncate(fd, new_file_size)
             c.have_truncated += 1
         except OSError as e:
             if e.errno == errno.ENOENT:
