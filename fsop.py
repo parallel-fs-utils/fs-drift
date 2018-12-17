@@ -142,14 +142,14 @@ class FSOPCtx:
             if is_create:
                 center += (self.params.create_stddevs_ahead * self.params.gaussian_stddev)
             if self.verbosity & 0x20:
-                print('%f = center' % center)
+                self.log.debug('%f = center' % center)
             index_float = numpy.random.normal(
                 loc=center, scale=self.params.gaussian_stddev)
             file_opstr = 'read'
             if is_create:
                 file_opstr = 'create'
             if self.verbosity & 0x20:
-                print('%s gaussian value is %f' % (file_opstr, index_float))
+                self.log.debug('%s gaussian value is %f' % (file_opstr, index_float))
             #index = int(index_float) % max_files_per_dir
             index = int(index_float) % self.params.max_files
             last_center = center
@@ -270,8 +270,8 @@ class FSOPCtx:
                     count = len(bytebuf)
                     if count < 1:
                         break
-                    if verbosity & 0x2000:
-                        print('randread recsz %u count %u' % (recsz, count))
+                    if self.verbosity & 0x2000:
+                        self.log.debug('randread recsz %u count %u' % (recsz, count))
                     total_count += count
                     c.randread_bytes += count
                 total_read_reqs += 1
@@ -364,8 +364,8 @@ class FSOPCtx:
                 if recsz + total_appended > target_sz:
                     recsz = target_sz - total_appended
                 assert recsz > 0
-                if verbosity & 0x8000:
-                    print('append rsz %u' % (recsz))
+                if self.verbosity & 0x8000:
+                    self.log.debug('append rsz %u' % (recsz))
                 count = os.write(fd, self.buf[0:recsz])
                 assert count == recsz
                 total_appended += count
@@ -408,8 +408,8 @@ class FSOPCtx:
                     if recsz + total_count > wrsz:
                         recsz = wrsz - total_count
                     count = os.write(fd, self.buf[0:recsz])
-                    if verbosity & 0x20000:
-                        print('randwrite count=%u recsz=%u' % (count, recsz))
+                    if self.verbosity & 0x20000:
+                        self.log.debug('randwrite count=%u recsz=%u' % (count, recsz))
                     assert count == recsz
                     total_count += count
                 total_write_reqs += 1
