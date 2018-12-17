@@ -291,7 +291,7 @@ class FSOPCtx:
         c = self.ctrs
         percent = random.randint(0, 100)
         if percent > self.params.fsync_probability_pct + self.params.fdatasync_probability_pct:
-            return
+            return OK
         if percent > self.params.fsync_probability_pct:
             c.fdatasyncs += 1
             rc = os.fdatasync(fd)
