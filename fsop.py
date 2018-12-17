@@ -434,12 +434,12 @@ class FSOPCtx:
         fd = FD_UNDEFINED
         s = OK
         fn = self.gen_random_fn()
-        if verbosity & 0x40000:
-            print('truncate %s' % fn)
+        if self.verbosity & 0x40000:
+            self.log.debug('truncate %s' % fn)
         try:
             new_file_size = self.random_file_size()/3
             fd = os.open(fn, os.O_RDWR)
-            os.ftruncate(fd, new_file_size)
+            s = os.ftruncate(fd, new_file_size)
             c.have_truncated += 1
         except OSError as e:
             if e.errno == errno.ENOENT:
