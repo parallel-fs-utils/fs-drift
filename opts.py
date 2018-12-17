@@ -35,6 +35,7 @@ class FsDriftOpts:
         self.workload_table_csv_path = None
         self.stats_report_interval = 0
         self.pause_between_ops = 100
+        self.pause_secs = self.pause_between_ops / float(common.USEC_PER_SEC)
         self.incompressible = False
         # new parameters related to gaussian filename distribution
         self.rand_distr_type = common.FileAccessDistr.uniform
@@ -213,6 +214,7 @@ def parseopts():
     o.subdirs_per_dir = args.dirs_per_level
     o.incompressible = args.incompressible
     o.pause_between_ops = args.pause_between_ops
+    o.pause_secs = o.pause_between_ops / float(common.USEC_PER_SEC)
     o.response_times = args.response_times
     o.random_distribution = args.random_distribution
     o.mean_index_velocity = args.mean_velocity

@@ -432,6 +432,7 @@ class FsDriftWorkload:
                 self.log.debug('event %d name %s' % (x, name))
             self.op_starttime()
             rc = self.ctx.invoke_rq(x)
+            time.sleep(self.params.pause_secs)
             self.op_endtime(name)
             if rc != OK:
                 self.log.debug("%s returns %d" % (name, rc))
