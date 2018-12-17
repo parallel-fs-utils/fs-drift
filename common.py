@@ -97,7 +97,7 @@ def ensure_dir_exists(dirpath):
         ensure_dir_exists(parent_path)
         try:
             os.mkdir(dirpath)
-        except os.error as e:
+        except OSError as e:
             if e.errno != errno.EEXIST:  # workaround for filesystem bug
                 raise e
     else:
