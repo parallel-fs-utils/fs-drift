@@ -27,7 +27,9 @@ def parse_weights(opts):
                 record = str.split(str.strip(l), ',')
                 if len(record) < 2:
                     continue  # skip blank or partial lines
-                (opname, relweight) = (record[0], record[1])
+                (opname, relweight) = (record[0].strip(), record[1].strip())
+                if opname.startswith('#') or opname == '':
+                    continue
                 try:
                     opcode = FSOPCtx.opname_to_opcode[opname]
                     weights[opcode] = float(relweight)
