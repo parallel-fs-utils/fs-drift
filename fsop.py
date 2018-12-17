@@ -65,7 +65,7 @@ class FSOPCtx:
         self.log = log
         self.buf = random_buffer.gen_buffer(params.max_record_size_kb*BYTES_PER_KiB)
         self.total_dirs = 1
-        self.verbosity = -1
+        self.verbosity = self.params.verbosity 
         for i in range(0, self.params.levels):
             self.total_dirs *= self.params.subdirs_per_dir
         # most recent center
