@@ -224,7 +224,7 @@ class FSOPCtx:
                         (total_read, rdsz, count))
                 total_read += len(bytes)
             c.have_read += 1
-        except os.error as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             else:
@@ -274,7 +274,7 @@ class FSOPCtx:
                 total_read_reqs += 1
                 c.randread_requests += 1
             c.have_randomly_read += 1
-        except os.error as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             else:
@@ -333,7 +333,7 @@ class FSOPCtx:
                 c.write_bytes += count
             rc = self.maybe_fsync(fd)
             c.have_created += 1
-        except os.error as e:
+        except OSError as e:
             if e.errno == errno.EEXIST:
                 c.e_already_exists += 1
             elif e.errno == errno.ENOSPC:
@@ -370,7 +370,7 @@ class FSOPCtx:
                 c.write_bytes += count
             rc = self.maybe_fsync(fd)
             c.have_appended += 1
-        except os.error as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC:
@@ -414,7 +414,7 @@ class FSOPCtx:
                 c.randwrite_bytes += total_count
                 rc = self.maybe_fsync(fd)
             c.have_randomly_written += 1
-        except os.error as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC:
@@ -460,7 +460,7 @@ class FSOPCtx:
         try:
             rc = os.symlink(fn, fn2)
             c.have_softlinked += 1
-        except os.error as e:
+        except OSError as e:
             if e.errno == errno.EEXIST:
                 c.e_already_exists += 1
                 return OK
@@ -484,7 +484,7 @@ class FSOPCtx:
         try:
             rc = os.link(fn, fn2)
             c.have_hardlinked += 1
-        except os.error as e:
+        except OSError as e:
             if e.errno == errno.EEXIST:
                 c.e_already_exists += 1
                 return OK
@@ -538,7 +538,7 @@ class FSOPCtx:
         try:
             os.rename(fn, fn2)
             c.have_renamed += 1
-        except os.error as e:
+        except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
                 return OK
