@@ -559,7 +559,7 @@ class FSOPCtx:
         if self.verbosity & 0x40000:
             self.log.debug('remount: %s' % self.params.mount_command)
         mountpoint = self.params.mount_command.split()[-1].strip()
-        if not self.params.topdir.startswith(mountpoint):
+        if not self.params.top_directory.startswith(mountpoint):
             raise common.FsDriftException(
                     'mountpoint %s does not contain topdir %s' % 
                     (mountpoint, topdir))
@@ -574,14 +574,15 @@ class FSOPCtx:
             c.e_not_mounted += 1
         else:
             os.chdir('/tmp')
-            rc = os.system('umount %s' % self.params.mountpoint)
+            rc = os.system('umount %s' % mountpoint)
             if rc != OK:
                 c.e_could_not_unmount += 1
-                return
+                return rc
         rc = os.system(self.params.mount_command)
         if rc != OK:
             c.e_could_not_mount += 1
-            return
+            return rc
+	return OK
 
 
 # unit test

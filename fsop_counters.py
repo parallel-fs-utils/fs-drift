@@ -37,6 +37,7 @@ class FSOPCounters:
         self.e_no_inode_space = 0
         self.e_no_space = 0
         self.e_not_mounted = 0
+        self.e_could_not_unmount = 0
         self.e_could_not_mount = 0
 
 
@@ -78,6 +79,7 @@ class FSOPCounters:
         total.e_no_inode_space      += self.e_no_inode_space
         total.e_no_space            += self.e_no_space
         total.e_not_mounted         += self.e_not_mounted
+        total.e_could_not_unmount   += self.e_could_not_unmount
         total.e_could_not_mount     += self.e_could_not_mount
 
     # next 3 functions summarize activity
@@ -127,6 +129,7 @@ class FSOPCounters:
             ('e_no_inode_space', self.e_no_inode_space),
             ('e_no_space', self.e_no_space),
             ('e_not_mounted', self.e_not_mounted),
+            ('e_could_not_unmount', self.e_could_not_unmount),
             ('e_could_not_mount', self.e_could_not_mount)
             ]
 
