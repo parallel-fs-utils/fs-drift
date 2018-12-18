@@ -156,7 +156,7 @@ last parameter in the command.  This allows fs-drift to do the unmount operation
 - logging - is a bit chaotic, done differently in different places, too many log files,
 should be simple and user-controllable while the test is running.
 
-- make remounts work
+- make remounts work with multiple threads on a host
 
 - allow mountpoint per process 
 -- to simulate large client populations
