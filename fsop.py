@@ -231,7 +231,7 @@ class FSOPCtx:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             else:
-                self.scallerr('close', filename, e)
+                self.scallerr('close', fn, e)
                 s = NOTOK
         self.try_to_close(fd, fn)
         return s
