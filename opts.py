@@ -49,6 +49,7 @@ class FsDriftOpts:
         self.is_slave = False
         self.as_host = None  # filled in by worker host
         self.verbosity = 0
+        self.tolerate_stale_fh = False
 
     def kvtuplelist(self):
         return [
@@ -78,6 +79,7 @@ class FsDriftOpts:
             ('mount command', self.mount_command),
             ('verbosity', self.verbosity),
             ('pause path', self.pause_path),
+            ('tolerate stale file handles', self.tolerate_stale_fh),
             ]
 
     def __str__(self, use_newline=True, indentation='  '):
@@ -195,6 +197,9 @@ def parseopts():
             default=o.create_stddevs_ahead)
     add('--mount-command', help='command to mount the filesystem containing top directory',
             default=o.mount_command)
+    add('--tolerate-stale-file-handles', help='if true, do not throw exception on ESTALE',
+            type=boolean,
+            default=o.tolerate_stale_fh)
     add('--verbosity', help='decimal or hexadecimal integer bitmask controlling debug logging',
             type=bitmask,
             default=o.verbosity)
@@ -227,6 +232,7 @@ def parseopts():
     o.gaussian_stddev = args.gaussian_stddev
     o.create_stddevs_ahead = args.create_stddevs_ahead
     o.mount_command = args.mount_command
+    o.tolerate_stale_fh = args.tolerate_stale_file_handles
     o.verbosity = args.verbosity
 
     # some fields derived from user inputs
