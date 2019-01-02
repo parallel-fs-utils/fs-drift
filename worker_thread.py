@@ -171,7 +171,6 @@ class FsDriftWorkload:
 
     def start_log(self):
         self.log = fsd_log.start_log('thrd.%s' % self.tid, verbosity = self.verbosity)
-        self.log.info('starting log')
 
     # update verbosity if necessary
 
