@@ -99,6 +99,7 @@ class FSOPCtx:
                             msg, fn, err, os.strerror(err)))
         except Exception:
             self.log.error('non-OSError exception %s: %s' % (msg, fn))
+        return NOTOK
 
     def gen_random_dirname(self, file_index):
         subdirs_per_dir = self.params.subdirs_per_dir
@@ -197,13 +198,11 @@ class FSOPCtx:
             try:
                 os.close(closefd)
             except OSError as e:
-                self.scallerr('close', filename, e)
-                return False
-        return True
+                return self.scallerr('close', filename, e)
+        return OK
 
     def op_read(self):
         c = self.ctrs
-        s = OK
         fd = FD_UNDEFINED
         fn = self.gen_random_fn()
         try:
@@ -231,14 +230,12 @@ class FSOPCtx:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             else:
-                self.scallerr('close', fn, e)
-                s = NOTOK
+                return self.scallerr('op_read', fn, e)
         self.try_to_close(fd, fn)
-        return s
+        return OK
 
     def op_random_read(self):
         c = self.ctrs
-        s = OK
         fd = FD_UNDEFINED
         fn = self.gen_random_fn()
         try:
@@ -281,28 +278,25 @@ class FSOPCtx:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             else:
-                self.scallerr('random_read', fn, e)
-                s = NOTOK
+                return self.scallerr('random_read', fn, e)
         self.try_to_close(fd, fn)
-        return s
+        return OK
 
 
     def maybe_fsync(self, fd):
         c = self.ctrs
         percent = random.randint(0, 100)
         if percent > self.params.fsync_probability_pct + self.params.fdatasync_probability_pct:
-            return OK
-        if percent > self.params.fsync_probability_pct:
+            return
+        elif percent > self.params.fsync_probability_pct:
             c.fdatasyncs += 1
-            rc = os.fdatasync(fd)
+            os.fdatasync(fd)
         else:
             c.fsyncs += 1
-            rc = os.fsync(fd)
-        return rc
+            os.fsync(fd)
 
     def op_create(self):
         c = self.ctrs
-        s = OK
         fd = FD_UNDEFINED
         fn = self.gen_random_fn(is_create=True)
         target_sz = self.random_file_size()
@@ -317,8 +311,7 @@ class FSOPCtx:
                     c.e_no_dir_space += 1
                     return OK
                 elif e.errno != errno.EEXIST:
-                    self.scallerr('create', fn, e)
-                    return NOTOK
+                    return self.scallerr('dir create', fn, e)
             c.dirs_created += 1
         try:
             fd = os.open(fn, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
@@ -342,15 +335,13 @@ class FSOPCtx:
             elif e.errno == errno.ENOSPC:
                 c.e_no_inode_space += 1
             else:
-                self.scallerr('create', fn, e)
-                s = NOTOK
+                return self.scallerr('create', fn, e)
         self.try_to_close(fd, fn)
-        return s
+        return OK
 
 
     def op_append(self):
         c = self.ctrs
-        s = OK
         fn = self.gen_random_fn()
         target_sz = self.random_file_size()
         if self.verbosity & 0x8000:
@@ -379,15 +370,13 @@ class FSOPCtx:
             elif e.errno == errno.ENOSPC:
                 c.e_no_space += 1
             else:
-                self.scallerr('append', fn, e)
-                s = NOTOK
+                return self.scallerr('append', fn, e)
         self.try_to_close(fd, fn)
-        return s
+        return OK
 
 
     def op_random_write(self):
         c = self.ctrs
-        s = OK
         fd = FD_UNDEFINED
         fn = self.gen_random_fn()
         try:
@@ -423,10 +412,9 @@ class FSOPCtx:
             elif e.errno == errno.ENOSPC:
                 c.e_no_space += 1
             else:
-                self.scallerr('random write', fn, e)
-                s = NOTOK
+                return self.scallerr('random write', fn, e)
         self.try_to_close(fd, fn)
-        return s
+        return OK
 
 
     def op_truncate(self):
@@ -445,10 +433,9 @@ class FSOPCtx:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             else:
-                self.scallerr('truncate', fn, e)
-                s = NOTOK
+                return self.scallerr('truncate', fn, e)
         self.try_to_close(fd, fn)
-        return s
+        return OK
 
 
     def op_softlink(self):
@@ -466,12 +453,10 @@ class FSOPCtx:
         except OSError as e:
             if e.errno == errno.EEXIST:
                 c.e_already_exists += 1
-                return OK
             elif e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
-                return OK
-            self.scallerr('link', fn, e)
-            return NOTOK
+            else:
+                return self.scallerr('softlink', fn, e)
         return OK
 
 
@@ -490,12 +475,10 @@ class FSOPCtx:
         except OSError as e:
             if e.errno == errno.EEXIST:
                 c.e_already_exists += 1
-                return OK
             elif e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
-                return OK
-            self.scallerr('link', fn, e)
-            return NOTOK
+            else:
+                return self.scallerr('hardlink', fn, e)
         return OK
 
 
@@ -526,9 +509,8 @@ class FSOPCtx:
         except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
-                return OK
-            self.scallerr('delete', fn, e)
-            return NOTOK
+            else:
+                self.scallerr('delete', fn, e)
         return OK
 
 
@@ -544,9 +526,8 @@ class FSOPCtx:
         except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
-                return OK
-            self.scallerr('rename', fn, e)
-            return NOTOK
+            else:
+                return self.scallerr('rename', fn, e)
         return OK
 
 
