@@ -2,178 +2,258 @@
 
 import os
 import os.path
+import json
 import sys
 import common
-from common import rq, file_access_dist, OK, NOTOK
-
-
-def usage(msg):
-    print(msg)
-    print('usage: fs-drift.py [ --option value ]')
-    print('options:')
-    print('-h|--help')
-    print('-t|--top-directory')
-    print('-S|--starting-gun-file')
-    print('-o|--operation-count')
-    print('-d|--duration')
-    print('-f|--max-files')
-    print('-s|--max-file-size-kb')
-    print('-r|--max-record-size-kb')
-    print('-R|--max-random-reads')
-    print('-W|--max-random-writes')
-    print('-Y|--fsyncs')
-    print('-y|--fdatasyncs')
-    print('-T|--response-times')
-    print('-l|--levels')
-    print('-D|--dirs-per-level')
-    print('-w|--workload-table')
-    print('-i|--report-interval')
-    print('-a|--abreviated-stats')
-    print('-+D|--random-distribution')
-    print('-+v|--mean-velocity')
-    print('-+d|--gaussian-stddev')
-    print('-+c|--create_stddevs-ahead')
-    print('-p|--pause_file')
-    sys.exit(NOTOK)
+from common import OK, NOTOK, FsDriftException
+import argparse
+import parser_data_types
+from parser_data_types import boolean, positive_integer, non_negative_integer, bitmask
+from parser_data_types import positive_float, non_negative_float, positive_percentage
+from parser_data_types import host_set, file_access_distrib, directory_list
 
 # command line parameter variables here
 
+class FsDriftOpts:
+    def __init__(self):
+        self.top_directory = '/tmp/foo'
+        self.output_json_path = None  # filled in later
+        self.host_set = [] # default is local test
+        self.threads = 2 #  number of subprocesses per host
+        self.is_slave = False
+        self.duration = 1
+        self.max_files = 200
+        self.max_file_size_kb = 10
+        self.max_record_size_kb = 1
+        self.max_random_reads = 2
+        self.max_random_writes = 2
+        self.fdatasync_probability_pct = 10
+        self.fsync_probability_pct = 20
+        self.levels = 2
+        self.subdirs_per_dir = 3
+        self.rsptimes = False
+        self.workload_table_csv_path = None
+        self.stats_report_interval = 0
+        self.pause_between_ops = 100
+        self.pause_secs = self.pause_between_ops / float(common.USEC_PER_SEC)
+        self.incompressible = False
+        # new parameters related to gaussian filename distribution
+        self.rand_distr_type = common.FileAccessDistr.uniform
+        self.mean_index_velocity = 0.0  # default is a fixed mean for the distribution
+        self.gaussian_stddev = 1000.0  # just a guess, means most of accesses within 1000 files?
+        # just a guess, most files will be created before they are read
+        self.create_stddevs_ahead = 3.0
+        self.drift_time = -1
+        self.mount_command = None
+        # not settable
+        self.is_slave = False
+        self.as_host = None  # filled in by worker host
+        self.verbosity = 0
 
-starting_gun_file = None
-top_directory = '/tmp/foo'
-opcount = 0
-duration = 1
-max_files = 20
-max_file_size_kb = 10
-max_record_size_kb = 1
-max_random_reads = 2
-max_random_writes = 2
-fdatasync_probability_pct = 10
-fsync_probability_pct = 20
-short_stats = False
-levels = 2
-dirs_per_level = 3
-rsptimes = False
-workload_table_filename = None
-stats_report_interval = 0
-# new parameters related to gaussian filename distribution
-rand_distr_type = file_access_dist.UNIFORM
-rand_distr_type_str = 'uniform'
-mean_index_velocity = 0.0  # default is a fixed mean for the distribution
-gaussian_stddev = 1000.0  # just a guess, means most of accesses within 1000 files?
-# just a guess, most files will be created before they are read
-create_stddevs_ahead = 3.0
-drift_time = -1
-pause_file = '/var/tmp/pause'
+    def kvtuplelist(self):
+        return [
+            ('top directory', self.top_directory),
+            ('JSON output file', self.output_json_path),
+            ('save response times?', self.rsptimes),
+            ('stats report interval', self.stats_report_interval),
+            ('workload table csv path', self.workload_table_csv_path),
+            ('host set', ','.join(self.host_set)),
+            ('threads', self.threads),
+            ('test duration', self.duration),
+            ('maximum file count', self.max_files),
+            ('maximum file size (KB)', self.max_file_size_kb),
+            ('maximum record size (KB)', self.max_record_size_kb),
+            ('maximum random reads per op', self.max_random_reads),
+            ('maximum random writes per op', self.max_random_writes),
+            ('fsync probability pct', self.fsync_probability_pct),
+            ('fdatasync probability pct', self.fdatasync_probability_pct),
+            ('directory levels', self.levels),
+            ('subdirectories per directory', self.subdirs_per_dir),
+            ('incompressible data', self.incompressible),
+            ('pause between opts (usec)', self.pause_between_ops),
+            ('distribution', common.FileAccessDistr2str(self.random_distribution)),
+            ('mean index velocity', self.mean_index_velocity),
+            ('gaussian std. dev.', self.gaussian_stddev),
+            ('create stddevs ahead', self.create_stddevs_ahead),
+            ('mount command', self.mount_command),
+            ('verbosity', self.verbosity),
+            ('pause path', self.pause_path),
+            ]
 
+    def __str__(self, use_newline=True, indentation='  '):
+        kvlist = [ '%s = %s' % (k, str(v)) for (k, v) in self.kvtuplelist() ]
+        if use_newline:
+            return ('\n%s' % indentation).join(kvlist)
+        else:
+            return ' , '.join(kvlist)
+
+    def to_json_obj(self):
+        d = {}
+        for (k, v) in self.kvtuplelist():
+            d[k] = v
+        return d
+
+    def validate(self):
+
+        if len(self.top_directory) < 6:
+            raise FsDriftException(
+                'top directory %s too short, may be system directory' % 
+                self.top_directory)
+
+        if not os.path.isdir(self.top_directory):
+            raise FsDriftException(
+                'top directory %s does not exist, so please create it' %
+                self.top_directory)
+
+        if self.workload_table_csv_path == None:
+            self.workload_table_csv_path = os.path.join(self.top_directory, 
+                                                        'example_workload_table.csv')
+            workload_table = [
+                    'read, 2',
+                    'random_read, 1',
+                    'random_write, 1',
+                    'append, 4',
+                    'delete, 0.1',
+                    'hardlink, 0.01',
+                    'softlink, 0.02',
+                    'truncate, 0.05',
+                    'rename, 1',
+                    'create, 4']
+            with open(self.workload_table_csv_path, 'w') as w_f:
+                w_f.write( '\n'.join(workload_table))
 
 def parseopts():
-    global top_directory, starting_gun_file, opcount, max_files, max_file_size_kb, duration, short_stats
-    global max_record_size_kb, max_random_reads, max_random_writes, rsptimes
-    global fsync_probability_pct, fdatasync_probability_pct, workload_table_filename
-    global stats_report_interval, levels, dirs_per_level
-    global rand_distr_type, rand_distr_type_str, mean_index_velocity, gaussian_stddev, create_stddevs_ahead
-    if len(sys.argv) % 2 != 1:
-        usage('all options must have a value')
-    try:
-        ix = 1
-        while ix < len(sys.argv):
-            nm = sys.argv[ix]
-            val = sys.argv[ix+1]
-            ix += 2
-            if nm == '--help' or nm == '-h':
-                usage()
-            elif nm == '--starting-gun-file' or nm == '-S':
-                starting_gun_file = os.path.join(top_directory, val)
-            elif nm == '--top-directory' or nm == '-t':
-                top_directory = val
-            elif nm == '--workload-table' or nm == '-w':
-                workload_table_filename = val
-            elif nm == '--operation-count' or nm == '-o':
-                opcount = int(val)
-            elif nm == '--duration' or nm == '-d':
-                duration = int(val)
-            elif nm == '--max-files' or nm == '-f':
-                max_files = int(val)
-            elif nm == '--max-file-size-kb' or nm == '-s':
-                max_file_size_kb = int(val)
-            elif nm == '--max-record-size-kb' or nm == '-r':
-                max_record_size_kb = int(val)
-            elif nm == '--max-random-reads' or nm == '-R':
-                max_random_reads = int(val)
-            elif nm == '--max-random-writes' or nm == '-W':
-                max_random_writes = int(val)
-            elif nm == '--fdatasync_pct' or nm == '-y':
-                fdatasync_probability_pct = int(val)
-            elif nm == '--fsync_pct' or nm == '-Y':
-                fsync_probability_pct = int(val)
-            elif nm == '--levels' or nm == '-l':
-                levels = int(val)
-            elif nm == '--dirs-per-level' or nm == '-D':
-                dirs_per_level = int(val)
-            elif nm == '--short-stats' or nm == '-a':
-                short_stats = True
-            elif nm == '--report-interval' or nm == '-i':
-                stats_report_interval = int(val)
-            elif nm == '--response-times' or nm == '-T':
-                v = val.lower()
-                rsptimes = (v == 'true' or v == 'yes' or v == 'on')
-            elif nm == '--random-distribution' or nm == '-+D':
-                v = val.lower()
-                if v == 'uniform':
-                    rand_distr_type = file_access_dist.UNIFORM
-                elif v == 'gaussian':
-                    rand_distr_type = file_access_dist.GAUSSIAN
-                else:
-                    usage('random distribution must be "uniform" or "gaussian"')
-                rand_distr_type_str = v
-            elif nm == '--mean-velocity' or nm == '-+v':
-                mean_index_velocity = float(val)
-            elif nm == '--gaussian-stddev' or nm == '-+d':
-                gaussian_stddev = float(val)
-            elif nm == '--create_stddevs-ahead' or nm == '-+c':
-                create_stddevs_ahead = float(val)
-            elif nm == '--pause_file' or nm == '-p':
-                pause_file = val
-            else:
-                usage('syntax error for option %s value %s' % (nm, val))
-    except Exception as e:
-        usage(str(e))
-    print('')
-    print((
-        '%20s = top directory\n'
-        '%20s = starting gun file\n'
-        '%11s%9d = operation count\n'
-        '%11s%9d = duration\n'
-        '%11s%9d = maximum files\n'
-        '%11s%9d = maximum file size (KB)\n'
-        '%11s%9d = maximum record size (KB)\n'
-        '%11s%9d = maximum random reads\n'
-        '%11s%9d = maximum random writes\n'
-        '%11s%9d = fdatasync percentage\n'
-        '%11s%9d = fsync percentage\n'
-        '%11s%9d = directory levels\n'
-        '%11s%9d = directories per level\n'
-        '%20s = filename random distribution\n'
-        '%11s%9.1f = mean index velocity\n'
-        '%11s%9.1f = gaussian stddev\n'
-        '%11s%9.1f = create stddevs ahead\n'
-        '%20s = save response times\n'
-        % (top_directory, str(starting_gun_file), '', opcount, '', duration, '', max_files, '', max_file_size_kb,
-           '', max_record_size_kb, '', max_random_reads, '', max_random_writes,
-           '', fdatasync_probability_pct, '', fsync_probability_pct,
-           '', levels, '', dirs_per_level,
-           rand_distr_type_str, '', mean_index_velocity, '', gaussian_stddev, '', create_stddevs_ahead,
-           str(rsptimes))))
-    if workload_table_filename != None:
-        print('%20s = workload table filename' % workload_table_filename)
-    if stats_report_interval > 0:
-        print('%11s%9d = statistics report intervalpercentage' % (
-            '', stats_report_interval))
-    if (duration == 1):
-        print('do "python fs-drift.py --help" for list of command line parameters')
-    sys.stdout.flush()
+    o = FsDriftOpts()
 
+    parser = argparse.ArgumentParser(description='parse fs-drift parameters')
+    add = parser.add_argument
+    add('--top', help='directory containing all file accesses',
+            default=o.top_directory)
+    add('--output-json', help='output file containing results in JSON format',
+            default=None)
+    add('--workload-table', help='.csv file containing workload mix',
+            default=None)
+    add('--duration', help='seconds to run test',
+            type=positive_integer, 
+            default=o.duration)
+    add('--host-set', help='comma-delimited list of host names/ips',
+            type=host_set,
+            default=o.host_set)
+    add('--threads', help='number of subprocesses per host',
+            type=positive_integer,
+            default=o.threads)
+    add('--max-files', help='maximum number of files to access',
+            type=positive_integer, 
+            default=o.max_files)
+    add('--max-file-size-kb', help='maximum file size in KB',
+            type=positive_integer, 
+            default=o.max_file_size_kb)
+    add('--pause-between-ops', help='delay between ops in microsec',
+            type=non_negative_integer,
+            default=o.pause_between_ops)
+    add('--max-record-size-kb', help='maximum read/write size in KB',
+            type=positive_integer, 
+            default=o.max_record_size_kb)
+    add('--max-random-reads', help='maximum consecutive random reads',
+            type=positive_integer, 
+            default=o.max_random_reads)
+    add('--max-random-writes', help='maximum consecutive random writes',
+            type=positive_integer, 
+            default=o.max_random_writes)
+    add('--fdatasync-pct', help='probability of fdatasync after write',
+            type=positive_percentage, 
+            default=o.fdatasync_probability_pct)
+    add('--fsync-pct', help='probability of fsync after write',
+            type=positive_percentage, 
+            default=o.fsync_probability_pct)
+    add('--levels', help='number of directory levels in tree',
+            type=non_negative_integer, 
+            default=o.levels)
+    add('--dirs-per-level', help='number of subdirectories per directory',
+            type=non_negative_integer,
+            default=o.subdirs_per_dir)
+    add('--report-interval', help='seconds between counter output',
+            type=positive_integer,
+            default=o.stats_report_interval)
+    add('--response-times', help='if True then save response times to CSV file',
+            type=boolean, 
+            default=o.rsptimes)
+    add('--incompressible', help='if True then write incompressible data',
+            type=boolean,
+            default=o.incompressible)
+    add('--random-distribution', help='either "uniform" or "gaussian"',
+            type=file_access_distrib, 
+            default=common.FileAccessDistr.uniform)
+    add('--mean-velocity', help='rate at which mean advances through files',
+            type=float, 
+            default=o.mean_index_velocity)
+    add('--gaussian-stddev', help='std. dev. of file number',
+            type=float, 
+            default=o.gaussian_stddev)
+    add('--create-stddevs-ahead', help='file creation ahead of other opts by this many stddevs',
+            type=float, 
+            default=o.create_stddevs_ahead)
+    add('--mount-command', help='command to mount the filesystem containing top directory',
+            default=o.mount_command)
+    add('--verbosity', help='decimal or hexadecimal integer bitmask controlling debug logging',
+            type=bitmask,
+            default=o.verbosity)
+
+    # parse the command line and update opts
+    args = parser.parse_args()
+    o.top_directory = args.top
+    o.output_json_path = args.output_json
+    o.rsptimes = args.response_times
+    o.host_set = args.host_set
+    o.threads = args.threads
+    o.report_interval = args.report_interval
+    o.workload_table_csv_path = args.workload_table
+    o.duration = args.duration
+    o.max_files = args.max_files
+    o.max_file_size_kb = args.max_file_size_kb
+    o.max_record_size_kb = args.max_record_size_kb
+    o.max_random_reads = args.max_random_reads
+    o.max_random_writes = args.max_random_writes
+    o.fdatasync_probability_pct = args.fdatasync_pct
+    o.fsync_probability_pct = args.fsync_pct
+    o.levels = args.levels
+    o.subdirs_per_dir = args.dirs_per_level
+    o.incompressible = args.incompressible
+    o.pause_between_ops = args.pause_between_ops
+    o.pause_secs = o.pause_between_ops / float(common.USEC_PER_SEC)
+    o.response_times = args.response_times
+    o.random_distribution = args.random_distribution
+    o.mean_index_velocity = args.mean_velocity
+    o.gaussian_stddev = args.gaussian_stddev
+    o.create_stddevs_ahead = args.create_stddevs_ahead
+    o.mount_command = args.mount_command
+    o.verbosity = args.verbosity
+
+    # some fields derived from user inputs
+
+    o.network_shared_path = os.path.join(o.top_directory, 'network-shared')
+
+    nsjoin = lambda fn : os.path.join(o.network_shared_path, fn)
+    o.starting_gun_path     = nsjoin('starting-gun.tmp')
+    o.stop_file_path        = nsjoin('stop-file.tmp')
+    o.param_pickle_path     = nsjoin('params.pickle')
+    o.rsptime_path          = nsjoin('host-%s_thrd-%s_rsptimes.csv')
+    o.abort_path            = nsjoin('abort.tmp')
+    o.pause_path            = nsjoin('pause.tmp')
+    o.checkerflag_path      = nsjoin('checkered_flag.tmp')
+
+    o.remote_pgm_dir = os.path.dirname(sys.argv[0])
+    if o.remote_pgm_dir == '.':
+        o.remote_pgm_dir = os.getcwd()
+
+    o.is_slave = sys.argv[0].endswith('fs-drift-remote.py')
+ 
+    return o
+
+# unit test
 
 if __name__ == "__main__":
-    parseopts()
+    options = parseopts()
+    options.validate()
+    print(options)
+    print(json.dumps(options.to_json_obj(), indent=2, sort_keys=True))
