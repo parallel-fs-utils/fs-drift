@@ -171,4 +171,3 @@ should be simple and user-controllable while the test is running.
 - compression control - want to be able to specify buffers with different levels of compressibility
 
 - elastic search - import JSON results into Elastic Search so we can visualize results in Grafana
-- 
