@@ -229,6 +229,9 @@ class FSOPCtx:
         except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
             else:
                 return self.scallerr('op_read', fn, e)
         self.try_to_close(fd, fn)
@@ -277,6 +280,9 @@ class FSOPCtx:
         except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
             else:
                 return self.scallerr('random_read', fn, e)
         self.try_to_close(fd, fn)
@@ -334,6 +340,9 @@ class FSOPCtx:
                 c.e_already_exists += 1
             elif e.errno == errno.ENOSPC:
                 c.e_no_inode_space += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
             else:
                 return self.scallerr('create', fn, e)
         self.try_to_close(fd, fn)
@@ -369,6 +378,9 @@ class FSOPCtx:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC:
                 c.e_no_space += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
             else:
                 return self.scallerr('append', fn, e)
         self.try_to_close(fd, fn)
@@ -411,6 +423,9 @@ class FSOPCtx:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC:
                 c.e_no_space += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
             else:
                 return self.scallerr('random write', fn, e)
         self.try_to_close(fd, fn)
@@ -432,6 +447,9 @@ class FSOPCtx:
         except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
             else:
                 return self.scallerr('truncate', fn, e)
         self.try_to_close(fd, fn)
@@ -455,6 +473,9 @@ class FSOPCtx:
                 c.e_already_exists += 1
             elif e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
             else:
                 return self.scallerr('softlink', fn, e)
         return OK
@@ -477,6 +498,9 @@ class FSOPCtx:
                 c.e_already_exists += 1
             elif e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
             else:
                 return self.scallerr('hardlink', fn, e)
         return OK
@@ -509,6 +533,9 @@ class FSOPCtx:
         except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
             else:
                 self.scallerr('delete', fn, e)
         return OK
@@ -526,6 +553,11 @@ class FSOPCtx:
         except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
+            elif e.errno == errno.EEXIST:
+                c.e_already_exists += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
             else:
                 return self.scallerr('rename', fn, e)
         return OK
