@@ -6,13 +6,12 @@ from fsop_counters import FSOPCounters
 from common import FsDriftException, OK
 from common import KiB_PER_GiB, BYTES_PER_KiB, MiB_PER_GiB, BYTES_PER_MiB
 
-
-def print_stats(start_time, total_errors, fsop_ctrs):
-    print('')
-    print('elapsed time: %9.1f' % (time.time() - start_time))
-    print('%9u = total errors' % total_errors)
-    print(json.dumps(fsop_ctrs.json_dict(), indent=4))
-    sys.stdout.flush()
+def output_thread_counters(outfile, start_time, total_errors, fsop_ctrs):
+    jsondict = fsop_ctrs.json_dict()
+    jsondict['elapsed-time'] = '%9.1f' % (time.time() - start_time)
+    jsondict['total-errors'] = '%9u' % total_errors
+    outfile.write(json.dumps(jsondict, indent=4))
+    outfile.flush()
 
 def output_results(params, subprocess_list):
     cluster = FSOPCounters()

@@ -44,6 +44,7 @@ from fsop import FSOPCtx
 from fsop_counters import FSOPCounters
 import fsd_log
 from sync_files import write_pickle, read_pickle
+import output_results
 
 # process exit status for success and failure
 OK = 0
@@ -118,6 +119,9 @@ class FsDriftWorkload:
         # will be initialized later with thread-safe python logging object
         self.log = None
 
+        # counter output file so we can watch evolution of system over time
+        self.counter_file = None
+
         # buffer for reads and writes will be here
         self.buf = None
 
@@ -129,17 +133,6 @@ class FsDriftWorkload:
         self.randstate = random.Random()
 
         self.total_threads = len(self.params.host_set) * self.params.threads
-
-        # reset object state variables
-
-        self.reset()
-
-    # convert object to string for logging, etc.
-
-    # if you want to use the same instance for multiple tests
-    # call reset() method between tests
-
-    def reset(self):
 
         # results returned in variables below
         self.abort = False
@@ -156,9 +149,9 @@ class FsDriftWorkload:
         self.pause_sec = self.params.pause_between_ops / MICROSEC_PER_SEC
 
         # to measure per-thread elapsed time
-        self.end_time = 0.0
-        self.start_time = 0.0
-        self.elapsed_time = 0.0
+        self.end_time = -1.0
+        self.start_time = -1.0
+        self.elapsed_time = -1.0
         # to measure file operation response times
         self.op_start_time = None
         self.rsptimes = []
@@ -207,15 +200,6 @@ class FsDriftWorkload:
             if e.errno != errno.ENOENT:
                 self.log.exception(e)
                 raise e
-
-    # indicate start of an operation
-
-    def op_starttime(self, starttime=None):
-        if self.params.rsptimes:
-            if not starttime:
-                self.op_start_time = time.time()
-            else:
-                self.op_start_time = starttime
 
     # indicate end of an operation,
     # this appends the elapsed time of the operation to .rsptimes array
@@ -383,20 +367,25 @@ class FsDriftWorkload:
         # retrieve params from pickle file so that 
         # remote workload generators can read them
 
+        if self.params.stats_report_interval > 0:
+            per_thread_ctr_fn = 'counters.%s.%s.json' % (self.tid, self.onhost)
+            counter_file_path = os.path.join(self.params.network_shared_path, per_thread_ctr_fn)
+            self.counter_file = open(counter_file_path, 'w')
+
         os.chdir(self.params.top_directory)
 
+        event_count = 0
+        total_errors = 0
         op = 0
-        last_stat_time = time.time()
-        last_drift_time = time.time()
         stop_file = self.params.stop_file_path
+        weights = event.parse_weights(self.params)
+        normalized_weights = event.normalize_weights(weights)
 
         self.wait_for_gate()
 
         self.start_time = time.time()
-        event_count = 0
-        total_errors = 0
-        weights = event.parse_weights(self.params)
-        normalized_weights = event.normalize_weights(weights)
+        last_stat_time = self.start_time
+        last_drift_time = self.start_time
 
         try:
           while True:
@@ -419,7 +408,7 @@ class FsDriftWorkload:
             name = FSOPCtx.opcode_to_opname[x]
             if self.verbosity & 0x1:
                 self.log.debug('event %d name %s' % (x, name))
-            self.op_starttime()
+            self.op_start_time = time.time()
             rc = NOTOK
             try:
                 rc = self.ctx.invoke_rq(x)
@@ -428,7 +417,6 @@ class FsDriftWorkload:
             except OSError as e:
                 self.log.exception(e)
             time.sleep(self.params.pause_secs)
-            self.op_endtime(name)
             if rc != OK:
                 self.log.debug("%s returns %d" % (name, rc))
                 total_errors += 1
@@ -436,9 +424,13 @@ class FsDriftWorkload:
             # periodically output counters
 
             if ( (self.params.stats_report_interval > 0) and 
-                 (before - last_stat_time > params.stats_report_interval)):
-                output_results.print_stats(self.start_time, total_errors)
-            last_stat_time = self.start_time
+                 (self.op_start_time - last_stat_time > self.params.stats_report_interval)):
+                output_results.output_thread_counters(self.counter_file, self.start_time, total_errors, self.ctrs)
+                last_stat_time = self.op_start_time
+
+            # record response time, must happen AFTER op_start_time referenced
+
+            self.op_endtime(name)
 
             # if using moving gaussian file access pattern...
 
@@ -464,6 +456,8 @@ class FsDriftWorkload:
         except Exception as e:
             self.log.exception(e)
             self.status = -NOTOK
+        if self.counter_file != None:
+            self.counter_file.close()
         self.end_test()
         if self.params.rsptimes:
             self.save_rsptimes()
@@ -521,7 +515,8 @@ if __name__ == '__main__':
             with open('/tmp/weights.csv', 'w') as w_f:
                 w_f.write( '\n'.join(Test.workload_table))
             self.params = opts.parseopts()
-            self.params.duration = 2
+            self.params.duration = 5
+            self.params.stats_report_interval = 1
             self.params.workload_table_csv_path = '/tmp/weights.csv'
     
         def file_size(self, fn):
