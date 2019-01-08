@@ -1,11 +1,19 @@
 # fs-drift
 mixed-workload filesystem aging test
 
+You must provide python's numpy module on every host where fs-drift runs.  For example:
+
+    ansible -m shell -a 'yum install -y python-numpy' all
+
 For a list of options usable with this script, "./fs-drift.py -h" .
 
 To run it: ./fs-drift.py
 
 This of course is a very small run, it just gives you a rough idea of the input parameters and the results you can generate.
+
+To run it from multiple hosts, you must ensure that fs-drift-remote.py or a softlink to it is in the PATH environment variable.  For example:
+
+    ansible -m shell -a 'ln -svf ~/fs-drift/fs-drift-remote.py /usr/local/bin/' clients
 
 fs-drift is a program that attempts to stress a filesystem in various ways over a long period of time, in the following ways:
 - file and record sizes are completely random
@@ -46,7 +54,7 @@ gives you parameter names and brief reminder of what they do.
 
 --top-directory
 
-Default: /tmp/foo -- where fs-drift puts all its files.  Since the design center for fs-drift is distributed filesystems, we don't support multiple top-level directories (yet).  fs-drift leaves any existing files or subdirectories in place, so that it can be easily restarted - this is important for a longevity test.  However, the network_shared/ subdirectory inside the top directory is recreated each time it is run.
+Default: /tmp/foo -- where fs-drift puts all its files.  Note: YOU must create this directory.  Since the design center for fs-drift is distributed filesystems, we don't support multiple top-level directories (yet).  fs-drift leaves any existing files or subdirectories in place, so that it can be easily restarted - this is important for a longevity test.  However, the network_shared/ subdirectory inside the top directory is recreated each time it is run.
 
 --output-json
 
