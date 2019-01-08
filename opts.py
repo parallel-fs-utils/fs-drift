@@ -209,6 +209,7 @@ def parseopts():
     o.top_directory = args.top
     o.output_json_path = args.output_json
     o.rsptimes = args.response_times
+    o.stats_report_interval = args.report_interval
     o.host_set = args.host_set
     o.threads = args.threads
     o.report_interval = args.report_interval
