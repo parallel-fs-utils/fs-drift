@@ -114,6 +114,7 @@ def run_multi_host_workload(prm, log):
                 fn = multi_thread_workload.gen_host_ready_fname(prm, h.strip())
                 log.debug('checking for host filename ' + fn)
                 if not os.path.exists(fn):
+                    log.info('did not see host filename %s after %f sec' % (fn, sec))
                     hosts_ready = False
                     break
                 log.debug('saw host filename ' + fn)
