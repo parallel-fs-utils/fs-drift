@@ -178,8 +178,7 @@ class FsDriftWorkload:
                     v = int(vstr, 16)
                 else:
                     v = int(vstr)
-            if self.verbosity & 0x40000000:
-                self.log.info('read in verbosity 0x%x from %s' % (v, vpath))
+            self.log.info('read in verbosity 0x%x from %s' % (v, vpath))
             if v != self.verbosity:
                 if v != 0:
                     self.log.setLevel(logging.DEBUG)
@@ -191,11 +190,16 @@ class FsDriftWorkload:
                     self.ctx.verbosity = v
         except ValueError:
             self.log.error('could not parse verbosity %s in file %s' % (vstr, vpath))
-            os.unlink(vpath)
         except IOError as e:
             if e.errno != errno.ENOENT:
                 self.log.exception(e)
                 raise e
+        time.sleep(self.verbosity_poll_rate + 1.0)
+        try:
+            os.unlink(vpath)
+            self.log.debug('unlinked verbosity file %s' % vpath)
+        except OSError as e:
+            pass
 
     # indicate end of an operation,
     # this appends the elapsed time of the operation to .rsptimes array
@@ -524,6 +528,9 @@ if __name__ == '__main__':
             write_pickle(self.params.param_pickle_path, self.params)
             t1 = TestThread(FsDriftWorkload(self.params), 'fsdthr-1')
             t2 = TestThread(FsDriftWorkload(self.params), 'fsdthr-2')
+            verbosity_fn = os.path.join(self.params.network_shared_path, 'verbosity')
+            with open(verbosity_fn, 'w') as vf:
+                vf.write('0xffffffff')
             threads = [ t1, t2 ]
             for t in threads: 
                 t.start()
