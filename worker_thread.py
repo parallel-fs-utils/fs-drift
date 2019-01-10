@@ -128,10 +128,6 @@ class FsDriftWorkload:
         # copy from here on writes, compare to here on reads
         self.biggest_buf = None
 
-        # random seed used to control sequence of random numbers,
-        # default to different sequence every time
-        self.randstate = random.Random()
-
         self.total_threads = len(self.params.host_set) * self.params.threads
 
         # results returned in variables below
@@ -239,7 +235,7 @@ class FsDriftWorkload:
     def get_next_file_size(self):
         next_size = self.total_sz_kb
         if self.params.filesize_distr == FileSizeDistr.exponential:
-            next_size = max(1, min(int(self.randstate.expovariate(1.0
+            next_size = max(1, min(int(random.expovariate(1.0
                             / self.total_sz_kb)), self.total_sz_kb
                             * self.random_size_limit))
             if self.log_level == logging.DEBUG:
