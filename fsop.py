@@ -70,6 +70,7 @@ class FSOPCtx:
         self.verbosity = self.params.verbosity 
         for i in range(0, self.params.levels):
             self.total_dirs *= self.params.subdirs_per_dir
+        self.max_files_per_dir = self.params.max_files // self.total_dirs
         # most recent center
         self.last_center = 0
         self.simulated_time = FSOPCtx.SIMULATED_TIME_UNDEFINED  # initialized later
@@ -104,11 +105,17 @@ class FSOPCtx:
             self.log.error('non-OSError exception %s: %s' % (msg, fn))
         return NOTOK
 
+    # use the most significant portion of the file_index
+    # for the dirname, and the least significant portion for
+    # the filename within the directory.
+
     def gen_random_dirname(self, file_index):
         subdirs_per_dir = self.params.subdirs_per_dir
         d = '.'
-        # multiply file_index ( < opts.max_files) by large number relatively prime to subdirs_per_dir
-        index = file_index * large_prime
+        # divide by max_files_per_dir so that we're computing
+        # the directory path on a different part of the 
+        # random number than the part used to compute the filename
+        index = file_index // self.max_files_per_dir
         for j in range(0, self.params.levels):
             subdir_index = 1 + (index % subdirs_per_dir)
             dname = 'd%04d' % subdir_index
@@ -118,11 +125,9 @@ class FSOPCtx:
 
 
     def gen_random_fn(self, is_create=False):
-        max_files_per_dir = self.params.max_files // self.total_dirs
-    
         if self.params.rand_distr_type == FileAccessDistr.uniform:
             # lower limit 0 means at least 1 file/dir
-            index = random.randint(0, max_files_per_dir)
+            index = random.randint(0, self.max_files_per_dir)
         elif self.params.rand_distr_type == FileAccessDistr.gaussian:
     
             # if simulated time is not defined,
@@ -154,7 +159,6 @@ class FSOPCtx:
                 file_opstr = 'create'
             if self.verbosity & 0x20:
                 self.log.debug('%s gaussian value is %f' % (file_opstr, index_float))
-            #index = int(index_float) % max_files_per_dir
             index = int(index_float) % self.params.max_files
             last_center = center
     
@@ -170,7 +174,7 @@ class FSOPCtx:
         else:
             index = 'invalid-distribution-type'  # should never happen
         if self.verbosity & 0x20:
-            self.log.debug('next file index %u out of %u' % (index, max_files_per_dir))
+            self.log.debug('next file index %u out of %u' % (index, self.max_files_per_dir))
         dirpath = self.gen_random_dirname(index)
         fn = os.path.join(dirpath, 'f%09d' % index)
         if self.verbosity & 0x20:
