@@ -342,7 +342,10 @@ class FSOPCtx:
             if e.errno == errno.EEXIST:
                 c.e_already_exists += 1
             elif e.errno == errno.ENOSPC:
-                c.e_no_inode_space += 1
+                if fd == FD_UNDEFINED:
+                    c.e_no_inode_space += 1
+                else:
+                    c.e_no_space += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
                 c.e_stale_fh += 1
                 return NOTOK
