@@ -29,6 +29,7 @@ class rq:
     RENAME = 8
     TRUNCATE = 9
     REMOUNT = 10
+    READDIR = 11
 
 
 # file size can either be fixed or exponential random distribution

@@ -16,6 +16,7 @@ class FSOPCounters:
         self.have_renamed = 0
         self.have_truncated = 0
         self.have_remounted = 0
+        self.have_readdir = 0
         
         # throughput counters
         self.read_requests = 0
@@ -40,6 +41,7 @@ class FSOPCounters:
         self.e_could_not_unmount = 0
         self.e_could_not_mount = 0
         self.e_stale_fh = 0
+        self.e_dir_not_found = 0
 
     # used to aggregate per-thread counters 
     # into per-host and per-cluster counters
@@ -58,6 +60,7 @@ class FSOPCounters:
         total.have_renamed          += self.have_renamed
         total.have_truncated        += self.have_truncated
         total.have_remounted        += self.have_remounted
+        total.have_readdir          += self.have_readdir
         
         # throughput counters
         total.read_requests         += self.read_requests
@@ -82,6 +85,7 @@ class FSOPCounters:
         total.e_could_not_unmount   += self.e_could_not_unmount
         total.e_could_not_mount     += self.e_could_not_mount
         total.e_stale_fh            += self.e_stale_fh
+        total.e_dir_not_found       += self.e_dir_not_found
 
     # next 3 functions summarize activity
 
@@ -113,6 +117,7 @@ class FSOPCounters:
             ('renamed', self.have_renamed),
             ('truncated', self.have_truncated),
             ('remounted', self.have_remounted),
+            ('readdir', self.have_readdir),
             ('read_requests', self.read_requests),
             ('read_bytes', self.read_bytes),
             ('randread_requests', self.randread_requests),
@@ -132,7 +137,8 @@ class FSOPCounters:
             ('e_not_mounted', self.e_not_mounted),
             ('e_could_not_unmount', self.e_could_not_unmount),
             ('e_stale_fh', self.e_stale_fh),
-            ('e_could_not_mount', self.e_could_not_mount)
+            ('e_could_not_mount', self.e_could_not_mount),
+            ('e_dir_not_found', self.e_dir_not_found)
             ]
 
     def __str__(self):

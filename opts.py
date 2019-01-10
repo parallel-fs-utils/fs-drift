@@ -120,6 +120,7 @@ class FsDriftOpts:
                     'softlink, 0.02',
                     'truncate, 0.05',
                     'rename, 1',
+                    'readdir, 0.1',
                     'create, 4']
             with open(self.workload_table_csv_path, 'w') as w_f:
                 w_f.write( '\n'.join(workload_table))

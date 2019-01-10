@@ -35,7 +35,8 @@ class FSOPCtx:
          "delete":          rq.DELETE,
          "rename":          rq.RENAME,
          "truncate":        rq.TRUNCATE,
-         "remount":         rq.REMOUNT
+         "remount":         rq.REMOUNT,
+         "readdir":         rq.READDIR
     }
     
     opcode_to_opname = {
@@ -49,7 +50,8 @@ class FSOPCtx:
          rq.DELETE:         "delete",
          rq.RENAME:         "rename",
          rq.TRUNCATE:       "truncate",
-         rq.REMOUNT:        "remount"
+         rq.REMOUNT:        "remount",
+         rq.READDIR:        "readdir"
     }
 
     # for gaussian distribution with moving mean, we need to remember simulated time
@@ -83,6 +85,7 @@ class FSOPCtx:
             rq.RENAME:      self.op_rename,
             rq.TRUNCATE:    self.op_truncate,
             rq.REMOUNT:     self.op_remount,
+            rq.READDIR:     self.op_readdir,
             }
 
     # clients invoke functions by workload request type code
@@ -601,6 +604,21 @@ class FSOPCtx:
         c.have_remounted += 1
         return OK
 
+    def op_readdir(self):
+        c = self.ctrs
+        fn = self.gen_random_fn()
+        dirpath = os.path.dirname(fn)
+        if self.verbosity & 0x20000:
+            self.log.debug('readdir %s' % dirpath)
+        try:
+            dirlist = os.listdir(dirpath)
+            c.have_readdir += 1
+        except OSError as e:
+            if e.errno == errno.ENOENT:
+                c.e_dir_not_found += 1
+            else:
+                return self.scallerr('readdir', dirpath, e)
+        return OK
 
 # unit test
 
@@ -638,6 +656,8 @@ if __name__ == "__main__":
     rc = ctx.op_delete()
     assert(rc == OK)
     rc = ctx.op_rename()
+    assert(rc == OK)
+    rc = ctx.op_readdir()
     assert(rc == OK)
     #rc = ctx.op_remount()
     #assert(rc != OK)
