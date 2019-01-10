@@ -237,9 +237,7 @@ class FsDriftWorkload:
         return join(self.tmp_dir, 'fsd.%s.log' % self.tid)
 
     # we use the seed function to control per-thread random sequence
-    # we want seed to be saved
-    # so that operations subsequent to initial create will know
-    # what file size is for thread T's file j without having to stat the file
+    # we want option for seed to be saved
 
     def init_random_seed(self):
         fn = self.gen_thread_ready_fname(self.tid,
@@ -360,7 +358,6 @@ class FsDriftWorkload:
         self.start_log()
         #ensure_dir_exists(self.params.network_shared_path)
         self.params = read_pickle(self.params.param_pickle_path)
-        self.init_random_seed()
         self.ctx = FSOPCtx(self.params, self.log, self.ctrs)
         # FIXME: worker_thread doesn't use this buf!
         #self.biggest_buf = self.create_biggest_buf(False)
@@ -518,7 +515,8 @@ if __name__ == '__main__':
             self.params.duration = 5
             self.params.stats_report_interval = 1
             self.params.workload_table_csv_path = '/tmp/weights.csv'
-    
+            self.params.verbosity = -1
+
         def file_size(self, fn):
             st = os.stat(fn)
             return st.st_size
