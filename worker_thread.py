@@ -236,24 +236,6 @@ class FsDriftWorkload:
     def log_fn(self):
         return join(self.tmp_dir, 'fsd.%s.log' % self.tid)
 
-    # we use the seed function to control per-thread random sequence
-    # we want option for seed to be saved
-
-    def init_random_seed(self):
-        fn = self.gen_thread_ready_fname(self.tid,
-                                         hostname=self.onhost) + '.seed'
-        thread_seed = str(time.time())
-        if not os.path.exists(fn):
-            thread_seed = str(time.time()) + ' ' + self.tid
-            with open(fn, 'w') as seedfile:
-                seedfile.write(str(thread_seed))
-                self.log.debug('write seed %s ' % thread_seed)
-        else:
-            with open(fn, 'r') as seedfile:
-                thread_seed = seedfile.readlines()[0].strip()
-                self.log.debug('read seed %s ' % thread_seed)
-        self.randstate.seed(thread_seed)
-
     def get_next_file_size(self):
         next_size = self.total_sz_kb
         if self.params.filesize_distr == FileSizeDistr.exponential:
