@@ -127,7 +127,7 @@ class FSOPCtx:
     def gen_random_fn(self, is_create=False):
         if self.params.rand_distr_type == FileAccessDistr.uniform:
             # lower limit 0 means at least 1 file/dir
-            index = random.randint(0, self.max_files_per_dir)
+            index = random.randint(0, self.params.max_files)
         elif self.params.rand_distr_type == FileAccessDistr.gaussian:
     
             # if simulated time is not defined,
