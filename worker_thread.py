@@ -179,6 +179,12 @@ class FsDriftWorkload:
                 else:
                     v = int(vstr)
             self.log.info('read in verbosity 0x%x from %s' % (v, vpath))
+            time.sleep(self.verbosity_poll_rate + 1.0)
+            try:
+                os.unlink(vpath)
+                self.log.debug('unlinked verbosity file %s' % vpath)
+            except OSError as e:
+                pass
             if v != self.verbosity:
                 if v != 0:
                     self.log.setLevel(logging.DEBUG)
@@ -194,12 +200,6 @@ class FsDriftWorkload:
             if e.errno != errno.ENOENT:
                 self.log.exception(e)
                 raise e
-        time.sleep(self.verbosity_poll_rate + 1.0)
-        try:
-            os.unlink(vpath)
-            self.log.debug('unlinked verbosity file %s' % vpath)
-        except OSError as e:
-            pass
 
     # indicate end of an operation,
     # this appends the elapsed time of the operation to .rsptimes array
@@ -338,7 +338,6 @@ class FsDriftWorkload:
     def do_workload(self):
 
         self.start_log()
-        #ensure_dir_exists(self.params.network_shared_path)
         self.params = read_pickle(self.params.param_pickle_path)
         self.ctx = FSOPCtx(self.params, self.log, self.ctrs)
         # FIXME: worker_thread doesn't use this buf!
