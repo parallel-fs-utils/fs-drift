@@ -204,7 +204,7 @@ def parseopts():
             type=boolean,
             default=o.tolerate_stale_fh)
     add('--fullness-limit-percent', help='stop adding to filesystem when it gets this full',
-            type=positive_integer,
+            type=positive_percentage,
             default=o.fullness_limit_pct)
     add('--verbosity', help='decimal or hexadecimal integer bitmask controlling debug logging',
             type=bitmask,
