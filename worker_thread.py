@@ -369,18 +369,29 @@ class FsDriftWorkload:
           while True:
             self.update_verbosity()
 
-            # if there is pause file present, do nothing
+            # don't want to do test management functions too often
 
-            if event_count % 100 == 0 and os.path.isfile(self.params.pause_path):
-                self.log.info('pausing test because %s seen' % self.params.pause_path)
-                time.sleep(5)
-                continue
+            if event_count % 1000 == 0:
+                # if there is pause file present, do nothing
 
-            # every 1000 events, check for "stop file" that indicates test should end
+                # pause is there so we can suspend load and do things to the
+                # cluster if we need to.
 
+                if os.path.isfile(self.params.pause_path):
+                    self.log.info('pausing test because %s seen' % self.params.pause_path)
+                    time.sleep(5)
+                    continue
+
+                # check for "stop file" that indicates test should end
+
+                if os.access(self.params.stop_file_path, os.R_OK):
+                    break
+
+                # update VFS stats to see if filesystem is full
+                self.ctx.get_fs_stats()
+                if self.ctx.verbosity & 0x20:
+                    self.log.debug('fs fullness = %f' % self.ctx.fs_fullness)
             event_count += 1
-            if (event_count % 1000 == 0) and os.access(self.params.stop_file_path, os.R_OK):
-                break
 
             x = event.gen_event(normalized_weights)
             name = FSOPCtx.opcode_to_opname[x]

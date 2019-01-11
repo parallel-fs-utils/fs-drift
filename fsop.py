@@ -74,6 +74,9 @@ class FSOPCtx:
         # most recent center
         self.last_center = 0
         self.simulated_time = FSOPCtx.SIMULATED_TIME_UNDEFINED  # initialized later
+        self.fs_fullness = 0.0
+        self.fs_stats = None
+        self.get_fs_stats()
         self._rqmap = {
             rq.READ:        self.op_read,
             rq.RANDOM_READ: self.op_random_read,
@@ -104,6 +107,17 @@ class FSOPCtx:
         except Exception:
             self.log.error('non-OSError exception %s: %s' % (msg, fn))
         return NOTOK
+
+    # every so often, update filesystem stats using this call
+
+    def get_fs_stats(self):
+        self.fs_stats = os.statvfs(self.params.top_directory)
+        self.fs_fullness = (self.fs_stats.f_blocks - self.fs_stats.f_bfree)/float(self.fs_stats.f_blocks)
+
+    def fs_is_full(self):
+        if self.fs_fullness * 100.0 > self.params.fullness_limit_pct:
+            return True
+        return False
 
     # use the most significant portion of the file_index
     # for the dirname, and the least significant portion for
@@ -309,6 +323,9 @@ class FSOPCtx:
             os.fsync(fd)
 
     def op_create(self):
+        if self.fs_is_full():
+            self.log.debug('filesystem full, disabling create')
+            return OK
         c = self.ctrs
         fd = FD_UNDEFINED
         fn = self.gen_random_fn(is_create=True)
@@ -360,6 +377,9 @@ class FSOPCtx:
 
 
     def op_append(self):
+        if self.fs_is_full():
+            self.log.debug('filesystem full, disabling append')
+            return OK
         c = self.ctrs
         fn = self.gen_random_fn()
         target_sz = self.random_file_size()
@@ -467,6 +487,9 @@ class FSOPCtx:
 
 
     def op_softlink(self):
+        if self.fs_is_full():
+            self.log.debug('filesystem full, disabling softlink')
+            return OK
         c = self.ctrs
         fn = os.getcwd() + os.sep + self.gen_random_fn()
         fn2 = self.gen_random_fn() + link_suffix
@@ -494,6 +517,9 @@ class FSOPCtx:
 
 
     def op_hardlink(self):
+        if self.fs_is_full():
+            self.log.debug('filesystem full, disabling hardlink')
+            return OK
         c = self.ctrs
         fn = self.gen_random_fn()
         fn2 = self.gen_random_fn() + hlink_suffix
@@ -650,6 +676,7 @@ if __name__ == "__main__":
     log.info('chdir to %s' % options.top_directory)
     ctrs = FSOPCounters()
     ctx = FSOPCtx(options, log, ctrs)
+    ctx.verbosity = -1
     rc = ctx.op_create()
     assert(rc == OK)
     rc = ctx.op_read()

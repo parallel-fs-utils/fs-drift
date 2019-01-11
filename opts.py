@@ -45,6 +45,7 @@ class FsDriftOpts:
         self.create_stddevs_ahead = 3.0
         self.drift_time = -1
         self.mount_command = None
+        self.fullness_limit_pct = 85
         # not settable
         self.is_slave = False
         self.as_host = None  # filled in by worker host
@@ -80,6 +81,7 @@ class FsDriftOpts:
             ('verbosity', self.verbosity),
             ('pause path', self.pause_path),
             ('tolerate stale file handles', self.tolerate_stale_fh),
+            ('fullness limit percent', self.fullness_limit_pct),
             ]
 
     def __str__(self, use_newline=True, indentation='  '):
@@ -201,6 +203,9 @@ def parseopts():
     add('--tolerate-stale-file-handles', help='if true, do not throw exception on ESTALE',
             type=boolean,
             default=o.tolerate_stale_fh)
+    add('--fullness-limit-percent', help='stop adding to filesystem when it gets this full',
+            type=positive_integer,
+            default=o.fullness_limit_pct)
     add('--verbosity', help='decimal or hexadecimal integer bitmask controlling debug logging',
             type=bitmask,
             default=o.verbosity)
@@ -235,6 +240,7 @@ def parseopts():
     o.create_stddevs_ahead = args.create_stddevs_ahead
     o.mount_command = args.mount_command
     o.tolerate_stale_fh = args.tolerate_stale_file_handles
+    o.fullness_limit_pct = args.fullness_limit_percent
     o.verbosity = args.verbosity
 
     # some fields derived from user inputs
