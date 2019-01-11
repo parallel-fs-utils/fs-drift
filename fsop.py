@@ -483,6 +483,8 @@ class FSOPCtx:
                 c.e_already_exists += 1
             elif e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
+            elif e.errno == errno.ENOSPC:
+                c.e_no_inode_space += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
                 c.e_stale_fh += 1
                 return NOTOK
@@ -508,6 +510,8 @@ class FSOPCtx:
                 c.e_already_exists += 1
             elif e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
+            elif e.errno == errno.ENOSPC:
+                c.e_no_inode_space += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
                 c.e_stale_fh += 1
                 return NOTOK
@@ -565,6 +569,8 @@ class FSOPCtx:
                 c.e_file_not_found += 1
             elif e.errno == errno.EEXIST:
                 c.e_already_exists += 1
+            elif e.errno == errno.ENOSPC:
+                c.e_no_inode_space += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
                 c.e_stale_fh += 1
                 return NOTOK
