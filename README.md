@@ -159,6 +159,10 @@ filesystem.  This tests the ability of the filesystem to respond quickly and cor
 The user must specify a full mount command to use this operation type.  You must specify the mountpoint directory as the
 last parameter in the command.  This allows fs-drift to do the unmount operation that precedes the mount.
 
+--fullness-limit-percent
+
+Default: 85 - Because fs-drift depends on the filesystem under test to return results from the worker threads to the test driver host (where fs-drift.py was originally run), we don't want the filesystem to fill up so much that we can't create any files in it.   You can set this any valid percentage, the realistic limit may depend on which filesystem you are running on.
+
 ## future enhancements
 
 - logging - is a bit chaotic, done differently in different places, too many log files,
