@@ -98,12 +98,16 @@ class FSOPCtx:
     def invoke_rq(self, rqcode):
         return self._rqmap[rqcode]()
 
-    def scallerr(self, msg, fn, syscall_exception):
+    def scallerr(self, msg, fn, syscall_exception, fd=None):
         self.log.exception(syscall_exception)
         try:
             err = syscall_exception.errno
-            self.log.error('%s: %s syscall errno %d(%s)' % (
-                            msg, fn, err, os.strerror(err)))
+            if fd == None:
+                self.log.error('%s: %s syscall errno %d(%s)' % (
+                                msg, fn, err, os.strerror(err)))
+            else:
+                self.log.error('%s: %s syscall errno %d(%s) fd=%s' % (
+                                msg, fn, err, os.strerror(err), str(fd)))
         except Exception:
             self.log.error('non-OSError exception %s: %s' % (msg, fn))
         return NOTOK
@@ -222,7 +226,7 @@ class FSOPCtx:
                 if self.params.tolerate_stale_fh and e.errno == errno.ESTALE:
                     self.ctrs.e_stale_fh += 1
                     return OK
-                return self.scallerr('close', filename, e)
+                return self.scallerr('close', filename, e, fd=closefd)
         return OK
 
     def op_read(self):
@@ -257,7 +261,7 @@ class FSOPCtx:
                 c.e_stale_fh += 1
                 return NOTOK
             else:
-                return self.scallerr('op_read', fn, e)
+                return self.scallerr('op_read', fn, e, fd=fd)
         self.try_to_close(fd, fn)
         return OK
 
@@ -308,7 +312,7 @@ class FSOPCtx:
                 c.e_stale_fh += 1
                 return NOTOK
             else:
-                return self.scallerr('random_read', fn, e)
+                return self.scallerr('random_read', fn, e, fd=fd)
         self.try_to_close(fd, fn)
         return OK
 
@@ -374,12 +378,13 @@ class FSOPCtx:
                 c.e_stale_fh += 1
                 return NOTOK
             else:
-                return self.scallerr('create', fn, e)
+                return self.scallerr('create', fn, e, fd=fd)
         self.try_to_close(fd, fn)
         return OK
 
 
     def op_append(self):
+        fd = FD_UNDEFINED
         if self.fs_is_full():
             self.log.debug('filesystem full, disabling append')
             return OK
@@ -388,7 +393,6 @@ class FSOPCtx:
         target_sz = self.random_file_size()
         if self.verbosity & 0x8000:
             self.log.debug('append %s sz %s' % (fn, target_sz))
-        fd = FD_UNDEFINED
         try:
             fd = os.open(fn, os.O_WRONLY)
             total_appended = 0
@@ -415,7 +419,7 @@ class FSOPCtx:
                 c.e_stale_fh += 1
                 return NOTOK
             else:
-                return self.scallerr('append', fn, e)
+                return self.scallerr('append', fn, e, fd=fd)
         self.try_to_close(fd, fn)
         return OK
 
@@ -460,7 +464,7 @@ class FSOPCtx:
                 c.e_stale_fh += 1
                 return NOTOK
             else:
-                return self.scallerr('random write', fn, e)
+                return self.scallerr('random write', fn, e, fd=fd)
         self.try_to_close(fd, fn)
         return OK
 
@@ -484,7 +488,7 @@ class FSOPCtx:
                 c.e_stale_fh += 1
                 return NOTOK
             else:
-                return self.scallerr('truncate', fn, e)
+                return self.scallerr('truncate', fn, e, fd=fd)
         self.try_to_close(fd, fn)
         return OK
 
