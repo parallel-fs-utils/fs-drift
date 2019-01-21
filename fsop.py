@@ -123,6 +123,14 @@ class FSOPCtx:
             return True
         return False
 
+    def get_file_size(self, fd):
+        stat_info = os.fstat(fd)
+        sz = stat_info.st_size
+        if sz < 0:
+            raise FsDriftException('negative file size %d seen on fd %d' % (sz, fd))
+        return sz
+
+
     # use the most significant portion of the file_index
     # for the dirname, and the least significant portion for
     # the filename within the directory.
@@ -237,11 +245,11 @@ class FSOPCtx:
             if self.verbosity & 0x20000:
                 self.log.debug('read file %s' % fn)
             fd = os.open(fn, os.O_RDONLY)
-            stinfo = os.fstat(fd)
+            fsz = self.get_file_size(fd)
             if self.verbosity & 0x4000:
-                self.log.debug('read file sz %u' % (stinfo.st_size))
+                self.log.debug('read file sz %u' % fsz)
             total_read = 0
-            while total_read < stinfo.st_size:
+            while total_read < fsz:
                 rdsz = self.random_record_size()
                 bytes = os.read(fd, rdsz)
                 count = len(bytes)
@@ -275,17 +283,17 @@ class FSOPCtx:
             if self.verbosity & 0x20000:
                 self.log.debug('randread %s reqs %u' % (fn, target_read_reqs))
             fd = os.open(fn, os.O_RDONLY)
-            stinfo = os.fstat(fd)
+            fsz = self.get_file_size(fd)
             if self.verbosity & 0x2000:
                 self.log.debug('randread filesize %u reqs %u' % (
-                    stinfo.st_size, target_read_reqs))
+                    fsz, target_read_reqs))
             while total_read_reqs < target_read_reqs:
-                off = os.lseek(fd, self.random_seek_offset(stinfo.st_size), 0)
-                rdsz = self.random_segment_size(stinfo.st_size)
+                off = os.lseek(fd, self.random_seek_offset(fsz), 0)
+                rdsz = self.random_segment_size(fsz)
                 if self.verbosity & 0x2000:
                     self.log.debug('randread off %u sz %u' % (off, rdsz))
                 total_count = 0
-                remaining_sz = stinfo.st_size - off
+                remaining_sz = fsz - off
                 while total_count < rdsz:
                     recsz = self.random_record_size()
                     if recsz + total_count > remaining_sz:
@@ -434,11 +442,11 @@ class FSOPCtx:
             if self.verbosity & 0x20000:
                 self.log.debug('randwrite %s reqs %u' % (fn, target_write_reqs))
             fd = os.open(fn, os.O_WRONLY)
-            stinfo = os.fstat(fd)
+            fsz = self.get_file_size(fd)
             while total_write_reqs < target_write_reqs:
-                off = os.lseek(fd, self.random_seek_offset(stinfo.st_size), 0)
+                off = os.lseek(fd, self.random_seek_offset(fsz), 0)
                 total_count = 0
-                wrsz = self.random_segment_size(stinfo.st_size)
+                wrsz = self.random_segment_size(fsz)
                 if self.verbosity & 0x20000:
                     self.log.debug('randwrite off %u sz %u' % (off, wrsz))
                 while total_count < wrsz:
