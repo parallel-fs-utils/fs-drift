@@ -219,6 +219,9 @@ class FSOPCtx:
             try:
                 os.close(closefd)
             except OSError as e:
+                if self.params.tolerate_stale_fh and e.errno == errno.ESTALE:
+                    self.ctrs.e_stale_fh += 1
+                    return OK
                 return self.scallerr('close', filename, e)
         return OK
 
