@@ -42,7 +42,7 @@ def output_results(params, subprocess_list):
         thrd['files'] = c.total_files()
         thrd['ios'] = c.total_ios()
         thrd['MiB'] = c.total_bytes() / float(BYTES_PER_MiB)
-        thrd['details'] = c.json_dict()
+        thrd['fsop-counters'] = c.json_dict()
         if max_elapsed_time > 0.001:  # can't compute rates if it ended too quickly
             thrd['files-per-sec'] = thrd['files'] / max_elapsed_time
             thrd['IOPS'] = thrd['ios'] / max_elapsed_time
@@ -61,36 +61,37 @@ def output_results(params, subprocess_list):
             per_host_counters = FSOPCounters()
 
         c.add_to(per_host_counters)
-        per_host_results['details'] = per_host_counters.json_dict()
+        per_host_results['fsop-counters'] = per_host_counters.json_dict()
         per_host_results['threads'][p.tid] = thrd
         per_host_results['files'] = per_host_counters.total_files()
         per_host_results['ios'] = per_host_counters.total_ios()
         per_host_results['MiB'] = per_host_counters.total_bytes() / float(BYTES_PER_MiB)
         if max_elapsed_time > 0.001:  # can't compute rates if it ended too quickly
-            per_host_results['host-files-per-sec'] = per_host_results['files'] / max_elapsed_time
-            per_host_results['host-IOPS'] = per_host_results['files'] / max_elapsed_time
-            per_host_results['host-MiB-per-sec'] = per_host_results['MiB'] / max_elapsed_time
+            per_host_results['files-per-sec'] = per_host_results['files'] / max_elapsed_time
+            per_host_results['IOPS'] = per_host_results['files'] / max_elapsed_time
+            per_host_results['MiB-per-sec'] = per_host_results['MiB'] / max_elapsed_time
 
-    rslt['cluster-details'] = cluster.json_dict()
+    rslt['fsop-counters'] = cluster.json_dict()
 
     print('total threads = %d' % len(subprocess_list))
-    rslt['cluster-threads'] = len(subprocess_list)
+    rslt['threads'] = len(subprocess_list)
 
     print('total files = %d' % cluster.total_files())
-    rslt['cluster-files'] = cluster.total_files()
+    rslt['files'] = cluster.total_files()
 
     print('total I/O requests = %d' % cluster.total_ios())
-    rslt['cluster-ios'] = cluster.total_ios()
+    rslt['ios'] = cluster.total_ios()
 
     total_MiB = cluster.total_bytes() / float(BYTES_PER_MiB)
     total_data_gb = total_MiB / MiB_PER_GiB
     print('total data = %9.3f GiB' % total_data_gb)
-    rslt['cluster-data-GB'] = total_data_gb
+    rslt['MiB'] = total_data_gb
 
-    print('remounts = %d' % cluster.have_remounted)
+    if cluster.have_remounted > 0:
+        print('remounts = %d' % cluster.have_remounted)
 
     print('elapsed time = %9.3f' % max_elapsed_time)
-    rslt['elapsed-time'] = max_elapsed_time
+    rslt['elapsed'] = max_elapsed_time
 
     if len(subprocess_list) < len(params.host_set) * params.threads:
         print('WARNING: failed to get some responses from workload generators')
@@ -99,15 +100,15 @@ def output_results(params, subprocess_list):
 
         files_per_sec = cluster.total_files() / max_elapsed_time
         print('files/sec = %f' % files_per_sec)
-        rslt['cluster-files-per-sec'] = files_per_sec
+        rslt['files-per-sec'] = files_per_sec
 
         iops = float(cluster.total_ios()) / max_elapsed_time
         print('IOPS = %f' % iops)
-        rslt['cluster-IOPS'] = iops
+        rslt['IOPS'] = iops
 
         mib_per_sec = total_MiB / max_elapsed_time
         print('MiB/sec = %f' % mib_per_sec)
-        rslt['cluster-MiBps'] = mib_per_sec
+        rslt['MiB-per-sec'] = mib_per_sec
 
     # if JSON output requested, generate it here
 
