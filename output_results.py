@@ -68,7 +68,7 @@ def output_results(params, subprocess_list):
         per_host_results['MiB'] = per_host_counters.total_bytes() / float(BYTES_PER_MiB)
         if max_elapsed_time > 0.001:  # can't compute rates if it ended too quickly
             per_host_results['files-per-sec'] = per_host_results['files'] / max_elapsed_time
-            per_host_results['IOPS'] = per_host_results['files'] / max_elapsed_time
+            per_host_results['IOPS'] = per_host_results['ios'] / max_elapsed_time
             per_host_results['MiB-per-sec'] = per_host_results['MiB'] / max_elapsed_time
 
     rslt['fsop-counters'] = cluster.json_dict()
