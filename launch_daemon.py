@@ -72,11 +72,14 @@ substitute_dir = args.substitute_top
 log.info('substitute-top %s, top directory %s, as-host %s' % 
         (substitute_dir, top_dir, as_host))
 
+if top_dir == None:
+    myabort('you must define --top parameter')
+
 # look for launch files, read command from them,
 # and execute, substituting --shared directory for --top directory,
 # to allow samba to work with Linux test driver
 
-network_shared_path = os.path.join(top_dir, 'network_shared')
+network_shared_path = os.path.join(top_dir, 'network-shared')
 launch_fn = os.path.join(network_shared_path, as_host) + '.fsd_launch'
 if os.path.exists(launch_fn):  # avoid left-over launch files
     os.unlink(launch_fn)
