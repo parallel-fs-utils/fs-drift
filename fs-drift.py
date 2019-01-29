@@ -37,6 +37,7 @@ import opts
 import fsd_log
 import output_results
 import ssh_thread
+import launcher_thread
 import sync_files
 import output_results
 import multi_thread_workload
@@ -67,20 +68,25 @@ def run_multi_host_workload(prm, log):
     host_ct = len(prm.host_set)
     for j in range(0, len(prm.host_set)):
         remote_host = prm.host_set[j]
-        smf_remote_pgm = os.path.join(prm.remote_pgm_dir,
+        fsd_remote_pgm = os.path.join(prm.fsd_remote_dir,
                                       'fs-drift-remote.py')
         this_remote_cmd = '%s %s --network-sync-dir %s ' \
-            % (python_prog, smf_remote_pgm, prm.network_shared_path)
+            % (prm.python_prog, fsd_remote_pgm, prm.network_shared_path)
 
         this_remote_cmd += ' --as-host %s' % remote_host
         log.debug(this_remote_cmd)
-        remote_thread_list.append(
-            ssh_thread.ssh_thread(log, remote_host, this_remote_cmd))
+        if prm.launch_as_daemon:
+            remote_thread_list.append(
+                launcher_thread.launcher_thread(prm, log, remote_host, this_remote_cmd))
+        else:
+            remote_thread_list.append(
+                ssh_thread.ssh_thread(log, remote_host, this_remote_cmd))
 
     # start them, pacing starts so that we don't get ssh errors
 
     for t in remote_thread_list:
-        time.sleep(0.1)
+        if prm.launch_as_daemon:
+            time.sleep(0.1)
         t.start()
 
     # wait for hosts to arrive at starting gate
@@ -92,8 +98,8 @@ def run_multi_host_workload(prm, log):
     abortfn = prm.abort_path
     sec_delta = 0.5
     # timeout if no host replies in next host_timeout seconds
-    per_host_timeout = 10
-    all_host_timeout = 5 + len(prm.host_set) / 3
+    per_host_timeout = 10.0
+    all_host_timeout = 5.0 + len(prm.host_set) / 3
     if all_host_timeout < per_host_timeout:
         per_host_timeout = all_host_timeout / 2
 
@@ -141,7 +147,6 @@ def run_multi_host_workload(prm, log):
 
             time.sleep(sec_delta)
             sec += sec_delta
-            #sec_delta += 1
             time_since_loop_start = time.time() - start_loop_start
             log.debug('last_host_seen=%d sec=%d' % (last_host_seen, sec))
             if time_since_loop_start > all_host_timeout:
@@ -158,7 +163,7 @@ def run_multi_host_workload(prm, log):
         multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)
         if not exception_seen:
             log.info(
-                'hosts did not reach starting gate within %d seconds' % all_host_timeout)
+                'no additional hosts reached starting gate within %5.1f seconds' % per_host_timeout)
             return NOTOK
         else:
             raise exception_seen
