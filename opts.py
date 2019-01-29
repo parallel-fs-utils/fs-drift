@@ -12,6 +12,12 @@ from parser_data_types import boolean, positive_integer, non_negative_integer, b
 from parser_data_types import positive_float, non_negative_float, positive_percentage
 from parser_data_types import host_set, file_access_distrib, directory_list
 
+def getenv_or_default(var_name, var_default):
+    v = os.getenv(var_name)
+    if v == None:
+        v = var_default
+    return v
+
 # command line parameter variables here
 
 class FsDriftOpts:
@@ -51,6 +57,9 @@ class FsDriftOpts:
         self.as_host = None  # filled in by worker host
         self.verbosity = 0
         self.tolerate_stale_fh = False
+        self.launch_as_daemon = False
+        self.python_prog = getenv_or_default('PYTHONPROG', '/usr/bin/python')
+        self.fsd_remote_dir = getenv_or_default('FSD_REMOTE_DIR', '/usr/local/bin')
 
     def kvtuplelist(self):
         return [
@@ -82,6 +91,9 @@ class FsDriftOpts:
             ('pause path', self.pause_path),
             ('tolerate stale file handles', self.tolerate_stale_fh),
             ('fullness limit percent', self.fullness_limit_pct),
+            ('launch using daemon', self.launch_as_daemon),
+            ('python program', self.python_prog),
+            ('fs-drift-remote.py directory', self.fsd_remote_dir),
             ]
 
     def __str__(self, use_newline=True, indentation='  '):
@@ -209,6 +221,9 @@ def parseopts():
     add('--verbosity', help='decimal or hexadecimal integer bitmask controlling debug logging',
             type=bitmask,
             default=o.verbosity)
+    add('--launch-as-daemon', help='launch remote/containerized fs-drift without ssh',
+            type=boolean,
+            default=o.launch_as_daemon)
 
     # parse the command line and update opts
     args = parser.parse_args()
@@ -241,6 +256,7 @@ def parseopts():
     o.mount_command = args.mount_command
     o.tolerate_stale_fh = args.tolerate_stale_file_handles
     o.fullness_limit_pct = args.fullness_limit_percent
+    o.launch_as_daemon = args.launch_as_daemon
     o.verbosity = args.verbosity
 
     # some fields derived from user inputs
@@ -256,9 +272,9 @@ def parseopts():
     o.pause_path            = nsjoin('pause.tmp')
     o.checkerflag_path      = nsjoin('checkered_flag.tmp')
 
-    o.remote_pgm_dir = os.path.dirname(sys.argv[0])
-    if o.remote_pgm_dir == '.':
-        o.remote_pgm_dir = os.getcwd()
+    #o.remote_pgm_dir = os.path.dirname(sys.argv[0])
+    #if o.remote_pgm_dir == '.':
+    #    o.remote_pgm_dir = os.getcwd()
 
     o.is_slave = sys.argv[0].endswith('fs-drift-remote.py')
  
