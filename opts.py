@@ -89,6 +89,7 @@ class FsDriftOpts:
             ('mount command', self.mount_command),
             ('verbosity', self.verbosity),
             ('pause path', self.pause_path),
+            ('abort path', self.abort_path),
             ('tolerate stale file handles', self.tolerate_stale_fh),
             ('fullness limit percent', self.fullness_limit_pct),
             ('launch using daemon', self.launch_as_daemon),
@@ -97,9 +98,9 @@ class FsDriftOpts:
             ]
 
     def __str__(self, use_newline=True, indentation='  '):
-        kvlist = [ '%s = %s' % (k, str(v)) for (k, v) in self.kvtuplelist() ]
+        kvlist = [ '%-40s = %s' % (k, str(v)) for (k, v) in self.kvtuplelist() ]
         if use_newline:
-            return ('\n%s' % indentation).join(kvlist)
+            return indentation + ('\n%s' % indentation).join(kvlist)
         else:
             return ' , '.join(kvlist)
 
@@ -286,4 +287,5 @@ if __name__ == "__main__":
     options = parseopts()
     options.validate()
     print(options)
+    print('json format:')
     print(json.dumps(options.to_json_obj(), indent=2, sort_keys=True))
