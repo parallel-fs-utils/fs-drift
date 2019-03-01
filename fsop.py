@@ -57,9 +57,8 @@ class FSOPCtx:
     # for gaussian distribution with moving mean, we need to remember simulated time
     # so we can pick up where we left off with moving mean
 
-    simtime_filename = 'fs-drift-simtime.tmp'
     SIMULATED_TIME_UNDEFINED = None
-    time_save_rate = 5
+    time_save_rate_default = 5  # make this 60 later on
 
     def __init__(self, params, log, ctrs, onhost, tid):
         self.ctrs = ctrs
@@ -74,8 +73,12 @@ class FSOPCtx:
             self.total_dirs *= self.params.subdirs_per_dir
         self.max_files_per_dir = self.params.max_files // self.total_dirs
         # most recent center
-        self.last_center = 0
+        self.center = self.params.max_files * random.random() * 0.99
+        self.velocity = self.params.mean_index_velocity * 2 * random.random()
         self.simulated_time = FSOPCtx.SIMULATED_TIME_UNDEFINED  # initialized later
+        self.time_save_rate = FSOPCtx.time_save_rate_default
+        self.simtime_pathname = os.path.join(self.params.network_shared_path, 
+                                    'fs-drift-simtime-hst-%s-thrd-%s.tmp' % (self.onhost, self.tid))
         self.fs_fullness = 0.0
         self.fs_stats = None
         self.get_fs_stats()
@@ -152,6 +155,9 @@ class FSOPCtx:
         return d
 
 
+    def read_num_from_file(f):
+        return f.readline().strip()
+
     def gen_random_fn(self, is_create=False):
         if self.params.random_distribution == FileAccessDistr.uniform:
             # lower limit 0 means at least 1 file/dir
@@ -161,44 +167,54 @@ class FSOPCtx:
             # if simulated time is not defined,
             # attempt to read it in from a file, set to zero if no file
     
-            if simulated_time == SIMULATED_TIME_UNDEFINED:
+            if self.simulated_time == FSOPCtx.SIMULATED_TIME_UNDEFINED:
                 try:
-                    simtime_pathname = os.path.join(self.params.network_shared_path, simtime_filename)
-                    with open(simtime_pathname, 'r') as readtime_fd:
-                        simulated_time = int(readtime_fd.readline().strip())
+                    with open(self.simtime_pathname, 'r') as readtime_fd:
+                        version = int(read_num_from_file(readtime_fd))
+                        if version != 1: 
+                            raise FsDriftException('unrecognized version %d in simtime file' % version)
+                        self.simulated_time = int(read_num_from_file(readtime_fd))
+                        self.center = float(read_num_from_file(readtime_fd))
+                        self.velocity = float(read_num_from_file(readtime_fd))
                 except IOError as e:
                     if e.errno != errno.ENOENT:
                         raise e
-                    simulated_time = 0
-                self.log(('resuming with simulated time %d' % simulated_time))
+                    self.simulated_time = 0
+                self.center = self.center + (self.simulated_time * self.velocity)
+                self.log.info('resuming with simulated time %d' % self.simulated_time)
     
             # for creates, use greater time, so that reads, etc. will "follow" creates most of the time
             # mean and std deviation define gaussian distribution
     
-            center = (simulated_time * self.params.mean_index_velocity)
+            self.center += self.velocity
             if is_create:
-                center += (self.params.create_stddevs_ahead * self.params.gaussian_stddev)
+                self.center += (self.params.create_stddevs_ahead * self.params.gaussian_stddev)
             if self.verbosity & 0x20:
-                self.log.debug('%f = center' % center)
+                self.log.debug('%f = center' % self.center)
             index_float = numpy.random.normal(
-                loc=center, scale=self.params.gaussian_stddev)
+                loc=self.center, scale=self.params.gaussian_stddev)
+            self.log.debug('index_float = %f' % index_float)
             file_opstr = 'read'
             if is_create:
                 file_opstr = 'create'
             if self.verbosity & 0x20:
                 self.log.debug('%s gaussian value is %f' % (file_opstr, index_float))
             index = int(index_float) % self.params.max_files
-            last_center = center
     
             # since this is a time-varying distribution, record the time every so often
             # so we can pick up where we left off
     
             if self.params.drift_time == -1:
-                simulated_time += 1
-            if simulated_time % time_save_rate == 0:
-                with open(simtime_pathname, 'w') as time_fd:
-                    time_fd.write('%10d' % simulated_time)
-    
+                self.simulated_time += 1
+            if self.simulated_time % self.time_save_rate == 0:
+                simtime_dir = os.path.dirname(self.simtime_pathname)
+                if not os.path.exists(simtime_dir):
+                    os.makedirs(simtime_dir)
+                with open(self.simtime_pathname, 'w') as time_fd:
+                    time_fd.write('1\n') # version
+                    time_fd.write('%10d\n' % self.simulated_time)
+                    time_fd.write('%f\n' % self.center)
+                    time_fd.write('%f\n' % self.velocity)
         else:
             raise FsDriftException('invalid distribution type %d' % self.params.random_distribution)
         if self.verbosity & 0x20:
