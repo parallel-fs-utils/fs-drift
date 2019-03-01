@@ -686,7 +686,7 @@ if __name__ == "__main__":
     log = fsd_log.start_log('fsop-unittest')
     log.info('hi there')
     if not options.top_directory.__contains__('/tmp/'):
-        raise FSDriftException('bad top directory')
+        raise FsDriftException('bad top directory')
     os.system('rm -rf %s' % options.top_directory)
     os.makedirs(options.top_directory)
     os.chdir(options.top_directory)
