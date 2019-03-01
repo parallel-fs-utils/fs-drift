@@ -153,10 +153,10 @@ class FSOPCtx:
 
 
     def gen_random_fn(self, is_create=False):
-        if self.params.rand_distr_type == FileAccessDistr.uniform:
+        if self.params.random_distribution == FileAccessDistr.uniform:
             # lower limit 0 means at least 1 file/dir
             index = random.randint(0, self.params.max_files)
-        elif self.params.rand_distr_type == FileAccessDistr.gaussian:
+        elif self.params.random_distribution == FileAccessDistr.gaussian:
     
             # if simulated time is not defined,
             # attempt to read it in from a file, set to zero if no file
@@ -200,7 +200,7 @@ class FSOPCtx:
                     time_fd.write('%10d' % simulated_time)
     
         else:
-            index = 'invalid-distribution-type'  # should never happen
+            raise FsDriftException('invalid distribution type %d' % self.params.random_distribution)
         if self.verbosity & 0x20:
             self.log.debug('next file index %u out of %u' % (index, self.max_files_per_dir))
         dirpath = self.gen_random_dirname(index)

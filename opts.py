@@ -44,7 +44,7 @@ class FsDriftOpts:
         self.pause_secs = self.pause_between_ops / float(common.USEC_PER_SEC)
         self.incompressible = False
         # new parameters related to gaussian filename distribution
-        self.rand_distr_type = common.FileAccessDistr.uniform
+        self.random_distribution = common.FileAccessDistr.uniform
         self.mean_index_velocity = 0.0  # default is a fixed mean for the distribution
         self.gaussian_stddev = 1000.0  # just a guess, means most of accesses within 1000 files?
         # just a guess, most files will be created before they are read
