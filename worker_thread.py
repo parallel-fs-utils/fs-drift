@@ -339,7 +339,7 @@ class FsDriftWorkload:
 
         self.start_log()
         self.params = read_pickle(self.params.param_pickle_path)
-        self.ctx = FSOPCtx(self.params, self.log, self.ctrs)
+        self.ctx = FSOPCtx(self.params, self.log, self.ctrs, self.onhost, self.tid)
         # FIXME: worker_thread doesn't use this buf!
         #self.biggest_buf = self.create_biggest_buf(False)
         # retrieve params from pickle file so that 

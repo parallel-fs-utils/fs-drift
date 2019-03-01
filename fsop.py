@@ -61,10 +61,12 @@ class FSOPCtx:
     SIMULATED_TIME_UNDEFINED = None
     time_save_rate = 5
 
-    def __init__(self, params, log, ctrs):
+    def __init__(self, params, log, ctrs, onhost, tid):
         self.ctrs = ctrs
         self.params = params
         self.log = log
+        self.onhost = onhost
+        self.tid = tid
         self.buf = random_buffer.gen_buffer(params.max_record_size_kb*BYTES_PER_KiB)
         self.total_dirs = 1
         self.verbosity = self.params.verbosity 
@@ -690,7 +692,7 @@ if __name__ == "__main__":
     os.chdir(options.top_directory)
     log.info('chdir to %s' % options.top_directory)
     ctrs = FSOPCounters()
-    ctx = FSOPCtx(options, log, ctrs)
+    ctx = FSOPCtx(options, log, ctrs, 'test-host', 'test-tid')
     ctx.verbosity = -1
     rc = ctx.op_create()
     assert(rc == OK)
