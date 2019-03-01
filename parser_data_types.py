@@ -1,6 +1,6 @@
 import argparse
 import os
-from common import FileSizeDistr
+from common import FileSizeDistr, FileAccessDistr
  
 TypeExc = argparse.ArgumentTypeError
 
