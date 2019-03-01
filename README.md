@@ -78,9 +78,8 @@ Default: 1 -- specify test duration in seconds.
 
 --host-set
 
-Default: None -- specify set of remote hosts to generate workload - fs-drift will start up fs-drift-remote.py processes
-on each of these hosts with same input parameters - assumption here is that you have a shared filesystem.  If no host
-set is specified, subprocesses will be created directly from your fs-drift.py process and run locally.
+Default: None -- specify set of remote hosts to generate workload, either in CSV-list form or as a pathname of a file that contains a list of hosts (1 per line).fs-drift will start up fs-drift-remote.py processes
+on each of these hosts with same input parameters - you must have a filesystem shared by all of these host and the "initiator" host where you run fs-drift.py, and you must have password-less ssh access from the initiator host to all of the hosts in this parameter.  If no host set is specified, subprocesses will be created directly from your fs-drift.py process and run locally.
 
 --threads
 
