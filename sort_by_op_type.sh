@@ -8,7 +8,7 @@
 target_dir=$1
 interval=$2
 NOTOK=1
-rsptime_pctiles=./rsptime_stats.py
+rsptime_pctiles=~/fs-drift/rsptime_stats.py
 if [ -z "$interval" ] ; then
     echo "usage: sort_by_op_type.sh target-dir interval"
     exit $NOTOK
