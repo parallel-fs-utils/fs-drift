@@ -19,15 +19,16 @@ if [ ! -f $target_dir/counters.json ] ; then
 fi
 cd $target_dir
 awk -F, '{ print $1 }' host-*_thrd-*_rsptimes.csv | sort -u > op.list
-for op in `cat op.list` ; do mkdir -p rsptimes/op_$op ; done
-for f in host-*_thrd-*_rsptimes.csv ; do 
-    for op in `cat op.list` ; do
+for op in `cat op.list` ; do
+    opdir=rsptimes/op_$op
+    mkdir -p $opdir
+    for f in host-*_thrd-*_rsptimes.csv ; do 
         # weed out any records whose op type has $op as suffix
         # example: random_read has read as suffix
-        grep "$op," $f | grep -v "_$op," > rsptimes/op_$op/$f
+        grep "$op," $f | grep -v "_$op," > $opdir/$f
     done
-done
-for op in `cat op.list` ; do
-     $rsptime_pctiles --time-interval $interval rsptimes/op_$op
+    $rsptime_pctiles --time-interval $interval $opdir
+    # to save space
+    #rm -f $opdir/host-*_thrd-*_rsptimes
 done
 
