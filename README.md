@@ -1,6 +1,8 @@
 # fs-drift
 mixed-workload filesystem aging test
 
+[Here is an example of what it provides you, within a design outline slide set](https://docs.google.com/presentation/d/e/2PACX-1vTikhrM2EKU8XjPlXLVB5jGANn-dHlBEkOBSpWKtdJGgTZprStJ32JC1A4d3l0bNb9jKgskuS7zv4Gi/pub?start=false&loop=false&delayms=3000&slide=id.g54df3732d5_1_0)
+
 You must provide python's numpy module on every host where fs-drift runs.  For example:
 
     ansible -m shell -a 'yum install -y python-numpy' all
