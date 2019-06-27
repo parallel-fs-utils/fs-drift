@@ -74,7 +74,14 @@ class FSOPCtx:
         self.max_files_per_dir = self.params.max_files // self.total_dirs
         # most recent center
         self.center = self.params.max_files * random.random() * 0.99
-        self.velocity = self.params.mean_index_velocity * 2 * random.random()
+        # since mean of random.random() is 0.5, threads' average
+        # velocity will be self.params.mean_index_velocity, but 
+        # they will have different velocities
+        # since they all start at different locations, this means
+        # that most of the time the probability of thread contention will be
+        # low but occasionally it will be high when one thread catches up to another's
+        # moving gaussian distribution.
+        self.velocity = self.params.mean_index_velocity * 2.0 * random.random()
         self.simulated_time = FSOPCtx.SIMULATED_TIME_UNDEFINED  # initialized later
         self.time_save_rate = FSOPCtx.time_save_rate_default
         self.simtime_pathname = os.path.join(self.params.network_shared_path, 
@@ -96,6 +103,9 @@ class FSOPCtx:
             rq.REMOUNT:     self.op_remount,
             rq.READDIR:     self.op_readdir,
             }
+        if self.params.random_distribution != common.FileAccessDistr.uniform:
+            self.log.info('velocity=%f, stddev=%f, center=%f' % (self.velocity, self.params.gaussian_stddev, self.center))
+
 
     # clients invoke functions by workload request type code
     # instead of by function name, using this:
@@ -750,3 +760,15 @@ if __name__ == "__main__":
     assert(ctrs2.have_read > 0 and ctrs2.have_read == 2 * ctrs.have_read)
     print(ctrs.json_dict())
 
+    # simulate a gaussian run
+    options.random_distribution = common.FileAccessDistr.gaussian
+    ctrs = FSOPCounters()
+    ctx = FSOPCtx(options, log, ctrs, 'test-host', 'test-tid')
+    ctx.verbosity = -1
+    for j in range(0, 200):
+        for k in FSOPCtx.opcode_to_opname.keys():
+            if k != rq.REMOUNT:
+                rc = ctx.invoke_rq(k)
+            assert(rc == OK)
+    print(ctrs)
+    
