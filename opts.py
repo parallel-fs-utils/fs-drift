@@ -45,8 +45,12 @@ class FsDriftOpts:
         self.incompressible = False
         # new parameters related to gaussian filename distribution
         self.random_distribution = common.FileAccessDistr.uniform
-        self.mean_index_velocity = 0.0  # default is a fixed mean for the distribution
-        self.gaussian_stddev = 1000.0  # just a guess, means most of accesses within 1000 files?
+        self.mean_index_velocity = 1.0  # default is a fixed mean for the distribution
+        # just a guess, means most of accesses are limited to 1% of total files 
+        # so more cache-friendly
+        self.gaussian_stddev = self.max_files * 0.01
+        if self.max_files < 1000:
+            self.gaussian_stddev = self.max_files * 0.1
         # just a guess, most files will be created before they are read
         self.create_stddevs_ahead = 3.0
         self.drift_time = -1
