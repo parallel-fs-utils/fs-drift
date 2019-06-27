@@ -6,16 +6,17 @@ timestamp=`date +%Y-%m-%d-%H-%M`
 logdir=/var/tmp/fs-drift-regtest-$timestamp
 lognum=1
 logf='not-here'
-# if you want to use python v3,
-# export PYTHON_PROG=python3
-PY=${PYTHON_PROG:-/usr/bin/python}
+# if you want to use python v2,
+# export PYTHON_PROG=/usr/bin/python
+PY=${PYTHON_PROG:-/usr/bin/python3}
 sudo systemctl start sshd
 
 # both of these scripts take a command string (in quotes) as param 1
 
 gen_logf()
 {
-  logf=$logdir/$lognum.log
+  lognumstr=`seq -f '%02g' $lognum $lognum`
+  logf=$logdir/$lognumstr.log
   (( lognum = $lognum + 1 ))
 } 
 
@@ -41,7 +42,9 @@ logf_fail()
   exit $NOTOK
 }
 
+rm -rf $logdir
 mkdir $logdir
+echo "log directory is $logdir"
 
 # run unit tests first
 
@@ -63,4 +66,5 @@ grep -iq 'usage: fs-drift.py' $logf || logf_fail
 chkfail "./fs-drift.py --zzz"
 grep -iq 'usage:' $logf || logf_fail
 
+chk "./fs-drift.py --random-distribution gaussian"
 
