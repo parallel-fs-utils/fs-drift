@@ -10,7 +10,7 @@ import argparse
 import parser_data_types
 from parser_data_types import boolean, positive_integer, non_negative_integer, bitmask
 from parser_data_types import positive_float, non_negative_float, positive_percentage
-from parser_data_types import host_set, file_access_distrib, directory_list
+from parser_data_types import host_set, file_access_distrib
 
 def getenv_or_default(var_name, var_default):
     v = os.getenv(var_name)
