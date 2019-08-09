@@ -7,7 +7,7 @@ TypeExc = argparse.ArgumentTypeError
 # if we throw exceptions, do it with this
 # so caller can specifically catch them
 
-class SmfParseException(Exception):
+class FsDriftParseException(Exception):
     pass
 
 # the next few routines implement data types
@@ -78,25 +78,6 @@ def host_set(hostname_list_str):
         if len(hostname_list) == 0:
             raise TypeExc('host list must be non-empty')
     return hostname_list
-
-def directory_list(directory_list_str):
-    directory_list = directory_list_str.strip().split(',')
-    if len(directory_list) == 1:
-        directory_list = directory_list_str.strip().split()
-    if len(directory_list) == 0:
-        raise TypeExc('directory list must be non-empty')
-    return directory_list
-
-def file_size_distrib(fsdistrib_str):
-    # FIXME: should be a data type
-    if fsdistrib_str == 'exponential':
-        return FileSizeDistr.random_exponential
-    elif fsdistrib_str == 'fixed':
-        return FileSizeDistr.fixed
-    else:
-        # should never get here
-        raise TypeExc(
-            'file size distribution must be either "exponential" or "fixed"')
 
 def file_access_distrib(distrib_str):
     # FIXME: should be a data type
