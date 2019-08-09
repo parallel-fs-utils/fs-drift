@@ -373,6 +373,8 @@ def parse_yaml(options, input_yaml_file):
                 options.verbosity = bitmask(v)
             elif k == 'launch_as_daemon':
                 options.launch_as_daemon = boolean(v)
+            else:
+                raise FsDriftParseException('unrecognized parameter name %s' % k)
     except TypeExc as e:
         emsg = 'YAML parse error for key "%s" : %s' % (k, str(e))
         raise FsDriftParseException(emsg)
