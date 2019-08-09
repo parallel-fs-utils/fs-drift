@@ -241,8 +241,6 @@ def parseopts():
 
     # parse the command line and update opts
     args = parser.parse_args()
-    if o.input_yaml:
-        parse_yaml(o, args.input_yaml)
     o.top_directory = args.top
     o.output_json_path = args.output_json
     o.rsptimes = args.response_times
@@ -274,6 +272,9 @@ def parseopts():
     o.fullness_limit_pct = args.fullness_limit_percent
     o.launch_as_daemon = args.launch_as_daemon
     o.verbosity = args.verbosity
+    if args.input_yaml:
+        print('parsing input YAML file %s' % args.input_yaml)
+        parse_yaml(o, args.input_yaml)
 
     # some fields derived from user inputs
 
@@ -316,7 +317,7 @@ def parse_yaml(options, input_yaml_file):
     try:
         for k in y.keys():
             v = y[k]
-            if k == 'yaml_input_file':
+            if k == 'input_yaml':
                 raise FsDriftParseException('cannot specify YAML input file from within itself!')
             elif k == 'top':
                 options.top_directory = v
