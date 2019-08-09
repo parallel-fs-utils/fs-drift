@@ -4,13 +4,18 @@ import os
 import os.path
 import json
 import sys
-import common
-from common import OK, NOTOK, FsDriftException
-import argparse
-import parser_data_types
+import yaml
+from argparse import ArgumentParser
+
+# fs-drift module dependencies
+
+from common import OK, NOTOK, FsDriftException, FileAccessDistr, USEC_PER_SEC
+from common import FileAccessDistr2str
 from parser_data_types import boolean, positive_integer, non_negative_integer, bitmask
 from parser_data_types import positive_float, non_negative_float, positive_percentage
 from parser_data_types import host_set, file_access_distrib
+from parser_data_types import FsDriftParseException, TypeExc
+
 
 def getenv_or_default(var_name, var_default):
     v = os.getenv(var_name)
@@ -22,9 +27,10 @@ def getenv_or_default(var_name, var_default):
 
 class FsDriftOpts:
     def __init__(self):
-        self.top_directory = '/tmp/foo'
+        self.input_yaml = None
         self.output_json_path = None  # filled in later
         self.host_set = [] # default is local test
+        self.top_directory = '/tmp/foo'
         self.threads = 2 #  number of subprocesses per host
         self.is_slave = False
         self.duration = 1
@@ -41,10 +47,10 @@ class FsDriftOpts:
         self.workload_table_csv_path = None
         self.stats_report_interval = 0
         self.pause_between_ops = 100
-        self.pause_secs = self.pause_between_ops / float(common.USEC_PER_SEC)
+        self.pause_secs = self.pause_between_ops / float(USEC_PER_SEC)
         self.incompressible = False
         # new parameters related to gaussian filename distribution
-        self.random_distribution = common.FileAccessDistr.uniform
+        self.random_distribution = FileAccessDistr.uniform
         self.mean_index_velocity = 1.0  # default is a fixed mean for the distribution
         # just a guess, means most of accesses are limited to 1% of total files 
         # so more cache-friendly
@@ -67,6 +73,7 @@ class FsDriftOpts:
 
     def kvtuplelist(self):
         return [
+            ('input YAML', self.input_yaml),
             ('top directory', self.top_directory),
             ('JSON output file', self.output_json_path),
             ('save response times?', self.rsptimes),
@@ -86,7 +93,7 @@ class FsDriftOpts:
             ('subdirectories per directory', self.subdirs_per_dir),
             ('incompressible data', self.incompressible),
             ('pause between opts (usec)', self.pause_between_ops),
-            ('distribution', common.FileAccessDistr2str(self.random_distribution)),
+            ('distribution', FileAccessDistr2str(self.random_distribution)),
             ('mean index velocity', self.mean_index_velocity),
             ('gaussian std. dev.', self.gaussian_stddev),
             ('create stddevs ahead', self.create_stddevs_ahead),
@@ -147,10 +154,10 @@ class FsDriftOpts:
 def parseopts():
     o = FsDriftOpts()
 
-    parser = argparse.ArgumentParser(description='parse fs-drift parameters')
+    parser = ArgumentParser(description='parse fs-drift parameters')
     add = parser.add_argument
-    add('--top', help='directory containing all file accesses',
-            default=o.top_directory)
+    add('--input-yaml', help='input YAML file containing parameters',
+            default=None)
     add('--output-json', help='output file containing results in JSON format',
             default=None)
     add('--workload-table', help='.csv file containing workload mix',
@@ -161,6 +168,8 @@ def parseopts():
     add('--host-set', help='comma-delimited list of host names/ips',
             type=host_set,
             default=o.host_set)
+    add('--top', help='directory containing all file accesses',
+            default=o.top_directory)
     add('--threads', help='number of subprocesses per host',
             type=positive_integer,
             default=o.threads)
@@ -205,7 +214,7 @@ def parseopts():
             default=o.incompressible)
     add('--random-distribution', help='either "uniform" or "gaussian"',
             type=file_access_distrib, 
-            default=common.FileAccessDistr.uniform)
+            default=FileAccessDistr.uniform)
     add('--mean-velocity', help='rate at which mean advances through files',
             type=float, 
             default=o.mean_index_velocity)
@@ -232,6 +241,8 @@ def parseopts():
 
     # parse the command line and update opts
     args = parser.parse_args()
+    if o.input_yaml:
+        parse_yaml(o, args.input_yaml)
     o.top_directory = args.top
     o.output_json_path = args.output_json
     o.rsptimes = args.response_times
@@ -252,7 +263,7 @@ def parseopts():
     o.subdirs_per_dir = args.dirs_per_level
     o.incompressible = args.incompressible
     o.pause_between_ops = args.pause_between_ops
-    o.pause_secs = o.pause_between_ops / float(common.USEC_PER_SEC)
+    o.pause_secs = o.pause_between_ops / float(USEC_PER_SEC)
     o.response_times = args.response_times
     o.random_distribution = args.random_distribution
     o.mean_index_velocity = args.mean_velocity
@@ -285,7 +296,87 @@ def parseopts():
  
     return o
 
-# unit test
+
+# module to parse YAML input file containing fs-drift parameters
+# YAML parameter names are identical to CLI parameter names
+#  except that the leading "--" is removed and single '-' characters
+# must be changed to underscore '_' characters
+# modifies test_params object with contents of YAML file
+
+def parse_yaml(options, input_yaml_file):
+    with open(input_yaml_file, 'r') as f:
+        try:
+            y = yaml.safe_load(f)
+            if y == None:
+                y = {}
+        except yaml.YAMLError as e:
+            emsg = "YAML parse error: " + str(e)
+            raise FsDriftParseException(emsg)
+    
+    try:
+        for k in y.keys():
+            v = y[k]
+            if k == 'yaml_input_file':
+                raise FsDriftParseException('cannot specify YAML input file from within itself!')
+            elif k == 'top':
+                options.top_directory = v
+            elif k == 'output_json':
+                options.output_json = v
+            elif k == 'workload_table':
+                options.workload_table = v
+            elif k == 'duration':
+                options.duration = positive_integer(v)
+            elif k == 'host_set':
+                options.host_set = host_set(v)
+            elif k == 'threads':
+                options.threads = positive_integer(v)
+            elif k == 'max_files':
+                options.max_files = positive_integer(v)
+            elif k == 'max_file_size_kb':
+                options.max_file_size_kb = positive_integer(v)
+            elif k == 'pause_between_opts':
+                options.pause_between_opts = non_negative_integer(v)
+            elif k == 'max_record_size_kb':
+                options.max_record_size_kb = positive_integer(v)
+            elif k == 'max_random_reads':
+                options.max_random_reads = positive_integer(v)
+            elif k == 'max_random_writes':
+                options.max_random_writes = positive_integer(v)
+            elif k == 'fdatasync_pct':
+                options.fdatasync_probability_pct = non_negative_integer(v)
+            elif k == 'fsync_pct':
+                options.fsync_probability_pct = non_negative_integer(v)
+            elif k == 'levels':
+                options.levels = positive_integer(v)
+            elif k == 'dirs_per_level':
+                options.dirs_per_level = positive_integer(v)
+            elif k == 'report_interval':
+                options.stats_report_interval = positive_integer(v)
+            elif k == 'response_times':
+                options.rsptimes = boolean(v)
+            elif k == 'incompressible':
+                options.incompressible = boolean(v)
+            elif k == 'random_distribution':
+                options.random_distribution = file_access_distrib(v)
+            elif k == 'mean_velocity':
+                options.mean_velocity = float(v)
+            elif k == 'gaussian_stddev':
+                options.gaussian_stddev = float(v)
+            elif k == 'create_stddevs_ahead':
+                options.create_stddevs_ahead = float(v)
+            elif k == 'tolerate_stale_file_handles':
+                options.tolerate_stale_fh = boolean(v)
+            elif k == 'fullness_limit_percent':
+                options.fullness_limit_pct = positive_percentage(v)
+            elif k == 'verbosity':
+                options.verbosity = bitmask(v)
+            elif k == 'launch_as_daemon':
+                options.launch_as_daemon = boolean(v)
+    except TypeExc as e:
+        emsg = 'YAML parse error for key "%s" : %s' % (k, str(e))
+        raise FsDriftParseException(emsg)
+
+
 
 if __name__ == "__main__":
     options = parseopts()
@@ -293,3 +384,91 @@ if __name__ == "__main__":
     print(options)
     print('json format:')
     print(json.dumps(options.to_json_obj(), indent=2, sort_keys=True))
+
+    import unittest2
+    class YamlParseTest(unittest2.TestCase):
+        def setUp(self):
+            self.params = FsDriftOpts()
+
+        def tearDown(self):
+            self.params = None
+
+        def test_parse_all(self):
+            fn = '/tmp/sample_parse.yaml'
+            with open(fn, 'w') as f:
+                w = lambda s: f.write(s + '\n')
+                w('top: /tmp')
+                w('output_json: /var/tmp/x.json')
+                w('workload_table: /var/tmp/x.csv')
+                w('duration: 60')
+                w('threads: 30')
+                w('max_files: 10000')
+                w( 'max_file_size_kb: 1000000')
+                w('pause_between_ops: 100')
+                w('max_record_size_kb: 4096')
+                w('max_random_reads: 4')
+                w('max_random_writes: 6')
+                w('fdatasync_pct: 2')
+                w('fsync_pct: 3')
+                w('levels: 4')
+                w('dirs_per_level: 50')
+                w('report_interval: 60')
+                w('response_times: Y')
+                w('incompressible: false')
+                w('random_distribution: gaussian')
+                w('mean_velocity: 4.2')
+                w('gaussian_stddev: 100.2')
+                w('create_stddevs_ahead: 3.2')
+                w('tolerate_stale_file_handles: y')
+                w('fullness_limit_percent: 80')
+                w('verbosity: 0xffffffff')
+                w('launch_as_daemon: Y')
+
+            p = self.params
+            parse_yaml(p, fn)
+            assert(p.top_directory == '/tmp')
+            assert(p.output_json == '/var/tmp/x.json')
+            assert(p.workload_table == '/var/tmp/x.csv')
+            assert(p.duration == 60)
+            assert(p.threads == 30)
+            assert(p.max_files == 10000)
+            assert(p.max_file_size_kb == 1000000)
+            assert(p.pause_between_ops == 100)
+            assert(p.max_record_size_kb == 4096)
+            assert(p.max_random_reads == 4)
+            assert(p.max_random_writes == 6)
+            assert(p.fdatasync_probability_pct == 2)
+            assert(p.fsync_probability_pct == 3)
+            assert(p.levels == 4)
+            assert(p.dirs_per_level == 50)
+            assert(p.stats_report_interval == 60)
+            assert(p.rsptimes == True)
+            assert(p.incompressible == False)
+            assert(p.random_distribution == FileAccessDistr.gaussian)
+            assert(p.mean_velocity == 4.2)
+            assert(p.gaussian_stddev == 100.2)
+            assert(p.create_stddevs_ahead == 3.2)
+            assert(p.tolerate_stale_fh == True)
+            assert(p.fullness_limit_pct == 80)
+            assert(p.verbosity == 0xffffffff)
+            assert(p.launch_as_daemon == True)
+
+        def test_parse_negint(self):
+            fn = '/tmp/sample_parse_negint.yaml'
+            with open(fn, 'w') as f:
+                f.write('max_files: -3\n')
+            try:
+                parse_yaml(self.params, fn)
+            except FsDriftParseException as e:
+                msg = str(e)
+                if not msg.__contains__('greater than zero'):
+                    raise e
+
+        def test_parse_hostset(self):
+            fn = '/tmp/sample_parse_hostset.yaml'
+            with open(fn, 'w') as f:
+                f.write('host_set: host-foo,host-bar\n')
+            parse_yaml(self.params, fn)
+            assert(self.params.host_set == [ 'host-foo', 'host-bar' ])
+
+    unittest2.main()
