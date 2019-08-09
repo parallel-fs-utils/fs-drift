@@ -54,6 +54,12 @@ Inputs:
 
 gives you parameter names and brief reminder of what they do.
 
+--input-yaml
+
+Default: None -- if specified, input parameters will be read from this file.  YAML format is sometimes more convenient
+for CI test systems.   There are some restrictions.  The YAML parameter value will override any value entered on the
+command line.   Omit the double hyphen at the beginning of the parameter name when entering them in a yaml file.  Where single dashes are used in parameter names, they must be replaced with underscore character.  So for example "--max-files 5" becomes "max_files: 5".  
+
 --top-directory
 
 Default: /tmp/foo -- where fs-drift puts all its files.  Note: YOU must create this directory.  Since the design center for fs-drift is distributed filesystems, we don't support multiple top-level directories (yet).  fs-drift leaves any existing files or subdirectories in place, so that it can be easily restarted - this is important for a longevity test.  However, the network_shared/ subdirectory inside the top directory is recreated each time it is run.
