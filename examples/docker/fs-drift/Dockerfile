@@ -1,4 +1,3 @@
-# bengland/fedora:28 includes git and any other packages that we use
 FROM docker.io/fedora:29
 MAINTAINER Ben England <bengland@redhat.com>
 RUN dnf install -y python2 git python2-numpy python2-pyyaml
