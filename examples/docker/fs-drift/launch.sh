@@ -13,16 +13,29 @@
 #   the -v volume option just imports a directory from the
 #   host with SELinux set up to allow this (:z suffix)
 #
-launcher=/fs-drift/launch_daemon.py
-ls -l $launcher
+fs_drift_srcdir=/fs-drift
+
+launcher=$fs_drift_srcdir/launch_daemon.py
+ls -l $launcher || exit $NOTOK
+
 echo "topdir: $topdir"
 echo "container_id: $launch_id"
-ls -l $topdir
+
 # for RHEL, Python v2 is packaged in "python" package, for Fedora it's "python2"
 (rpm -q python2 || rpm -q python || rpm -q python3) 2>/tmp/rpm.log
-if [ -x /usr/bin/python ] ; then 
-    export PYTHONPROG=/usr/bin/python
-else
+# prefer python3 but we run either one
+if [ -x /usr/bin/python3 ] ; then 
     export PYTHONPROG=/usr/bin/python3
+else
+    export PYTHONPROG=/usr/bin/python
 fi
-VERBOSE=1 $PYTHONPROG $launcher --top ${topdir} --as-host ${launch_id}
+
+# if user wants to run fs-drift independently in these containers
+# just pass CLI parameters to it
+
+if [ -z "$launch_id" ] ; then
+    $PYTHONPROG $fs_drift_srcdir/fs-drift.py $*   
+else
+    # set verbosity parameter to 0xffffffff for maximum debug info
+    $PYTHONPROG $launcher --top ${topdir} --as-host ${launch_id}
+fi
