@@ -107,5 +107,5 @@ while True:
     finally:
         time.sleep(1)
     if os.path.exists(launcher_kill_fn):
-        log.info('saw %s, exiting as requested')
+        log.info('saw %s, exiting as requested' % launcher_kill_fn)
         sys.exit(OK)
