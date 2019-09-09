@@ -96,6 +96,10 @@ def output_results(params, subprocess_list):
     if len(subprocess_list) < len(params.host_set) * params.threads:
         print('WARNING: failed to get some responses from workload generators')
 
+    now = time.time()
+    start_time = now - max_elapsed_time
+    rslt['date'] = time.strftime('%Y-%m-%dT%H:%M:%S.000Z', time.gmtime(start_time))
+
     if max_elapsed_time > 0.001:  # can't compute rates if it ended too quickly
 
         files_per_sec = cluster.total_files() / max_elapsed_time
