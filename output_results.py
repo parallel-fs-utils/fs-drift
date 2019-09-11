@@ -98,6 +98,7 @@ def output_results(params, subprocess_list):
 
     now = time.time()
     start_time = now - max_elapsed_time
+    rslt['start-time'] = start_time
     rslt['date'] = time.strftime('%Y-%m-%dT%H:%M:%S.000Z', time.gmtime(start_time))
 
     if max_elapsed_time > 0.001:  # can't compute rates if it ended too quickly
