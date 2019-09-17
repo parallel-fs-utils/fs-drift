@@ -177,7 +177,7 @@ print('time interval is %d seconds' % time_interval)
 ## hostname
 
 regex = \
- 'host-([a-z]{1}[0-9,a-z,\-,\.]*)%s_thrd-([0-9]{2})_rsptimes.csv'
+ 'host-([0-9,a-z,\-,\.]*)%s_thrd-([0-9]{2})_rsptimes.csv'
 
 # filter out redundant suffix, if any, in hostname
 
