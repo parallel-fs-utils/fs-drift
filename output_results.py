@@ -10,7 +10,7 @@ def output_thread_counters(outfile, start_time, total_errors, fsop_ctrs):
     jsondict = fsop_ctrs.json_dict()
     jsondict['elapsed-time'] = '%9.1f' % (time.time() - start_time)
     jsondict['total-errors'] = '%9u' % total_errors
-    outfile.write(json.dumps(jsondict, indent=4))
+    outfile.write(json.dumps(jsondict, indent=4) + '\n')
     outfile.flush()
 
 def output_results(params, subprocess_list):
