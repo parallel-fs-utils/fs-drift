@@ -1,7 +1,7 @@
 import time, sys
 import os
 import json
-
+import copy
 from fsop_counters import FSOPCounters
 from common import FsDriftException, OK
 from common import KiB_PER_GiB, BYTES_PER_KiB, MiB_PER_GiB, BYTES_PER_MiB
@@ -18,7 +18,7 @@ def output_results(params, subprocess_list):
     host_index = 0
     host_ids = {}
     rslt = {}
-    rslt['hosts'] = {}
+    rslt['in-host'] = {}
     print('host, thread, elapsed, files, I/O requests, MiB, status')
     fmt = '%s, %s, %f, %d, %d, %9.3f, %s'
 
@@ -59,20 +59,20 @@ def output_results(params, subprocess_list):
         try:
             host_number = host_ids[p.onhost]
         except KeyError:
-            host_index += 1
             host_ids[p.onhost] = host_index
             host_number = host_index
+            host_index += 1
 
         try:
-            per_host_results = rslt['hosts'][host_number]
+            per_host_results = rslt['in-host'][host_number]
         except KeyError:
-            per_host_results = { 'hostname':p.onhost, 'threads':{}, 'files':0, 'ios':0, 'MiB':0.0 }
-            rslt['hosts'][host_number] = per_host_results
+            per_host_results = { 'hostname':p.onhost, 'in-thread':{}, 'files':0, 'ios':0, 'MiB':0.0 }
+            rslt['in-host'][host_number] = per_host_results
             per_host_counters = FSOPCounters()
 
         c.add_to(per_host_counters)
         per_host_results['fsop-counters'] = per_host_counters.json_dict()
-        per_host_results['threads'][p.tid] = thrd
+        per_host_results['in-thread'][p.tid] = thrd
         per_host_results['files'] = per_host_counters.total_files()
         per_host_results['ios'] = per_host_counters.total_ios()
         per_host_results['MiB'] = per_host_counters.total_bytes() / float(BYTES_PER_MiB)
@@ -80,6 +80,16 @@ def output_results(params, subprocess_list):
             per_host_results['files-per-sec'] = per_host_results['files'] / max_elapsed_time
             per_host_results['IOPS'] = per_host_results['ios'] / max_elapsed_time
             per_host_results['MiB-per-sec'] = per_host_results['MiB'] / max_elapsed_time
+
+    # if only 1 host, remove a redundant level in the hierarchy
+    # since host results = cluster results
+
+    if len(rslt['in-host']) == 1 and params.host_set == []:
+        rslt['in-thread'] = {}
+        thread_set = copy.deepcopy(rslt['in-host'][0]['in-thread'])
+        for tid in thread_set.keys():
+            rslt['in-thread'][tid] = copy.deepcopy(thread_set[tid])
+        del rslt['in-host']
 
     rslt['fsop-counters'] = cluster.json_dict()
 
