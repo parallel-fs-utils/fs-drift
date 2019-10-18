@@ -15,6 +15,8 @@ def output_thread_counters(outfile, start_time, total_errors, fsop_ctrs):
 
 def output_results(params, subprocess_list):
     cluster = FSOPCounters()
+    host_index = 0
+    host_ids = {}
     rslt = {}
     rslt['hosts'] = {}
     print('host, thread, elapsed, files, I/O requests, MiB, status')
@@ -52,12 +54,20 @@ def output_results(params, subprocess_list):
                thrd['files'], thrd['ios'], thrd['MiB'], status))
 
         # for JSON, show nesting of threads within hosts
+        # first map host name to host number in test
 
         try:
-            per_host_results = rslt['hosts'][p.onhost]
+            host_number = host_ids[p.onhost]
         except KeyError:
-            per_host_results = { 'threads':{}, 'files':0, 'ios':0, 'MiB':0.0 }
-            rslt['hosts'][p.onhost] = per_host_results
+            host_index += 1
+            host_ids[p.onhost] = host_index
+            host_number = host_index
+
+        try:
+            per_host_results = rslt['hosts'][host_number]
+        except KeyError:
+            per_host_results = { 'hostname':p.onhost, 'threads':{}, 'files':0, 'ios':0, 'MiB':0.0 }
+            rslt['hosts'][host_number] = per_host_results
             per_host_counters = FSOPCounters()
 
         c.add_to(per_host_counters)
