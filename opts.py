@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # opts.py - module to parse command line options and output what parameters will be used for this run
 
 import os
@@ -92,7 +93,7 @@ class FsDriftOpts:
             ('directory levels', self.levels),
             ('subdirectories per directory', self.subdirs_per_dir),
             ('incompressible data', self.incompressible),
-            ('pause between opts (usec)', self.pause_between_ops),
+            ('pause between ops (usec)', self.pause_between_ops),
             ('distribution', FileAccessDistr2str(self.random_distribution)),
             ('mean index velocity', self.mean_index_velocity),
             ('gaussian std. dev.', self.gaussian_stddev),
@@ -151,7 +152,7 @@ class FsDriftOpts:
             with open(self.workload_table_csv_path, 'w') as w_f:
                 w_f.write( '\n'.join(workload_table))
 
-def parseopts():
+def parseopts(cli_params=sys.argv[1:]):
     o = FsDriftOpts()
 
     parser = ArgumentParser(description='parse fs-drift parameters')
@@ -240,7 +241,7 @@ def parseopts():
             default=o.launch_as_daemon)
 
     # parse the command line and update opts
-    args = parser.parse_args()
+    args = parser.parse_args(cli_params)
     o.top_directory = args.top
     o.output_json_path = args.output_json
     o.rsptimes = args.response_times
@@ -335,8 +336,8 @@ def parse_yaml(options, input_yaml_file):
                 options.max_files = positive_integer(v)
             elif k == 'max_file_size_kb':
                 options.max_file_size_kb = positive_integer(v)
-            elif k == 'pause_between_opts':
-                options.pause_between_opts = non_negative_integer(v)
+            elif k == 'pause_between_ops':
+                options.pause_between_ops = non_negative_integer(v)
             elif k == 'max_record_size_kb':
                 options.max_record_size_kb = positive_integer(v)
             elif k == 'max_random_reads':
@@ -382,21 +383,60 @@ def parse_yaml(options, input_yaml_file):
 
 
 if __name__ == "__main__":
-    options = parseopts()
-    options.validate()
-    print(options)
-    print('json format:')
-    print(json.dumps(options.to_json_obj(), indent=2, sort_keys=True))
+
+    # if user supplies command line parameters
+
+    if len(sys.argv) > 2:
+        # accept CLI and parse it without doing anything else
+        options = parseopts()
+        options.validate()
+        print(options)
+        print('json format:')
+        print(json.dumps(options.to_json_obj(), indent=2, sort_keys=True))
+        sys.exit(0)
+
+    # otherwise run unit test
 
     import unittest2
     class YamlParseTest(unittest2.TestCase):
         def setUp(self):
             self.params = FsDriftOpts()
 
-        def tearDown(self):
-            self.params = None
-
         def test_parse_all(self):
+            params = []
+            params.extend(['--top', '/var/tmp'])
+            params.extend(['--output-json', '/var/tmp/x.json'])
+            params.extend(['--workload-table', '/var/tmp/x.csv'])
+            params.extend(['--duration', '60'])
+            params.extend(['--threads', '30'])
+            params.extend(['--max-files', '10000'])
+            params.extend(['--max-file-size-kb', '1000000'])
+            params.extend(['--pause-between-ops', '100'])
+            params.extend(['--max-record-size-kb', '4096'])
+            params.extend(['--max-random-reads', '4'])
+            params.extend(['--max-random-writes', '6'])
+            params.extend(['--fdatasync-pct', '2'])
+            params.extend(['--fsync-pct', '3'])
+            params.extend(['--levels', '4'])
+            params.extend(['--dirs-per-level', '50'])
+            params.extend(['--report-interval', '60'])
+            params.extend(['--response-times', 'Y'])
+            params.extend(['--incompressible', 'false'])
+            params.extend(['--random-distribution', 'gaussian'])
+            params.extend(['--mean-velocity', '4.2'])
+            params.extend(['--gaussian-stddev', '100.2'])
+            params.extend(['--create-stddevs-ahead', '3.2'])
+            params.extend(['--tolerate-stale-file-handles', 'y'])
+            params.extend(['--fullness-limit-percent', '80'])
+            params.extend(['--verbosity', '0xffffffff'])
+            params.extend(['--launch-as-daemon', 'Y'])
+            options = parseopts(cli_params=params)
+            options.validate()
+            print(options)
+            print('json format:')
+            print(json.dumps(options.to_json_obj(), indent=2, sort_keys=True))
+
+        def test_parse_all_from_yaml(self):
             fn = '/tmp/sample_parse.yaml'
             with open(fn, 'w') as f:
                 w = lambda s: f.write(s + '\n')
