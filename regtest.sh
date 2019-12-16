@@ -57,9 +57,8 @@ chk "$PY invoke_process.py"
 chk "$PY opts.py -h > /tmp/o"
 chk "grep 'optional arguments' /tmp/o"
 mkdir -p /tmp/x.d
-chk "$PY opts.py --top /tmp/x.d"
-chkfail "$PY ./opts.py --top /"
-
+chk "$PY opts.py "
+chkfail "$PY opts.py --top /x"
 chk "./fs-drift.py"
 chk "./fs-drift.py -h"
 grep -iq 'usage: fs-drift.py' $logf || logf_fail
