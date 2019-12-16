@@ -65,7 +65,7 @@ def run_multi_thread_workload(prm):
         host = 'localhost'
     prm_slave = (prm.host_set != [])
     # FIXME: get coherent logging level interface
-    verbose = os.getenv('LOGLEVEL_DEBUG' != None)
+    verbose = os.getenv('LOGLEVEL_DEBUG') != None
     host_startup_timeout = 5  + len(prm.host_set) / 3
 
     # for each thread set up SmallfileWorkload instance,
