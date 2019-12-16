@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python
 
 # fs-drift.py - run a mixed, multi-thread, multi-host workload
 # on a POSIX filesystem

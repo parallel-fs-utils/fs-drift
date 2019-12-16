@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # opts.py - module to parse command line options and output what parameters will be used for this run
 
 import os
