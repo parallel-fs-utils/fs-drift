@@ -78,8 +78,8 @@ def do_sorting(sample_set, already_sorted=False):
         sorted_samples = sorted(sample_set, key=get_at_time)
     else:
         sorted_samples = sample_set
-    sorted_keys = map(get_at_time, sorted_samples)
-    sorted_rsptimes = sorted(map(get_rsp_time, sample_set))
+    sorted_keys = list(map(get_at_time, sorted_samples))
+    sorted_rsptimes = list(sorted(map(get_rsp_time, sample_set)))
     return (sorted_samples, sorted_keys, sorted_rsptimes)
 
 
@@ -249,7 +249,7 @@ with open(summary_pathname, 'w') as outf:
     # if there is only 1 thread per host, no need for per-host stats
     # assumption: all hosts have 1 thread/host or all hosts have > 1 thread/host
 
-    first_host = hosts[hosts.keys()[0]]
+    first_host = hosts[list(hosts.keys())[0]]
     if len(first_host.keys()) > 1:
         outf.write('per-host stats:\n')
         for h in sorted(hosts.keys()):
