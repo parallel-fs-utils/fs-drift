@@ -113,7 +113,7 @@ def reduce_thread_set( sorted_samples_tuple, from_time=0, to_time=time_infinity 
         sorted_times = sorted(map(get_rsp_time, sorted_samples[start_index:end_index]))
     sample_count = len(sorted_times)
     if sample_count < min_rsptime_samples:
-	return None
+        return None
     mintime = sorted_times[0]
     maxtime = sorted_times[-1]
     mean = scipy.stats.tmean(sorted_times)
@@ -129,7 +129,7 @@ def reduce_thread_set( sorted_samples_tuple, from_time=0, to_time=time_infinity 
 
 def format_stats(all_stats):
     if all_stats == None:
-	return ' 0,,,,,' + ',,,,,,,,,,,,,,,,'[0:len(percentiles)-1]
+        return ' 0,,,,,' + ',,,,,,,,,,,,,,,,'[0:len(percentiles)-1]
     (sample_count, mintime, maxtime, mean, pctdev, pctiles) = all_stats
     partial_record = '%d, %f, %f, %f, %f, ' % (
             sample_count, mintime, maxtime, mean, pctdev)
@@ -284,7 +284,7 @@ with open(summary_pathname, 'w') as outf:
         for t in threadset.keys():
             (_, samples) = threadset[t]
             if len(samples) > 0:
-            	(_, max_at_time,max_rsp_time) = samples[-1]
+                (_, max_at_time,max_rsp_time) = samples[-1]
             else:
                 max_at_time = 0.0
                 max_rsp_time = 0.0
