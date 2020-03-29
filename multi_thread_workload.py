@@ -187,4 +187,8 @@ def run_multi_thread_workload(prm):
         sync_files.write_pickle(result_filename, worker_list)
         time.sleep(1.2)  # for benefit of NFS with actimeo=1
 
+    debug_time = os.getenv('DEBUG_DELAY_TIME')
+    if debug_time != None:
+        my_log.info('sleeping %s sec so user can inspect running pods' % debug_time)
+        time.sleep(float(debug_time))
     return OK
