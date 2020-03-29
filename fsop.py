@@ -520,6 +520,8 @@ class FSOPCtx:
         except OSError as e:
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
+            elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
+                c.e_no_space += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
                 c.e_stale_fh += 1
                 return NOTOK
