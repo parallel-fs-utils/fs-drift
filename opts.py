@@ -45,7 +45,7 @@ class FsDriftOpts:
         self.subdirs_per_dir = 3
         self.rsptimes = False
         self.workload_table_csv_path = None
-        self.stats_report_interval = max(self.duration // 100, 1)
+        self.stats_report_interval = max(self.duration // 60, 5)
         self.pause_between_ops = 100
         self.pause_secs = self.pause_between_ops / float(USEC_PER_SEC)
         self.incompressible = False
