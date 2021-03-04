@@ -137,7 +137,7 @@ def run_multi_thread_workload(prm):
 
     if prm_slave:
         my_log.debug('awaiting ' + sg)
-        for sec in range(0, host_startup_timeout+3):
+        for sec in range(0, int(host_startup_timeout+3)):
             # hack to ensure that directory is up to date
             #   ndlist = os.listdir(my_host_invoke.network_dir)
             # if verbose: print(str(ndlist))
