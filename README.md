@@ -1,11 +1,13 @@
 # fs-drift
-mixed-workload filesystem aging test
+fs-drift is a mixed-workload filesystem aging test.  This workload attempts to stress a filesystem in various ways over a long period of time, in the following ways:
+
+- file and record sizes are completely random
+- random sequences of reads and writes
+- random sequences of creates and deletes and renames and other system calls
+
+It does this by accessing files from a finite pool of pathnames that are used by all workload threads across all hosts.  Over a long enough period of time it is hoped that this behavior will induce filesystem aging and stress comparable to that experienced by filesystems that have run for months or years.
 
 [Here is an example of what it provides you, within a design outline slide set](https://docs.google.com/presentation/d/e/2PACX-1vTikhrM2EKU8XjPlXLVB5jGANn-dHlBEkOBSpWKtdJGgTZprStJ32JC1A4d3l0bNb9jKgskuS7zv4Gi/pub?start=false&loop=false&delayms=3000&slide=id.g54df3732d5_1_0)
-
-You must provide python's numpy module on every host where fs-drift runs.  For example:
-
-    ansible -m shell -a 'yum install -y python-numpy' all
 
 For a list of options usable with this script, "./fs-drift.py -h" .
 
@@ -13,17 +15,21 @@ To run it: ./fs-drift.py
 
 This of course is a very small run, it just gives you a rough idea of the input parameters and the results you can generate.
 
-To run it from multiple hosts, you must ensure that fs-drift-remote.py or a softlink to it is in the PATH environment variable.  For example:
+These days fs-drift typically runs on python3, but it does have backwards compatibility with python v2 as well.
+
+To run it from multiple hosts, **you must ensure 3 things**:
+
+- python's numpy module is installed on every host where fs-drift runs.  For example:
+
+    ansible -m shell -a 'yum install -y python3-numpy' all
+
+or use pip3 to install numpy, it doesn't matter.
+
+- fs-drift-remote.py or a softlink to it is in the PATH environment variable.  For example:
 
     ansible -m shell -a 'ln -svf ~/fs-drift/fs-drift-remote.py /usr/local/bin/' clients
 
-fs-drift is a program that attempts to stress a filesystem in various ways over a long period of time, in the following ways:
-- file and record sizes are completely random
-- random sequences of reads and writes
-- random sequences of creates and deletes
-
-Over a long enough period of time it is hoped that this behavior will induce filesystem aging and stress comparable to
-that experienced by filesystems that have run for months or years.
+- all remote hosts are set up for password-less ssh from the host where you run fs-drift.py
 
 The workload mix file is a .csv-format file , with each record containing an operation type and share (relative fraction) of operations of that type.  Operations are selected randomly in such a way that over a long enough period of time, the share determines the fraction of operations of that type.
 
@@ -46,7 +52,7 @@ To resume a paused test, just remove network_shared/pause.tmp
 
 ## parameters
 
-Every input parameter name is preceded by "--".  We don't bother with short-form parameter names.
+Every input parameter name is preceded by "--".  We don't bother with short-form parameter names.  Parameters that you should pay attention to are --duration, --max-files, --threads, --host-set and --top.  Other parameters are more specialized and may not apply to your use case.
 
 Inputs:
 
@@ -82,7 +88,7 @@ percentages/fractions and make them all add up to 100/1.
 
 --duration
 
-Default: 1 -- specify test duration in seconds.
+Default: 1 -- specify test duration in seconds.  NOTE: you must run the test long enough for most of the files in the --max-files parameter to have been created, otherwise the workload will be mostly limited to create operations.
 
 --host-set
 
