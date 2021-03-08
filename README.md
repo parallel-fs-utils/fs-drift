@@ -9,6 +9,14 @@ It does this by accessing files from a finite pool of pathnames that are used by
 
 [Here is an example of what it provides you, within a design outline slide set](https://docs.google.com/presentation/d/e/2PACX-1vTikhrM2EKU8XjPlXLVB5jGANn-dHlBEkOBSpWKtdJGgTZprStJ32JC1A4d3l0bNb9jKgskuS7zv4Gi/pub?start=false&loop=false&delayms=3000&slide=id.g54df3732d5_1_0)
 
+The host where you initiate the fs-drift test from must have PyYAML package installed, either by RPM or pip3.   For example:
+
+    # yum install -y python3-pyyaml
+
+or 
+
+    # pip3 install pyaml
+
 For a list of options usable with this script, "./fs-drift.py -h" .
 
 To run it: ./fs-drift.py
