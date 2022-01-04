@@ -513,8 +513,8 @@ class FSOPCtx:
         if self.verbosity & 0x40000:
             self.log.debug('truncate %s' % fn)
         try:
-            new_file_size = self.random_file_size()/3
             fd = os.open(fn, os.O_RDWR)
+            new_file_size = self.get_file_size(fd)
             os.ftruncate(fd, new_file_size)
             c.have_truncated += 1
         except OSError as e:
