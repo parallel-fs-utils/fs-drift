@@ -349,6 +349,7 @@ class FsDriftWorkload:
             per_thread_ctr_fn = 'counters.%s.%s.json' % (self.tid, self.onhost)
             counter_file_path = os.path.join(self.params.network_shared_path, per_thread_ctr_fn)
             self.counter_file = open(counter_file_path, 'w')
+            self.counter_file.write('[')
 
         os.chdir(self.params.top_directory)
 
@@ -365,6 +366,7 @@ class FsDriftWorkload:
         last_stat_time = self.start_time
         last_drift_time = self.start_time
 
+        first_counters_written = False
         try:
           while True:
             self.update_verbosity()
@@ -414,7 +416,10 @@ class FsDriftWorkload:
 
             if ( (self.params.stats_report_interval > 0) and 
                  (self.op_start_time - last_stat_time > self.params.stats_report_interval)):
+                if first_counters_written:
+                    self.counter_file.write(',')
                 output_results.output_thread_counters(self.counter_file, self.start_time, total_errors, self.ctrs)
+                first_counters_written = True
                 last_stat_time = self.op_start_time
 
             # record response time, must happen AFTER op_start_time referenced
@@ -446,6 +451,7 @@ class FsDriftWorkload:
             self.log.exception(e)
             self.status = -NOTOK
         if self.counter_file != None:
+            self.counter_file.write(']')
             self.counter_file.close()
         self.end_test()
         if self.params.rsptimes:
