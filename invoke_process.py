@@ -67,9 +67,10 @@ class subprocess(multiprocessing.Process):
 # so you can just do "python invoke_process.py" to test it
 
 if __name__ == '__main__':
-    import unittest2
+    from unit_test_module import get_unit_test_module
+    unittest_module = get_unit_test_module()
     
-    class Test(unittest2.TestCase):
+    class Test(unittest_module.TestCase):
         workload_table = [
                     'read, 2',
                     'random_read, 1',
@@ -141,4 +142,4 @@ if __name__ == '__main__':
                 if t.invoke.ctrs.read_bytes == 0:
                     raise FsDriftException('subprocess never read any data')
 
-    unittest2.main()
+    unittest_module.main()

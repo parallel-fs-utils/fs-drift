@@ -396,8 +396,10 @@ if __name__ == "__main__":
 
     # otherwise run unit test
 
-    import unittest2
-    class YamlParseTest(unittest2.TestCase):
+    from unit_test_module import get_unit_test_module
+    unittest_module = get_unit_test_module()
+
+    class YamlParseTest(unittest_module.TestCase):
         def setUp(self):
             self.params = FsDriftOpts()
 
@@ -513,4 +515,4 @@ if __name__ == "__main__":
             parse_yaml(self.params, fn)
             assert(self.params.host_set == [ 'host-foo', 'host-bar' ])
 
-    unittest2.main()
+    unittest_module.main()

@@ -11,6 +11,7 @@ import threading, os, errno, copy, time, subprocess, logging
 # fs-drift modules
 from fsd_log import start_log
 from common import OK, NOTOK, FsDriftException
+from unit_test_module import get_unit_test_module
 
 # this class is just used to create a python thread
 # for each remote host that we want to use as a workload generator
@@ -56,11 +57,11 @@ class ssh_thread(threading.Thread):
         self.status = NOTOK
 
 if __name__ == '__main__':
-    import unittest2
+    unittest_module = get_unit_test_module()
 
     log = start_log('ssh_thread')
 
-    class Test(unittest2.TestCase):
+    class Test(unittest_module.TestCase):
         def setUp(self):
             pass
 
@@ -79,4 +80,4 @@ if __name__ == '__main__':
             sthrd.terminate()
             assert(sthrd.status == NOTOK)
 
-    unittest2.main()
+    unittest_module.main()

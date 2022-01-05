@@ -470,7 +470,8 @@ class FsDriftWorkload:
 # so you can just do "python worker_thread.py " to test it
 
 if __name__ == '__main__':
-    import unittest2
+    from unit_test_module import get_unit_test_module
+    unittest_module = get_unit_test_module()
     import opts
 
     # threads used to do multi-threaded unit testing
@@ -493,7 +494,7 @@ if __name__ == '__main__':
             except Exception as e:
                 self.worker.log.error(str(e))
 
-    class Test(unittest2.TestCase):
+    class Test(unittest_module.TestCase):
         workload_table = [
                     'read, 2',
                     'random_read, 1',
@@ -565,5 +566,5 @@ if __name__ == '__main__':
                 t.worker.chk_status()
             print('total counters:')
             print(totals)
-    unittest2.main()
+    unittest_module.main()
 
