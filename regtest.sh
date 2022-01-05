@@ -55,7 +55,7 @@ chk "$PY random_buffer.py"
 chk "$PY worker_thread.py"
 chk "$PY invoke_process.py"
 chk "$PY opts.py -h > /tmp/o"
-chk "grep 'optional arguments' /tmp/o"
+chk "grep 'options' /tmp/o"
 mkdir -p /tmp/x.d
 chk "$PY opts.py "
 chkfail "$PY opts.py --top /x"
