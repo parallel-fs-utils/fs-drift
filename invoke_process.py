@@ -40,9 +40,10 @@ class subprocess(multiprocessing.Process):
             wkr.do_workload()
             wkr.log.debug('exiting subprocess and returning invoke for ' + wkr.tid)
         except Exception as e:
+            wkr.log.error('failed to complete work on thread %s' % wkr.tid)
+            wrk.log.exception(e)
             print('Exception seen in thread %s host %s (tail %s) ' %
                   (wkr.tid, wkr.onhost, wkr.log_fn()))
-            wkr.log.error(str(e))
         finally:
             wkr.rsptimes = None  # response time array already saved to file
             wkr.params = None
