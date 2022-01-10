@@ -123,7 +123,7 @@ def run_multi_host_workload(prm, log):
                     log.info('did not see host filename %s after %f sec' % (fn, sec))
                     hosts_ready = False
                     break
-                log.debug('saw host filename ' + fn)
+                log.info('saw host filename ' + fn)
                 last_host_seen = j  # saw this host's ready file
                 # we exit while loop only if no hosts in per_host_timeout seconds
                 sec = 0.0
@@ -174,7 +174,7 @@ def run_multi_host_workload(prm, log):
 
         try:
             sync_files.write_sync_file(prm.starting_gun_path, 'hi')
-            log.debug('starting all threads by creating starting gun file %s' %
+            log.info('starting all threads by creating starting gun file %s' %
                         prm.starting_gun_path)
         except IOError as e:
             log.error('error writing starting gun file: %s' % os.strerror(e.errno))
