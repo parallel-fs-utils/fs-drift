@@ -14,6 +14,7 @@ import subprocess
 import common
 from common import rq, FileAccessDistr, FileSizeDistr
 from common import OK, NOTOK, BYTES_PER_KiB, FD_UNDEFINED, FsDriftException
+from common import myassert
 from fsop_counters import FSOPCounters
 
 link_suffix = '.s'
@@ -394,7 +395,7 @@ class FSOPCtx:
                 if recsz + total_sz > target_sz:
                     recsz = target_sz - total_sz
                 count = os.write(fd, self.buf[0:recsz])
-                assert count == recsz 
+                myassert(count == recsz)
                 if self.verbosity & 0x1000:
                     self.log.debug('create sz %u written %u' % (recsz, count))
                 total_sz += count
@@ -436,11 +437,11 @@ class FSOPCtx:
                 recsz = self.random_record_size()
                 if recsz + total_appended > target_sz:
                     recsz = target_sz - total_appended
-                assert recsz > 0
+                myassert(recsz > 0)
                 if self.verbosity & 0x8000:
                     self.log.debug('append rsz %u' % (recsz))
                 count = os.write(fd, self.buf[0:recsz])
-                assert count == recsz
+                myassert(count == recsz)
                 total_appended += count
                 c.write_requests += 1
                 c.write_bytes += count
@@ -484,7 +485,7 @@ class FSOPCtx:
                     count = os.write(fd, self.buf[0:recsz])
                     if self.verbosity & 0x20000:
                         self.log.debug('randwrite count=%u recsz=%u' % (count, recsz))
-                    assert count == recsz
+                    myassert(count == recsz)
                     total_count += count
                 total_write_reqs += 1
                 c.randwrite_requests += 1

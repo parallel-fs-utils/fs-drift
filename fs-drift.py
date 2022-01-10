@@ -190,7 +190,7 @@ def run_multi_host_workload(prm, log):
                       (t.remote_host, t.status))
 
     # attempt to aggregate results by reading pickle files
-    # containing SmallfileWorkload instances
+    # containing worker thread instances
     # with counters and times that we need
 
     try:
@@ -199,7 +199,7 @@ def run_multi_host_workload(prm, log):
         for h in prm.host_set:  # for each host in test
 
             # read results for each thread run in that host
-            # from python pickle of the list of SmallfileWorkload objects
+            # from python pickle of the list of worker thread objects
 
             pickle_fn = multi_thread_workload.host_result_filename(prm, h)
             log.debug('reading pickle file: %s' % pickle_fn)

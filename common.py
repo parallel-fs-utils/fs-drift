@@ -7,6 +7,10 @@ import os, errno
 class FsDriftException(Exception):
     pass
 
+def myassert(bool_expr):
+    if (not bool_expr):
+        raise FsDriftException('assertion failed!')
+
 NOTOK = 1
 OK = 0
 BYTES_PER_KiB = 1 << 10
