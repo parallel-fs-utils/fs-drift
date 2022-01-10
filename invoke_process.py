@@ -41,7 +41,7 @@ class subprocess(multiprocessing.Process):
             wkr.log.debug('exiting subprocess and returning invoke for ' + wkr.tid)
         except Exception as e:
             wkr.log.error('failed to complete work on thread %s' % wkr.tid)
-            wrk.log.exception(e)
+            wkr.log.exception(e)
             print('Exception seen in thread %s host %s (tail %s) ' %
                   (wkr.tid, wkr.onhost, wkr.log_fn()))
         finally:
