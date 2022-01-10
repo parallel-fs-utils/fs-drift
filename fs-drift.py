@@ -271,6 +271,8 @@ def run_workload():
     # put parameters where all threads can see them
 
     write_pickle(params.param_pickle_path, params)
+    if os.path.exists(params.abort_path):
+        os.unlink(params.abort_path)
 
     if params.host_set != [] and not params.is_slave:
         return run_multi_host_workload(params, log)
