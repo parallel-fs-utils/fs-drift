@@ -257,8 +257,8 @@ def run_workload():
 
     print(params)
 
-    if os.getenv('DEBUG'):
-        log.logLevel(logging.DEBUG)
+    if params.verbosity & 0x1000:
+        fsd_log.change_loglevel(logging.DEBUG)
 
     try:
         sync_files.create_top_dirs(params)

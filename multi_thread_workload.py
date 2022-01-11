@@ -5,6 +5,7 @@ import time
 import random
 import copy
 import socket
+import logging
 
 import worker_thread
 import common
@@ -64,7 +65,6 @@ def run_multi_thread_workload(prm):
         host = 'localhost'
     prm_slave = (prm.host_set != [])
     # FIXME: get coherent logging level interface
-    verbose = os.getenv('LOGLEVEL_DEBUG') != None
     host_startup_timeout = 5  + len(prm.host_set) / 3
 
     # for each thread set up SmallfileWorkload instance,
@@ -73,6 +73,8 @@ def run_multi_thread_workload(prm):
     thread_list = create_worker_list(prm)
     my_host_invoke = thread_list[0].invoke
     my_log = fsd_log.start_log('%s.master' % host)
+    if params.verbosity & 0x1000:
+        fsd_log.change_loglevel(my_log, logging.DEBUG)
     my_log.debug(prm)
 
     # start threads, wait for them to reach starting gate
@@ -140,7 +142,6 @@ def run_multi_thread_workload(prm):
         for sec in range(0, int(host_startup_timeout+3)):
             # hack to ensure that directory is up to date
             #   ndlist = os.listdir(my_host_invoke.network_dir)
-            # if verbose: print(str(ndlist))
             if os.path.exists(sg):
                 break
             if os.path.exists(prm.abort_path):
@@ -151,8 +152,8 @@ def run_multi_thread_workload(prm):
             abort_test(prm.abort_path, thread_list)
             raise FsDriftException('starting signal not seen within %d seconds'
                             % host_startup_timeout)
-    if verbose:
-        print('starting test on host ' + host + ' in 2 seconds')
+    if prm.verbosity & 0x800:
+        my_log.info('starting test on host ' + host + ' in 2 seconds')
     time.sleep(2 + random.random())  # let other hosts see starting gate file
 
     # FIXME: don't timeout the test,
