@@ -242,7 +242,8 @@ class FSOPCtx:
 
 
     def random_record_size(self):
-        return random.randint(1, self.params.max_record_size_kb * BYTES_PER_KiB)
+        max_size = min(self.params.max_record_size_kb, self.params.max_file_size_kb)
+        return random.randint(1, max_size * BYTES_PER_KiB)
 
 
     def random_segment_size(self, filesz):
@@ -749,6 +750,16 @@ if __name__ == "__main__":
     #assert(rc != OK)
 
     # simulate a mixed-workload run
+    for j in range(0, 200):
+        for k in FSOPCtx.opcode_to_opname.keys():
+            if k != rq.REMOUNT:
+                rc = ctx.invoke_rq(k)
+            assert(rc == OK)
+
+
+    #simulate a run where max record size = max file size
+    ctx.params.max_record_size_kb = ctx.params.max_file_size_kb = 1024
+    ctx.buf = random_buffer.gen_buffer(ctx.params.max_record_size_kb*BYTES_PER_KiB)
     for j in range(0, 200):
         for k in FSOPCtx.opcode_to_opname.keys():
             if k != rq.REMOUNT:
