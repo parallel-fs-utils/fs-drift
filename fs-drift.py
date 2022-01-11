@@ -29,6 +29,7 @@ import random
 import event
 import errno
 import pickle
+import logging
 
 import common
 from common import rq, OK, NOTOK
