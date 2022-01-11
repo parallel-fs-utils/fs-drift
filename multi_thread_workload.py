@@ -174,7 +174,7 @@ def run_multi_thread_workload(prm):
             worker_list = [ t.invoke for t in thread_list ] 
             output_results.output_results(prm, worker_list)
         except FsDriftException as e:
-            print('ERROR: ' + str(e))
+            my_log.exception(e)
             return NOTOK
     else:
 
