@@ -149,7 +149,7 @@ def run_multi_thread_workload(prm):
             time.sleep(1)
         if not os.path.exists(sg):
             abort_test(prm.abort_path, thread_list)
-            raise Exception('starting signal not seen within %d seconds'
+            raise FsDriftException('starting signal not seen within %d seconds'
                             % host_startup_timeout)
     if verbose:
         print('starting test on host ' + host + ' in 2 seconds')

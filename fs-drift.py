@@ -60,7 +60,7 @@ def run_multi_host_workload(prm, log):
     elif sys.version.startswith('3'):
         python_prog = 'python3'
     else:
-        raise Exception('unrecognized python version %s' % sys.version)
+        raise FsDriftException('unrecognized python version %s' % sys.version)
 
     log.debug('python_prog = %s'%python_prog)
 
