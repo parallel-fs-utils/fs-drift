@@ -468,7 +468,6 @@ if __name__ == '__main__':
             threading.Thread.__init__(self, name=my_name)
             self.worker = my_worker
             self.worker.tid = my_name
-            self.worker.verbose = True
 
         def __str__(self):
             return 'TestThread ' + str(self.worker) + ' ' + \
@@ -520,7 +519,6 @@ if __name__ == '__main__':
             write_pickle(self.params.param_pickle_path, self.params)
             fsd = FsDriftWorkload(self.params)
             fsd.tid = 'worker_thread'
-            fsd.verbose = True
             touch(fsd.params.starting_gun_path)
             fsd.do_workload()
             print(fsd.ctrs)
