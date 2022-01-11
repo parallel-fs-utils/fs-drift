@@ -71,13 +71,6 @@ class FsDriftWorkload:
 
     some_prime = 900593
 
-    # build largest supported buffer, and fill it full of random hex digits,
-    # then just use a substring of it below
-
-    biggest_buf_size_bits = 20
-    random_seg_size_bits = 10
-    biggest_buf_size = 1 << biggest_buf_size_bits
-
     # initialize files with up to this many different random patterns
     buf_offset_range = 1 << 10
 
@@ -121,12 +114,6 @@ class FsDriftWorkload:
 
         # counter output file so we can watch evolution of system over time
         self.counter_file = None
-
-        # buffer for reads and writes will be here
-        self.buf = None
-
-        # copy from here on writes, compare to here on reads
-        self.biggest_buf = None
 
         self.total_threads = len(self.params.host_set) * self.params.threads
 
@@ -340,8 +327,7 @@ class FsDriftWorkload:
         self.start_log()
         self.params = read_pickle(self.params.param_pickle_path)
         self.ctx = FSOPCtx(self.params, self.log, self.ctrs, self.onhost, self.tid)
-        # FIXME: worker_thread doesn't use this buf!
-        #self.biggest_buf = self.create_biggest_buf(False)
+
         # retrieve params from pickle file so that 
         # remote workload generators can read them
 

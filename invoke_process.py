@@ -49,7 +49,6 @@ class subprocess(multiprocessing.Process):
             wkr.params = None
             wkr.log = None  # log objects cannot be serialized
             wkr.buf = None
-            wkr.biggest_buf = None
             ctrs = wkr.ctrs
             self.sender.send(wkr.status)
             self.sender.send(wkr.elapsed_time)
