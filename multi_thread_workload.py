@@ -73,7 +73,7 @@ def run_multi_thread_workload(prm):
     thread_list = create_worker_list(prm)
     my_host_invoke = thread_list[0].invoke
     my_log = fsd_log.start_log('%s.master' % host)
-    if params.verbosity & 0x1000:
+    if prm.verbosity & 0x1000:
         fsd_log.change_loglevel(my_log, logging.DEBUG)
     my_log.debug(prm)
 
