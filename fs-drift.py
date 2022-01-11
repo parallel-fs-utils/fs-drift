@@ -162,9 +162,8 @@ def run_multi_host_workload(prm, log):
     if not hosts_ready:
         multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)
         if not exception_seen:
-            log.info(
+            log.error(
                 'no additional hosts reached starting gate within %5.1f seconds' % per_host_timeout)
-            return NOTOK
         else:
             raise exception_seen
     else:
@@ -251,7 +250,7 @@ def run_workload():
         params = opts.parseopts()
         params.validate()
     except FsDriftException as e:
-        log.error(str(e))
+        log.exception(e)
         log.info('use --help option to get CLI syntax')
         sys.exit(NOTOK)
 
