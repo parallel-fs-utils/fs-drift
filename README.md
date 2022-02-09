@@ -184,6 +184,10 @@ last parameter in the command.  This allows fs-drift to do the unmount operation
 
 Default: 85 - Because fs-drift depends on the filesystem under test to return results from the worker threads to the test driver host (where fs-drift.py was originally run), we don't want the filesystem to fill up so much that we can't create any files in it.   You can set this any valid percentage, the realistic limit may depend on which filesystem you are running on.
 
+--directIO
+
+Default: False -- If True, fs-drift will use flag O_DIRECT when opening files. All the issued IOs will be alligned to 4KB, i.e. record size and file size smaller than 4KB will be upscaled to 4KB.
+
 ## future enhancements
 
 - logging - is a bit chaotic, done differently in different places, too many log files,
