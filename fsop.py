@@ -267,9 +267,13 @@ class FSOPCtx:
         segsize = 2 * self.random_record_size()
         if segsize > filesz:
             segsize = filesz//7
+        if self.params.directIO:
+            return (segsize // 4096) * 4096           
         return segsize
 
     def random_seek_offset(self, filesz):
+        if self.params.directIO:
+            return random.randint(0, int((filesz)/4096))*4096
         return random.randint(0, filesz)
 
 
@@ -351,6 +355,8 @@ class FSOPCtx:
                     elif recsz + total_count > rdsz:
                         recsz = rdsz - total_count
                     if recsz == 0:
+                        break
+                    if self.params.directIO and recsz < 4096:
                         break
                     #using mmap for memory alignment
                     bytebuf = mmap.mmap(-1, recsz)
