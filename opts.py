@@ -49,6 +49,7 @@ class FsDriftOpts:
         self.pause_between_ops = 100
         self.pause_secs = self.pause_between_ops / float(USEC_PER_SEC)
         self.incompressible = False
+        self.directIO = False
         # new parameters related to gaussian filename distribution
         self.random_distribution = FileAccessDistr.uniform
         self.mean_index_velocity = 1.0  # default is a fixed mean for the distribution
@@ -92,6 +93,7 @@ class FsDriftOpts:
             ('directory levels', self.levels),
             ('subdirectories per directory', self.subdirs_per_dir),
             ('incompressible data', self.incompressible),
+            ('use direct IO', self.directIO),            
             ('pause between ops (usec)', self.pause_between_ops),
             ('distribution', FileAccessDistr2str(self.random_distribution)),
             ('mean index velocity', self.mean_index_velocity),
@@ -212,6 +214,9 @@ def parseopts(cli_params=sys.argv[1:]):
     add('--incompressible', help='if True then write incompressible data',
             type=boolean,
             default=o.incompressible)
+    add('--directIO', help='if True then use directIO to open files/device',
+            type=boolean,
+            default=o.directIO)            
     add('--random-distribution', help='either "uniform" or "gaussian"',
             type=file_access_distrib, 
             default=FileAccessDistr.uniform)
@@ -260,6 +265,7 @@ def parseopts(cli_params=sys.argv[1:]):
     o.levels = args.levels
     o.subdirs_per_dir = args.dirs_per_level
     o.incompressible = args.incompressible
+    o.directIO = args.directIO    
     o.pause_between_ops = args.pause_between_ops
     o.pause_secs = o.pause_between_ops / float(USEC_PER_SEC)
     o.response_times = args.response_times
@@ -357,6 +363,8 @@ def parse_yaml(options, input_yaml_file):
                 options.rsptimes = boolean(v)
             elif k == 'incompressible':
                 options.incompressible = boolean(v)
+            elif k == 'directIO':
+                options.directIO = boolean(v)                
             elif k == 'random_distribution':
                 options.random_distribution = file_access_distrib(v)
             elif k == 'mean_velocity':
@@ -423,6 +431,7 @@ if __name__ == "__main__":
             params.extend(['--report-interval', '60'])
             params.extend(['--response-times', 'Y'])
             params.extend(['--incompressible', 'false'])
+            params.extend(['--directIO', 'false'])            
             params.extend(['--random-distribution', 'gaussian'])
             params.extend(['--mean-velocity', '4.2'])
             params.extend(['--gaussian-stddev', '100.2'])
@@ -459,6 +468,7 @@ if __name__ == "__main__":
                 w('report_interval: 60')
                 w('response_times: Y')
                 w('incompressible: false')
+                w('directIO: false')                
                 w('random_distribution: gaussian')
                 w('mean_velocity: 4.2')
                 w('gaussian_stddev: 100.2')
@@ -488,6 +498,7 @@ if __name__ == "__main__":
             assert(p.stats_report_interval == 60)
             assert(p.rsptimes == True)
             assert(p.incompressible == False)
+            assert(p.directIO == False)            
             assert(p.random_distribution == FileAccessDistr.gaussian)
             assert(p.mean_velocity == 4.2)
             assert(p.gaussian_stddev == 100.2)
