@@ -316,6 +316,7 @@ class FSOPCtx:
                 total_read += count
             c.have_read += 1
         except OSError as e:
+            self.try_to_close(fd, fn)
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
@@ -371,6 +372,7 @@ class FSOPCtx:
                 c.randread_requests += 1
             c.have_randomly_read += 1
         except OSError as e:
+            self.try_to_close(fd, fn)
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
@@ -435,6 +437,7 @@ class FSOPCtx:
             rc = self.maybe_fsync(fd)
             c.have_created += 1
         except OSError as e:
+            self.try_to_close(fd, fn)        
             if e.errno == errno.EEXIST:
                 c.e_already_exists += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -482,6 +485,7 @@ class FSOPCtx:
             rc = self.maybe_fsync(fd)
             c.have_appended += 1
         except OSError as e:
+            self.try_to_close(fd, fn)        
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -530,6 +534,7 @@ class FSOPCtx:
                 rc = self.maybe_fsync(fd)
             c.have_randomly_written += 1
         except OSError as e:
+            self.try_to_close(fd, fn)        
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -556,6 +561,7 @@ class FSOPCtx:
             os.ftruncate(fd, new_file_size)
             c.have_truncated += 1
         except OSError as e:
+            self.try_to_close(fd, fn)        
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
