@@ -115,7 +115,13 @@ class FSOPCtx:
         if self.params.directIO and self.params.max_file_size_kb < 4:
             self.log.debug('file size too low for directIO, raising to 4KiB')        
             self.params.max_file_size_kb = 4            
+            
+        if self.params.rawdevice != None:
+            #Open testing device and keep file descriptor
+            self.rawdevice_fd = os.open(self.params.rawdevice, os.O_RDWR | os.O_DIRECT * self.params.directIO)
+            self.rawdevice_f = os.fdopen(self.rawdevice_fd, 'rb', 0)
 
+            
     # clients invoke functions by workload request type code
     # instead of by function name, using this:
 
@@ -178,6 +184,8 @@ class FSOPCtx:
         return f.readline().strip()
 
     def gen_random_fn(self, is_create=False):
+        if self.params.rawdevice != None:
+            return self.params.rawdevice
         if self.params.random_distribution == FileAccessDistr.uniform:
             # lower limit 0 means at least 1 file/dir
             index = random.randint(0, self.params.max_files)
@@ -278,6 +286,8 @@ class FSOPCtx:
 
 
     def try_to_close(self, closefd, filename):
+        if self.params.rawdevice != None:
+            return OK
         if closefd != FD_UNDEFINED:
             try:
                 os.close(closefd)
@@ -295,8 +305,12 @@ class FSOPCtx:
         try:
             if self.verbosity & 0x20000:
                 self.log.debug('read file %s' % fn)
-            fd = os.open(fn, os.O_RDONLY | os.O_DIRECT * self.params.directIO)
-            f = os.fdopen(fd, 'rb', 0)            
+            if self.params.rawdevice != None:
+                fd = self.rawdevice_fd
+                f = self.rawdevice_f                
+            else:
+                fd = os.open(fn, os.O_RDONLY | os.O_DIRECT * self.params.directIO)
+                f = os.fdopen(fd, 'rb', 0)            
             fsz = self.get_file_size(fd)
             if self.verbosity & 0x4000:
                 self.log.debug('read file sz %u' % fsz)
@@ -336,8 +350,12 @@ class FSOPCtx:
             target_read_reqs = random.randint(0, self.params.max_random_reads)
             if self.verbosity & 0x20000:
                 self.log.debug('randread %s reqs %u' % (fn, target_read_reqs))
-            fd = os.open(fn, os.O_RDONLY | os.O_DIRECT * self.params.directIO)
-            f = os.fdopen(fd, 'rb', 0)            
+            if self.params.rawdevice != None:
+                fd = self.rawdevice_fd
+                f = self.rawdevice_f
+            else:                
+                fd = os.open(fn, os.O_RDONLY | os.O_DIRECT * self.params.directIO)
+                f = os.fdopen(fd, 'rb', 0)            
             fsz = self.get_file_size(fd)
             if self.verbosity & 0x2000:
                 self.log.debug('randread filesize %u reqs %u' % (
@@ -418,7 +436,10 @@ class FSOPCtx:
                     return self.scallerr('dir create', fn, e)
             c.dirs_created += 1
         try:
-            fd = os.open(fn, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_DIRECT * self.params.directIO)
+            if self.params.rawdevice != None:
+                fd = self.rawdevice_fd
+            else:
+                fd = os.open(fn, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_DIRECT * self.params.directIO)
             total_sz = 0
             while total_sz < target_sz:
                 recsz = self.random_record_size()
@@ -465,7 +486,10 @@ class FSOPCtx:
         if self.verbosity & 0x8000:
             self.log.debug('append %s sz %s' % (fn, target_sz))
         try:
-            fd = os.open(fn, os.O_WRONLY | os.O_DIRECT * self.params.directIO)
+            if self.params.rawdevice != None:
+                fd = self.rawdevice_fd
+            else:        
+                fd = os.open(fn, os.O_WRONLY | os.O_DIRECT * self.params.directIO)
             total_appended = 0
             while total_appended < target_sz:
                 recsz = self.random_record_size()
@@ -508,7 +532,10 @@ class FSOPCtx:
             target_write_reqs = random.randint(0, self.params.max_random_writes)
             if self.verbosity & 0x20000:
                 self.log.debug('randwrite %s reqs %u' % (fn, target_write_reqs))
-            fd = os.open(fn, os.O_WRONLY | os.O_DIRECT * self.params.directIO)
+            if self.params.rawdevice != None:
+                fd = self.rawdevice_fd
+            else:
+                fd = os.open(fn, os.O_WRONLY | os.O_DIRECT * self.params.directIO)
             fsz = self.get_file_size(fd)
             while total_write_reqs < target_write_reqs:
                 off = os.lseek(fd, self.random_seek_offset(fsz), 0)
@@ -556,7 +583,10 @@ class FSOPCtx:
         if self.verbosity & 0x40000:
             self.log.debug('truncate %s' % fn)
         try:
-            fd = os.open(fn, os.O_RDWR | os.O_DIRECT * self.params.directIO)
+            if self.params.rawdevice != None:
+                fd = self.rawdevice_fd
+            else:
+                fd = os.open(fn, os.O_RDWR | os.O_DIRECT * self.params.directIO)
             new_file_size = self.get_file_size(fd)
             os.ftruncate(fd, new_file_size)
             c.have_truncated += 1
