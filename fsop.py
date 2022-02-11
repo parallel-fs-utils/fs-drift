@@ -120,7 +120,9 @@ class FSOPCtx:
             #Open testing device and keep file descriptor
             self.rawdevice_fd = os.open(self.params.rawdevice, os.O_RDWR | os.O_DIRECT * self.params.directIO)
             self.rawdevice_f = os.fdopen(self.rawdevice_fd, 'rb', 0)
-
+            #Get device size by seeking the end, then set coursor to offset 0
+            self.rawdevice_size = os.lseek(self.rawdevice_fd, 0, os.SEEK_END)
+            os.lseek(self.rawdevice_fd, 0, os.SEEK_SET)
             
     # clients invoke functions by workload request type code
     # instead of by function name, using this:
@@ -154,11 +156,13 @@ class FSOPCtx:
         return False
 
     def get_file_size(self, fd):
+        if self.params.rawdevice != None:
+            return self.rawdevice_size
         stat_info = os.fstat(fd)
-        sz = stat_info.st_size
-        if sz < 0:
-            raise FsDriftException('negative file size %d seen on fd %d' % (sz, fd))
-        return sz
+        size = stat_info.st_size
+        if size < 0:
+            raise FsDriftException('negative file size %d seen on fd %d' % (size, fd))
+        return size
 
 
     # use the most significant portion of the file_index
@@ -311,11 +315,14 @@ class FSOPCtx:
             else:
                 fd = os.open(fn, os.O_RDONLY | os.O_DIRECT * self.params.directIO)
                 f = os.fdopen(fd, 'rb', 0)            
-            fsz = self.get_file_size(fd)
+            file_size = self.get_file_size(fd)
+            target_size = self.random_file_size()
+            if target_size > file_size:
+                target_size = file_size
             if self.verbosity & 0x4000:
-                self.log.debug('read file sz %u' % fsz)
+                self.log.debug('read file sz %u' % target_size)
             total_read = 0
-            while total_read < fsz:
+            while total_read < target_size:
                 rdsz = self.random_record_size()
                 #using mmap for correct memory alignment
                 bytebuf = mmap.mmap(-1, rdsz)                
