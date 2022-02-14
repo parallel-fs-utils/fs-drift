@@ -583,6 +583,8 @@ class FSOPCtx:
 
 
     def op_truncate(self):
+        if self.params.rawdevice != None:
+            return OK
         c = self.ctrs
         fd = FD_UNDEFINED
         s = OK
@@ -613,6 +615,8 @@ class FSOPCtx:
 
 
     def op_softlink(self):
+        if self.params.rawdevice != None:
+            return OK    
         if self.fs_is_full():
             self.log.debug('filesystem full, disabling softlink')
             return OK
@@ -643,6 +647,8 @@ class FSOPCtx:
 
 
     def op_hardlink(self):
+        if self.params.rawdevice != None:
+            return OK    
         if self.fs_is_full():
             self.log.debug('filesystem full, disabling hardlink')
             return OK
@@ -673,6 +679,8 @@ class FSOPCtx:
 
 
     def op_delete(self):
+        if self.params.rawdevice != None:
+            return OK    
         c = self.ctrs
         fn = self.gen_random_fn()
         if self.verbosity & 0x20000:
@@ -708,6 +716,8 @@ class FSOPCtx:
 
 
     def op_rename(self):
+        if self.params.rawdevice != None:
+            return OK    
         c = self.ctrs
         fn = self.gen_random_fn()
         fn2 = self.gen_random_fn()
@@ -737,6 +747,8 @@ class FSOPCtx:
     # assumption: mountpoint comes last on the mount command
     
     def op_remount(self):
+        if self.params.rawdevice != None:
+            return OK    
         c = self.ctrs
         if self.params.mount_command == None:
             raise FsDriftException('you did not specify mount command for remount option')
@@ -770,6 +782,8 @@ class FSOPCtx:
         return OK
 
     def op_readdir(self):
+        if self.params.rawdevice != None:
+            return OK    
         c = self.ctrs
         fn = self.gen_random_fn()
         dirpath = os.path.dirname(fn)
