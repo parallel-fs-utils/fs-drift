@@ -270,6 +270,9 @@ class FsDriftWorkload:
         self.end_time = time.time()
         self.elapsed_time = self.end_time - self.start_time
         if self.elapsed_time > self.params.duration:
+            #In case of rawdevice testing, close file
+            if self.params.rawdevice != None:
+                os.close(self.ctx.rawdevice_fd)
             # must be fixed-length string so we can compute threads done from file size
             elapsed_time_str = self.thread_done_record()
             try:

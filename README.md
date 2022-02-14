@@ -188,6 +188,10 @@ Default: 85 - Because fs-drift depends on the filesystem under test to return re
 
 Default: False -- If True, fs-drift will use flag O_DIRECT when opening files. All the issued IOs will be alligned to 4KB, i.e. record size and file size smaller than 4KB will be upscaled to 4KB.
 
+--rawdevice
+
+Default: None -- If set, fs-drift will use provided block device for raw device testing, i.e. all IOs will be issued directly to the device. Warning, testing a device like this WILL corrupt any data or file systems present on the device. Always make sure, there is nothing valuable present on the provided device.
+
 ## future enhancements
 
 - logging - is a bit chaotic, done differently in different places, too many log files,
