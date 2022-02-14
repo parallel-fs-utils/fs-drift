@@ -37,8 +37,6 @@ class FsDriftOpts:
         self.max_files = 200
         self.max_file_size_kb = 10
         self.max_record_size_kb = 1
-        self.max_random_reads = 2
-        self.max_random_writes = 2
         self.fdatasync_probability_pct = 10
         self.fsync_probability_pct = 20
         self.levels = 2
@@ -87,8 +85,6 @@ class FsDriftOpts:
             ('maximum file count', self.max_files),
             ('maximum file size (KB)', self.max_file_size_kb),
             ('maximum record size (KB)', self.max_record_size_kb),
-            ('maximum random reads per op', self.max_random_reads),
-            ('maximum random writes per op', self.max_random_writes),
             ('fsync probability pct', self.fsync_probability_pct),
             ('fdatasync probability pct', self.fdatasync_probability_pct),
             ('directory levels', self.levels),
@@ -189,12 +185,6 @@ def parseopts(cli_params=sys.argv[1:]):
     add('--max-record-size-kb', help='maximum read/write size in KB',
             type=positive_integer, 
             default=o.max_record_size_kb)
-    add('--max-random-reads', help='maximum consecutive random reads',
-            type=positive_integer, 
-            default=o.max_random_reads)
-    add('--max-random-writes', help='maximum consecutive random writes',
-            type=positive_integer, 
-            default=o.max_random_writes)
     add('--fdatasync-pct', help='probability of fdatasync after write',
             type=positive_percentage, 
             default=o.fdatasync_probability_pct)
@@ -262,8 +252,6 @@ def parseopts(cli_params=sys.argv[1:]):
     o.max_files = args.max_files
     o.max_file_size_kb = args.max_file_size_kb
     o.max_record_size_kb = args.max_record_size_kb
-    o.max_random_reads = args.max_random_reads
-    o.max_random_writes = args.max_random_writes
     o.fdatasync_probability_pct = args.fdatasync_pct
     o.fsync_probability_pct = args.fsync_pct
     o.levels = args.levels
@@ -350,10 +338,6 @@ def parse_yaml(options, input_yaml_file):
                 options.pause_between_ops = non_negative_integer(v)
             elif k == 'max_record_size_kb':
                 options.max_record_size_kb = positive_integer(v)
-            elif k == 'max_random_reads':
-                options.max_random_reads = positive_integer(v)
-            elif k == 'max_random_writes':
-                options.max_random_writes = positive_integer(v)
             elif k == 'fdatasync_pct':
                 options.fdatasync_probability_pct = non_negative_integer(v)
             elif k == 'fsync_pct':
@@ -429,8 +413,6 @@ if __name__ == "__main__":
             params.extend(['--max-file-size-kb', '1000000'])
             params.extend(['--pause-between-ops', '100'])
             params.extend(['--max-record-size-kb', '4096'])
-            params.extend(['--max-random-reads', '4'])
-            params.extend(['--max-random-writes', '6'])
             params.extend(['--fdatasync-pct', '2'])
             params.extend(['--fsync-pct', '3'])
             params.extend(['--levels', '4'])
@@ -467,8 +449,6 @@ if __name__ == "__main__":
                 w( 'max_file_size_kb: 1000000')
                 w('pause_between_ops: 100')
                 w('max_record_size_kb: 4096')
-                w('max_random_reads: 4')
-                w('max_random_writes: 6')
                 w('fdatasync_pct: 2')
                 w('fsync_pct: 3')
                 w('levels: 4')
@@ -497,8 +477,6 @@ if __name__ == "__main__":
             assert(p.max_file_size_kb == 1000000)
             assert(p.pause_between_ops == 100)
             assert(p.max_record_size_kb == 4096)
-            assert(p.max_random_reads == 4)
-            assert(p.max_random_writes == 6)
             assert(p.fdatasync_probability_pct == 2)
             assert(p.fsync_probability_pct == 3)
             assert(p.levels == 4)
