@@ -353,47 +353,41 @@ class FSOPCtx:
         fd = FD_UNDEFINED
         fn = self.gen_random_fn()
         try:
-            total_read_reqs = 0
-            target_read_reqs = random.randint(0, self.params.max_random_reads)
             if self.verbosity & 0x20000:
-                self.log.debug('randread %s reqs %u' % (fn, target_read_reqs))
+               self.log.debug('randread %s' % (fn))
             if self.params.rawdevice != None:
                 fd = self.rawdevice_fd
                 f = self.rawdevice_f
             else:                
                 fd = os.open(fn, os.O_RDONLY | os.O_DIRECT * self.params.directIO)
                 f = os.fdopen(fd, 'rb', 0)            
-            fsz = self.get_file_size(fd)
-            if self.verbosity & 0x2000:
-                self.log.debug('randread filesize %u reqs %u' % (
-                    fsz, target_read_reqs))
-            while total_read_reqs < target_read_reqs:
-                off = os.lseek(fd, self.random_seek_offset(fsz), 0)
-                rdsz = self.random_segment_size(fsz)
+            file_size = self.get_file_size(fd)
+            target_size = self.random_file_size()
+            #Make sure we won't be working with the file too much
+            if target_size > file_size:
+                target_size = file_size            
+            if self.verbosity & 0x20000:
+                self.log.debug('randread %s size %u' % (fn, target_size))          
+            total_count = 0                    
+            while total_count < target_size:
+                record_size = self.random_record_size()
+                if record_size + total_count > target_size:
+                    record_size = target_size - total_count            
+
+                #Offset should be at least one record size away from end of file
+                off = os.lseek(fd, self.random_seek_offset(file_size - record_size), 0)
+                
                 if self.verbosity & 0x2000:
-                    self.log.debug('randread off %u sz %u' % (off, rdsz))
-                total_count = 0
-                remaining_sz = fsz - off
-                while total_count < rdsz:
-                    recsz = self.random_record_size()
-                    if recsz + total_count > remaining_sz:
-                        recsz = remaining_sz - total_count
-                    elif recsz + total_count > rdsz:
-                        recsz = rdsz - total_count
-                    if recsz == 0:
-                        break
-                    if self.params.directIO and recsz < 4096:
-                        break
-                    #using mmap for memory alignment
-                    bytebuf = mmap.mmap(-1, recsz)
-                    count = f.readinto(bytebuf)
-                    if count < 1:
-                        break
-                    if self.verbosity & 0x2000:
-                        self.log.debug('randread recsz %u count %u' % (recsz, count))
-                    total_count += count
-                    c.randread_bytes += count
-                total_read_reqs += 1
+                    self.log.debug('randread off %u size %u' % (off, record_size))
+                                    
+                #using mmap for memory alignment
+                bytebuf = mmap.mmap(-1, record_size)
+                count = f.readinto(bytebuf)
+
+                if self.verbosity & 0x2000:
+                    self.log.debug('randread count %u recsz %u' % (count, record_size))
+                total_count += count
+                c.randread_bytes += count
                 c.randread_requests += 1
             c.have_randomly_read += 1
         except OSError as e:
@@ -535,34 +529,38 @@ class FSOPCtx:
         fd = FD_UNDEFINED
         fn = self.gen_random_fn()
         try:
-            total_write_reqs = 0
-            target_write_reqs = random.randint(0, self.params.max_random_writes)
             if self.verbosity & 0x20000:
-                self.log.debug('randwrite %s reqs %u' % (fn, target_write_reqs))
+                self.log.debug('randwrite %s' % (fn))
             if self.params.rawdevice != None:
                 fd = self.rawdevice_fd
             else:
                 fd = os.open(fn, os.O_WRONLY | os.O_DIRECT * self.params.directIO)
-            fsz = self.get_file_size(fd)
-            while total_write_reqs < target_write_reqs:
-                off = os.lseek(fd, self.random_seek_offset(fsz), 0)
-                total_count = 0
-                wrsz = self.random_segment_size(fsz)
+            file_size = self.get_file_size(fd)
+            target_size = self.random_file_size()
+            #Lets make sure, we won't write 100MB into 4KB file
+            #This way, we'll at most rewrite the whole file
+            if target_size > file_size:
+                target_size = file_size
+            total_count = 0            
+            while total_count < target_size:
+                record_size = self.random_record_size()
+                if record_size + total_count > target_size:
+                    record_size = target_size - total_count
+                 
+                #Offset should be at least one record size away from end of file
+                off = os.lseek(fd, self.random_seek_offset(file_size - record_size), 0)
+
                 if self.verbosity & 0x20000:
-                    self.log.debug('randwrite off %u sz %u' % (off, wrsz))
-                while total_count < wrsz:
-                    recsz = self.random_record_size()
-                    if recsz + total_count > wrsz:
-                        recsz = wrsz - total_count
-                    #using mmap for memory alignment    
-                    m = mmap.mmap(-1, recsz)             
-                    m.write(self.buf[0:recsz])       
-                    count = os.write(fd, m)                        
-                    if self.verbosity & 0x20000:
-                        self.log.debug('randwrite count=%u recsz=%u' % (count, recsz))
-                    myassert(count == recsz)
-                    total_count += count
-                total_write_reqs += 1
+                    self.log.debug('randwrite off %u size %u' % (off, record_size))
+                                                 
+                #using mmap for memory alignment    
+                m = mmap.mmap(-1, record_size)             
+                m.write(self.buf[0:record_size])       
+                count = os.write(fd, m)                        
+                if self.verbosity & 0x20000:
+                    self.log.debug('randwrite count %u record size %u' % (count, record_size))
+                myassert(count == record_size)
+                total_count += count
                 c.randwrite_requests += 1
                 c.randwrite_bytes += total_count
                 rc = self.maybe_fsync(fd)
