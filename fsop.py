@@ -10,6 +10,8 @@ import random_buffer
 import numpy  # for gaussian distribution
 import subprocess
 import mmap
+import struct
+from fcntl import ioctl
 
 # my modules
 import common
@@ -38,7 +40,8 @@ class FSOPCtx:
          "rename":          rq.RENAME,
          "truncate":        rq.TRUNCATE,
          "remount":         rq.REMOUNT,
-         "readdir":         rq.READDIR
+         "readdir":         rq.READDIR,
+         "random_discard":  rq.RANDOM_DISCARD
     }
     
     opcode_to_opname = {
@@ -53,7 +56,8 @@ class FSOPCtx:
          rq.RENAME:         "rename",
          rq.TRUNCATE:       "truncate",
          rq.REMOUNT:        "remount",
-         rq.READDIR:        "readdir"
+         rq.READDIR:        "readdir",
+         rq.RANDOM_DISCARD: "random_discard"
     }
 
     # for gaussian distribution with moving mean, we need to remember simulated time
@@ -104,6 +108,7 @@ class FSOPCtx:
             rq.TRUNCATE:    self.op_truncate,
             rq.REMOUNT:     self.op_remount,
             rq.READDIR:     self.op_readdir,
+            rq.RANDOM_DISCARD: self.op_random_discard,
             }
         if self.params.random_distribution != common.FileAccessDistr.uniform:
             self.log.info('velocity=%f, stddev=%f, center=%f' % (self.velocity, self.params.gaussian_stddev, self.center))
@@ -737,7 +742,55 @@ class FSOPCtx:
             else:
                 return self.scallerr('rename', fn, e)
         return OK
-
+        
+    def op_random_discard(self):
+        if self.params.rawdevice == None:
+            return OK        
+        c = self.ctrs
+        fd = FD_UNDEFINED
+        fn = self.gen_random_fn()
+        BLKDISCARD =  0x12 << (4*2) | 119 # command for iocrl
+        try:
+            fd = os.open(fn, os.O_WRONLY)
+            file_size = self.get_file_size(fd)
+            target_size = self.random_file_size()
+            
+            if target_size > file_size:
+                target_size = file_size
+            if self.verbosity & 0x20000:
+                self.log.debug('randwrite %s size %u' % (fn, target_size))                
+            total_count = 0        
+            while total_count < target_size:
+                record_size = self.random_record_size()
+                if record_size + total_count > target_size:
+                    record_size = target_size - total_count
+               #Offset should be at least one record size away from end of file
+                offset = os.lseek(fd, self.random_seek_offset(file_size - record_size), 0)
+ 
+                if self.verbosity & 0x20000:
+                    self.log.debug('random discard off %u size %u' % (offset, record_size))
+                args = struct.pack('QQ', offset, record_size)
+                ioctl(fd, BLKDISCARD, args, 0)
+                count = record_size
+                if self.verbosity & 0x20000:
+                    self.log.debug('random discard count %u record size %u' % (count, record_size))
+                total_count += count
+                c.randdiscard_requests += 1
+                c.randdiscard_bytes += total_count
+            c.have_randomly_discarded += 1
+        except OSError as e:
+            self.try_to_close(fd, fn)        
+            if e.errno == errno.ENOENT:
+                c.e_file_not_found += 1
+            elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
+                c.e_no_space += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
+            else:
+                return self.scallerr('random discard', fn, e, fd=fd)
+        self.try_to_close(fd, fn)
+        return OK
 
     # unmounting is so risky that we shouldn't try to figure it out
     # make the user tell us the entire mount command
