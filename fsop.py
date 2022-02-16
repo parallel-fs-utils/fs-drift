@@ -495,7 +495,7 @@ class FSOPCtx:
             if self.params.rawdevice != None:
                 fd = self.rawdevice_fd
             else:        
-                fd = os.open(fn, os.O_WRONLY | os.O_DIRECT * self.params.directIO)
+                fd = os.open(fn, os.O_WRONLY | os.O_APPEND | os.O_DIRECT * self.params.directIO)
             total_appended = 0
             while total_appended < target_sz:
                 recsz = self.random_record_size()
