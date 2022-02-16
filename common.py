@@ -34,7 +34,7 @@ class rq:
     TRUNCATE = 9
     REMOUNT = 10
     READDIR = 11
-
+    RANDOM_DISCARD = 12
 
 # file size can either be fixed or exponential random distribution
 
