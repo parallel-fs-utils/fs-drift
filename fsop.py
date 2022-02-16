@@ -768,7 +768,7 @@ class FSOPCtx:
                 offset = os.lseek(fd, self.random_seek_offset(file_size - record_size), 0)
  
                 if self.verbosity & 0x20000:
-                    self.log.debug('random discard off %u size %u' % (off, record_size))
+                    self.log.debug('random discard off %u size %u' % (offset, record_size))
                 args = struct.pack('QQ', offset, record_size)
                 ioctl(fd, BLKDISCARD, args, 0)
                 count = record_size
