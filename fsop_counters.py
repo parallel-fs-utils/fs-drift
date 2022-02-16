@@ -17,6 +17,7 @@ class FSOPCounters:
         self.have_truncated = 0
         self.have_remounted = 0
         self.have_readdir = 0
+        self.have_randomly_discarded = 0
         
         # throughput counters
         self.read_requests = 0
@@ -27,6 +28,8 @@ class FSOPCounters:
         self.write_bytes = 0
         self.randwrite_requests = 0
         self.randwrite_bytes = 0
+        self.randdiscard_requests = 0
+        self.randdiscard_bytes = 0
         self.fsyncs = 0
         self.fdatasyncs = 0
         self.dirs_created = 0
@@ -61,6 +64,7 @@ class FSOPCounters:
         total.have_truncated        += self.have_truncated
         total.have_remounted        += self.have_remounted
         total.have_readdir          += self.have_readdir
+        total.have_randomly_discarded += self.have_randomly_discarded        
         
         # throughput counters
         total.read_requests         += self.read_requests
@@ -71,6 +75,8 @@ class FSOPCounters:
         total.write_bytes           += self.write_bytes
         total.randwrite_requests    += self.randwrite_requests
         total.randwrite_bytes       += self.randwrite_bytes
+        total.randdiscard_requests    += self.randdiscard_requests
+        total.randdiscard_bytes       += self.randdiscard_bytes
         total.fsyncs                += self.fsyncs
         total.fdatasyncs            += self.fdatasyncs
         total.dirs_created          += self.dirs_created
@@ -126,6 +132,8 @@ class FSOPCounters:
             ('write_bytes', self.write_bytes),
             ('randwrite_requests', self.randwrite_requests),
             ('randwrite_bytes', self.randwrite_bytes),
+            ('randdiscard_requests', self.randdiscard_requests),
+            ('randdiscard_bytes', self.randdiscard_bytes),            
             ('fsyncs', self.fsyncs),
             ('fdatasyncs', self.fdatasyncs),
             ('dirs_created', self.dirs_created),
