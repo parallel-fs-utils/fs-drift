@@ -297,10 +297,18 @@ class FSOPCtx:
         return random.randint(0, filesz)
 
 
-    def try_to_close(self, closefd, filenamez):
+    def try_to_close(self, closefd, filename, f=None):
         if self.params.rawdevice != None:
             return OK
-        if closefd != FD_UNDEFINED:
+        if f:
+            try:
+                f.close()
+            except OSError as e:
+                if self.params.tolerate_stale_fh and e.errno == errno.ESTALE:
+                    self.ctrs.e_stale_fh += 1
+                    return OK
+                return self.scallerr('close', filename, e, fd=closefd)                
+        elif closefd != FD_UNDEFINED:
             try:
                 os.close(closefd)
             except OSError as e:
@@ -360,6 +368,7 @@ class FSOPCtx:
     def op_read(self):
         c = self.ctrs
         fd = FD_UNDEFINED
+        f = None
         fn = self.gen_random_fn()
         try:
             if self.verbosity & 0x20000:
@@ -392,7 +401,7 @@ class FSOPCtx:
                 total_read += count
             c.have_read += 1
         except OSError as e:
-            self.try_to_close(fd, fn)
+            self.try_to_close(fd, fn, f=f)
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
@@ -400,12 +409,13 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('op_read', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        self.try_to_close(fd, fn, f=f)
         return OK
 
     def op_random_read(self):
         c = self.ctrs
         fd = FD_UNDEFINED
+        f = None        
         fn = self.gen_random_fn()
         try:
             if self.verbosity & 0x20000:
@@ -446,7 +456,7 @@ class FSOPCtx:
                 c.randread_requests += 1
             c.have_randomly_read += 1
         except OSError as e:
-            self.try_to_close(fd, fn)
+            self.try_to_close(fd, fn, f=f)
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
@@ -454,7 +464,7 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('random_read', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        self.try_to_close(fd, fn, f=f)
         return OK
 
 
