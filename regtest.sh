@@ -10,6 +10,7 @@ logf='not-here'
 # export PYTHON_PROG=/usr/bin/python
 PY=${PYTHON_PROG:-/usr/bin/python3}
 sudo systemctl start sshd
+# ASSUMPTION: ssh localhost works without a password (you must set this up)
 
 # both of these scripts take a command string (in quotes) as param 1
 
@@ -74,3 +75,8 @@ chk "./fs-drift.py --duration 10 --max-record-size-kb 1 --max-file-size-kb 1 --d
 
 #Normal fs-drift usage (except the duration)
 chk "./fs-drift.py --duration 10 --response-times True --max-record-size-kb 4 --max-file-size-kb 4096 --threads 8 --max-files 10 --report-interval 1 --random-distribution gaussian --mean-velocity 10.0 --directIO True"
+
+# distributed filesystem usage
+ln -svf fs-drift-remote.py /usr/local/bin/
+chk "./fs-drift.py --host-set localhost --response-times True --duration 10 --report-interval 1 --threads 4"
+
