@@ -41,7 +41,8 @@ class FSOPCtx:
          "truncate":        rq.TRUNCATE,
          "remount":         rq.REMOUNT,
          "readdir":         rq.READDIR,
-         "random_discard":  rq.RANDOM_DISCARD
+         "random_discard":  rq.RANDOM_DISCARD,
+         "write":           rq.WRITE
     }
     
     opcode_to_opname = {
@@ -57,7 +58,8 @@ class FSOPCtx:
          rq.TRUNCATE:       "truncate",
          rq.REMOUNT:        "remount",
          rq.READDIR:        "readdir",
-         rq.RANDOM_DISCARD: "random_discard"
+         rq.RANDOM_DISCARD: "random_discard",
+         rq.WRITE: "write"
     }
 
     # for gaussian distribution with moving mean, we need to remember simulated time
@@ -109,6 +111,7 @@ class FSOPCtx:
             rq.REMOUNT:     self.op_remount,
             rq.READDIR:     self.op_readdir,
             rq.RANDOM_DISCARD: self.op_random_discard,
+            rq.WRITE:       self.op_write,
             }
         if self.params.random_distribution != common.FileAccessDistr.uniform:
             self.log.info('velocity=%f, stddev=%f, center=%f' % (self.velocity, self.params.gaussian_stddev, self.center))
@@ -294,7 +297,7 @@ class FSOPCtx:
         return random.randint(0, filesz)
 
 
-    def try_to_close(self, closefd, filename):
+    def try_to_close(self, closefd, filenamez):
         if self.params.rawdevice != None:
             return OK
         if closefd != FD_UNDEFINED:
@@ -307,6 +310,53 @@ class FSOPCtx:
                 return self.scallerr('close', filename, e, fd=closefd)
         return OK
 
+    def op_write(self):
+        fd = FD_UNDEFINED
+        if self.fs_is_full():
+            self.log.debug('filesystem full, disabling append')
+            return OK
+        c = self.ctrs
+        fn = self.gen_random_fn()
+        target_sz = self.random_file_size()
+        if self.verbosity & 0x8000:
+            self.log.debug('write %s size %s' % (fn, target_sz))
+        try:
+            if self.params.rawdevice != None:
+                fd = self.rawdevice_fd
+            else:        
+                fd = os.open(fn, os.O_WRONLY | os.O_DIRECT * self.params.directIO)
+            total_written = 0
+            while total_written < target_sz:
+                recsz = self.random_record_size()
+                if recsz + total_written > target_sz:
+                    recsz = target_sz - total_written
+                myassert(recsz > 0)
+                if self.verbosity & 0x8000:
+                    self.log.debug('write record size %u' % (recsz))
+                #using mmap for memory alignment    
+                m = mmap.mmap(-1, recsz)             
+                m.write(self.buf[0:recsz])       
+                count = os.write(fd, m)                    
+                myassert(count == recsz)
+                total_written += count
+                c.write_requests += 1
+                c.write_bytes += count
+            rc = self.maybe_fsync(fd)
+            c.have_appended += 1
+        except OSError as e:
+            self.try_to_close(fd, fn)        
+            if e.errno == errno.ENOENT:
+                c.e_file_not_found += 1
+            elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
+                c.e_no_space += 1
+            elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
+                c.e_stale_fh += 1
+                return NOTOK
+            else:
+                return self.scallerr('write', fn, e, fd=fd)
+        self.try_to_close(fd, fn)
+        return OK
+        
     def op_read(self):
         c = self.ctrs
         fd = FD_UNDEFINED

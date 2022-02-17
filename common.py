@@ -35,6 +35,7 @@ class rq:
     REMOUNT = 10
     READDIR = 11
     RANDOM_DISCARD = 12
+    WRITE = 13
 
 # file size can either be fixed or exponential random distribution
 
