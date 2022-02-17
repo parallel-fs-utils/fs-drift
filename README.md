@@ -1,5 +1,5 @@
-# fs-drift
-fs-drift is a mixed-workload filesystem aging test.  This workload attempts to stress a filesystem in various ways over a long period of time, in the following ways:
+# Introduction
+fs-drift is a mixed-workload filesystem (and block device) aging test.  This workload attempts to stress the target in various ways over a long period of time, in the following ways:
 
 - file and record sizes are completely random
 - random sequences of reads and writes
@@ -58,141 +58,187 @@ Log files are kept in /var/tmp/fsd\*.log .
 To pause a test, just touch network_shared/pause.tmp
 To resume a paused test, just remove network_shared/pause.tmp
 
-## parameters
+## Parameters
 
 Every input parameter name is preceded by "--".  We don't bother with short-form parameter names.  Parameters that you should pay attention to are --duration, --max-files, --threads, --host-set and --top.  Other parameters are more specialized and may not apply to your use case.
 
-Inputs:
-
---help
+* --help
 
 gives you parameter names and brief reminder of what they do.
 
---input-yaml
 
-Default: None -- if specified, input parameters will be read from this file.  YAML format is sometimes more convenient
+* --input-yaml
+
+[Default: **None**] Ifspecified, input parameters will be read from this file.  YAML format is sometimes more convenient
 for CI test systems.   There are some restrictions.  The YAML parameter value will override any value entered on the
 command line.   Omit the double hyphen at the beginning of the parameter name when entering them in a yaml file.  Where single dashes are used in parameter names, they must be replaced with underscore character.  So for example "--max-files 5" becomes "max_files: 5".  
 
---top-directory
 
-Default: /tmp/foo -- where fs-drift puts all its files.  Note: YOU must create this directory.  Since the design center for fs-drift is distributed filesystems, we don't support multiple top-level directories (yet).  fs-drift leaves any existing files or subdirectories in place, so that it can be easily restarted - this is important for a longevity test.  However, the network_shared/ subdirectory inside the top directory is recreated each time it is run.
+* --top
 
---output-json
+[Default: **/tmp/foo**] Directory where fs-drift puts all its files. Note: Directory has to be created by user. Since the design center for fs-drift is distributed filesystems, we don't support multiple top-level directories (yet). Fs-drift leaves any existing files or subdirectories in place, so that it can be easily restarted - this is important for a longevity test. However, the network_shared/ subdirectory inside the top directory is recreated each time it is run.
 
-Default: None -- if specified, this is the path where JSON counters are output to.
 
---response-times
+* --output-json
 
-Default: False -- If true, save response time data for each thread to a .csv file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values.  The first value is number of seconds after start of the test. The second value is number of seconds the operation lasted. Response times for different operations are separated. 
+[Default: **None**] If specified, this is the path where JSON counters are output to.
 
---workload-table
 
-Default: None (fs-drift will generate one) -- if specified, fs-drift will read the desired workload mix from this file.
+* --response-times
+
+[Default: **False**] If true, save response time data for each thread to a CSV file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values.  The first value is time since the start of testing. The second value is the duration the operation lasted. Response times for different operations are separated.
+
+
+* --workload-table
+
+[Default: **None**] (fs-drift will generate one) If specified, fs-drift will read the desired workload mix from this file.
 Each record in the file contains 2 comma-separated values, the operation type and a "share" number (floating-pt) that determines the
 fraction of operations of this type.  To compute the fraction, fs-drift adds all the shares together and then divides
-each share by the total to get the fraction.  By doing it this way, the user does not have to calculate
-percentages/fractions and make them all add up to 100/1.
+each share by the total to get the fraction. By doing it this way, the user does not have to calculate percentages/fractions and make them all add up to 100/1.
 
---duration
 
-Default: 1 -- specify test duration in seconds.  NOTE: you must run the test long enough for most of the files in the --max-files parameter to have been created, otherwise the workload will be mostly limited to create operations.
+* --duration
 
---host-set
+[Default: **1**] Specify test duration in seconds. Note: you must run the test long enough for most of the files in the --max-files parameter to have been created, otherwise the workload will be mostly limited to create operations.
 
-Default: None -- specify set of remote hosts to generate workload, either in CSV-list form or as a pathname of a file that contains a list of hosts (1 per line).fs-drift will start up fs-drift-remote.py processes
-on each of these hosts with same input parameters - you must have a filesystem shared by all of these host and the "initiator" host where you run fs-drift.py, and you must have password-less ssh access from the initiator host to all of the hosts in this parameter.  If no host set is specified, subprocesses will be created directly from your fs-drift.py process and run locally.
 
---threads
+* --host-set
 
-Default: 2 -- how many subprocesses/host will be generating workload.  We use subprocesses instead of python threads so that
-we can utilize more than 1 CPU core per host.  But all subprocesses are just running same workload generator loop.
+[Default: **None**] Specify set of remote hosts to generate workload, either in CSV-list form or as a pathname of a file that contains a list of hosts (1 per line). Fs-drift will start up fs-drift-remote.py processes on each of these hosts with same input parameters - you must have a filesystem shared by all of these host and the "initiator" host where you run fs-drift.py, and you must have password-less ssh access from the initiator host to all of the hosts in this parameter.  If no host set is specified, subprocesses will be created directly from your fs-drift.py process and run locally.
 
---max-files
 
-Default: 20 -- Set a limit on the maximum number of files that can be accessed by fs-drift.  This allows us to run tests where we use a small fraction of the filesystem's space.  To fill up a filesystem, just specify a --max-files and a mean file size such that the product is much greater than the filesystem's space.
+* --threads
 
---max-file-size-kb
+[Default: **2**] How many subprocesses/host will be generating workload.  We use subprocesses instead of python threads so that
+we can utilize more than 1 CPU core per host. But all subprocesses are just running same workload generator loop.
 
-Default: 10 - Set a limit on maximum file size in KB.  File size is randomly generated and can be much less than this.
 
---max-record-size-kb
+* --max-files
 
-Default: 1 - Set a limit on maximum record size in KB.  Record (I/O transfer) size is randomly generated and can be much less than this.
+[Default: **200**] Set a limit on the maximum number of files that can be accessed by fs-drift. This allows us to run tests where we use a small fraction of the filesystem's space. To fill up a filesystem, just specify a --max-files and a mean file size such that the product is much greater than the filesystem's space.
 
---max-random-reads
 
-Default: 2 -- Set a limit on how many random reads in a row are done to a file per random read op.
+* --max-file-size-kb
 
--max-random-writes
+[Default: **10**] Set a limit on maximum file size in KB. File size is randomly generated and can be much less than this.
 
-Default: 2 -- Set a limit on how many random writes in a row can be done to a file per random write op.
 
---fsync-pct
+* --max-record-size-kb
 
-Default: 20 -- If true, allows fsync() call to be done every so often when files are written. Value is probability in percent.
+[Default: **1**] Set a limit on maximum record size in KB. Record (I/O transfer) size is randomly generated and can be much less than this.
 
---fdatasync-pct
 
-Default: 10 -- If true, allows fdatasync() call to be done every so often when files are written. Value is probability in percent.
+* --fsync-pct
 
---levels
+[Default: **20**] If true, allows fsync() call to be done every so often when files are written. Value is probability in percent.
 
-Default: 2 -- How many directory levels will be used.
 
---dirs-per-level
+* --fdatasync-pct
 
-Default: 3 -- How many directories per level will be used.
+[Default: **10**] If true, allows fdatasync() call to be done every so often when files are written. Value is probability in percent.
 
---workload-table
 
-Default: None - Provide a user-specified workload table controlling the mix of random operations.
+* --levels
 
---report-interval
+[Default: **2**] How many directory levels will be used.
 
-Default: 0 -- Report counters over a user-specified interval.
 
---random-distribution
+* --dirs-per-level
 
-default: uniform -- filename access distribution is random uniform, but with this parameter set to "gaussian" you can create a non-uniform distribution of file access.  This is useful for caching and cache tiering systems.
+[Default: **3**] How many directories per level will be used.
 
---mean-velocity
 
-default: 0.0 -- By default, a non-uniform random filename distribution is stationary over time, but with this parameter you can make the mean "move" at a specified velocity (i.e. the file number mean will shift by this much for every operation, modulo the maximum number of files.
+* --report-interval
 
---gaussian-stddev
+[Default: **max(duration // 60, 5)**] Report counters over a user-specified interval.
 
-Default: 1000.0 -- For gaussian filename distribution, this parameter controls with width of the bell curve.  As you increase this parameter past the cache space in your caching layer, the probability of a cache hit will go down.
 
---create_stddevs-ahead
+* --random-distribution
 
-Default: 3.0 -- This parameter is for cache tiering testing.  It allows creates to "lead" all other operations, so that we can create a high probability that read files will be in the set of "hot files".  Otherwise, most read accesses with non-uniform filename distribution will result  in "file not found" errors.
+[Default: **uniform**] Filename access distribution is random uniform, but with this parameter set to "gaussian" you can create a non-uniform distribution of file access. This is useful for caching and cache tiering systems.
 
---pause-between-ops
 
-Default: 100 microseconds -- This parameter is there to prevent some threads from getting way ahead of other threads in
-tests where there are a lot of threads running.  It may not prove to be important.
+* --mean-velocity
 
---mount-command
+[Default: **1.0**] By default, a non-uniform random filename distribution is stationary over time, but with this parameter you can make the mean "move" at a specified velocity (i.e. the file number mean will shift by this much for every operation, modulo the maximum number of files.
 
-Default: None -- For workload mixes that include the "remount" operation type, fs-drift.py will occasionally remount the
+
+* --gaussian-stddev
+
+[Default: **20.0**] For gaussian filename distribution, this parameter controls with width of the bell curve. As you increase this parameter past the cache space in your caching layer, the probability of a cache hit will go down.
+
+
+* --create_stddevs-ahead
+
+[Default: **3.0**] This parameter is for cache tiering testing. It allows creates to "lead" all other operations, so that we can create a high probability that read files will be in the set of "hot files". Otherwise, most read accesses with non-uniform filename distribution will result in "file not found" errors.
+
+
+* --pause-between-ops
+
+[Default: **100**] This parameter (in microseconds) is there to prevent some threads from getting way ahead of other threads in tests where there are a lot of threads running. It may not prove to be important.
+
+* --mount-command
+
+[Default: **None**] For workload mixes that include the "remount" operation type, fs-drift.py will occasionally remount the
 filesystem.  This tests the ability of the filesystem to respond quickly and correctly to these requests while under load.  
 The user must specify a full mount command to use this operation type.  You must specify the mountpoint directory as the
-last parameter in the command.  This allows fs-drift to do the unmount operation that precedes the mount.
+last parameter in the command. This allows fs-drift to do the unmount operation that precedes the mount.
 
---fullness-limit-percent
 
-Default: 85 - Because fs-drift depends on the filesystem under test to return results from the worker threads to the test driver host (where fs-drift.py was originally run), we don't want the filesystem to fill up so much that we can't create any files in it.   You can set this any valid percentage, the realistic limit may depend on which filesystem you are running on.
+* --fullness-limit-percent
 
---directIO
+[Default: **85**] Because fs-drift depends on the filesystem under test to return results from the worker threads to the test driver host (where fs-drift.py was originally run), we don't want the filesystem to fill up so much that we can't create any files in it.   You can set this any valid percentage, the realistic limit may depend on which filesystem you are running on.
 
-Default: False -- If True, fs-drift will use flag O_DIRECT when opening files. All the issued IOs will be alligned to 4KB, i.e. record size and file size smaller than 4KB will be upscaled to 4KB.
 
---rawdevice
+* --directIO
 
-Default: None -- If set, fs-drift will use provided block device for raw device testing, i.e. all IOs will be issued directly to the device. Warning, testing a device like this WILL corrupt any data or file systems present on the device. Always make sure, there is nothing valuable present on the provided device.
+[Default: **False**] If True, fs-drift will use flag O_DIRECT when opening files. All the issued IOs will be alligned to 4KB, i.e. record size and file size smaller than 4KB will be upscaled to 4KB.
 
-## future enhancements
+
+* --rawdevice
+
+[Default: **None**] If set, fs-drift will use provided block device for raw device testing, i.e. all IOs will be issued directly to the device. **Warning**, testing a device like this WILL corrupt any data or file systems present on the device. Always make sure, there is nothing valuable present on the provided device.
+
+
+## Operations
+
+There is a number of file or IO operations you can set to use in mixed workload. Just include the operation name (below) in the workload table.
+
+* **read**
+
+Sequential read. Will issue read IOs with given random block size (record size).
+
+
+* **random_read**
+
+Random read. Will issue read IOs with given random block size (record size), but moves the file pointer to a random offset before doing so.
+
+
+* **create**
+
+Sequential write with O_CREAT flag, i.e. if the file doesn't exist, it will be created, if it does exist, we uptick file_already_created counter. After the file is created, operation will issue sequential writes. Attempts to use this with rawdevice option result in just getting the *write* functionality.
+
+
+* **random_write**
+
+Random write. Will issue write IOs with given random block size (record size), but moves the file pointer to a random offset before doing so.
+
+
+* **append**
+
+Sequential write with O_APPEND flag, i.e. the file pointer is set to the end of the file, before issuing sequential writes. Attempts to use this with rawdevice option result in just getting the *write* functionality.
+
+
+* **write**
+
+Sequential read. Will issue read IOs with given random block size (record size)
+
+
+* **random_discard**
+
+Random discard. Will issue discard requests with given random block size (record size) via ioctl. Blocks to discard will be selected randomly similarly to random_write or random_read. Only available for rawdevice mode. Attempts to use this with file system mode results in no discards issued. **Warning**: Randomly discarding blocks on a device WILL corrupt any data or file systems present on that device. Make sure you're using testing device that doesn't contain anything important.
+
+## Future enhancements
 
 - logging - is a bit chaotic, done differently in different places, too many log files,
 should be simple and user-controllable while the test is running.
