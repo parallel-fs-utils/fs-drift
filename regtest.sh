@@ -52,13 +52,39 @@ chk "$PY fsop.py"
 chk "$PY event.py"
 #chk "$PY ssh_thread.py"
 chk "$PY random_buffer.py"
-chk "$PY worker_thread.py"
-chk "$PY invoke_process.py"
+
+# parsing tests
+
 chk "$PY opts.py -h > /tmp/o"
 chk "grep 'option' /tmp/o"
 mkdir -p /tmp/x.d
 chk "$PY opts.py "
 chkfail "$PY opts.py --top /x"
+
+# now do an invalid test through YAML, should be rejected
+cat > /tmp/t.yaml <<EOF
+report-interval: a
+EOF
+chkfail "$PY ./opts.py --input-yaml /tmp/t.yaml"
+
+# now do valid test in YAML
+cat > /tmp/t2.yaml <<EOF
+duration: 5
+response_times: True
+max_record_size_kb: 16
+max_file_size_kb: 64
+threads: 4
+max_files: 2000
+report_interval: 1
+EOF
+chk "$PY ./opts.py --input-yaml /tmp/t2.yaml"
+
+# tests related to multi-threading
+
+chk "$PY worker_thread.py"
+chk "$PY invoke_process.py"
+
+# now for the actual benchmark
 chk "./fs-drift.py"
 chk "./fs-drift.py -h"
 grep -iq 'usage: fs-drift.py' $logf || logf_fail
@@ -74,3 +100,4 @@ chk "./fs-drift.py --duration 10 --max-record-size-kb 1 --max-file-size-kb 1 --d
 
 #Normal fs-drift usage (except the duration)
 chk "./fs-drift.py --duration 10 --response-times True --max-record-size-kb 4 --max-file-size-kb 4096 --threads 8 --max-files 10 --report-interval 1 --random-distribution gaussian --mean-velocity 10.0 --directIO True"
+
