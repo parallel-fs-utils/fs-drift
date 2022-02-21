@@ -26,6 +26,15 @@ def getenv_or_default(var_name, var_default):
 # command line parameter variables here
 
 class FsDriftOpts:
+    def derive_paths(self):
+        self.starting_gun_path     = os.path.join(self.network_shared_path,'starting-gun.tmp')
+        self.stop_file_path        = os.path.join(self.network_shared_path,'stop-file.tmp')
+        self.param_pickle_path     = os.path.join(self.network_shared_path,'params.pickle')
+        self.rsptime_path          = os.path.join(self.network_shared_path,'host-%s_thrd-%s_rsptimes.csv')
+        self.abort_path            = os.path.join(self.network_shared_path,'abort.tmp')
+        self.pause_path            = os.path.join(self.network_shared_path,'pause.tmp')
+        self.checkerflag_path      = os.path.join(self.network_shared_path,'checkered_flag.tmp')
+
     def __init__(self):
         self.input_yaml = None
         self.output_json_path = None  # filled in later
@@ -68,7 +77,7 @@ class FsDriftOpts:
         self.verbosity = 0
         self.tolerate_stale_fh = False
         self.launch_as_daemon = False
-        self.python_prog = getenv_or_default('PYTHONPROG', '/usr/bin/python')
+        self.python_prog = getenv_or_default('PYTHONPROG', '/usr/bin/python3')
         self.fsd_remote_dir = getenv_or_default('FSD_REMOTE_DIR', '/usr/local/bin')
 
     def kvtuplelist(self):
@@ -279,15 +288,7 @@ def parseopts(cli_params=sys.argv[1:]):
     # some fields derived from user inputs
 
     o.network_shared_path = os.path.join(o.top_directory, 'network-shared')
-
-    nsjoin = lambda fn : os.path.join(o.network_shared_path, fn)
-    o.starting_gun_path     = nsjoin('starting-gun.tmp')
-    o.stop_file_path        = nsjoin('stop-file.tmp')
-    o.param_pickle_path     = nsjoin('params.pickle')
-    o.rsptime_path          = nsjoin('host-%s_thrd-%s_rsptimes.csv')
-    o.abort_path            = nsjoin('abort.tmp')
-    o.pause_path            = nsjoin('pause.tmp')
-    o.checkerflag_path      = nsjoin('checkered_flag.tmp')
+    o.derive_paths()
 
     #o.remote_pgm_dir = os.path.dirname(sys.argv[0])
     #if o.remote_pgm_dir == '.':
@@ -321,6 +322,8 @@ def parse_yaml(options, input_yaml_file):
                 raise FsDriftParseException('cannot specify YAML input file from within itself!')
             elif k == 'top':
                 options.top_directory = v
+                options.network_shared_path = os.path.join(v, 'network-shared')
+                options.derive_paths()
             elif k == 'output_json':
                 options.output_json = v
             elif k == 'workload_table':
@@ -470,6 +473,8 @@ if __name__ == "__main__":
             p = self.params
             parse_yaml(p, fn)
             assert(p.top_directory == '/tmp')
+            assert(p.network_shared_path == '/tmp/network-shared')
+            assert(p.stop_file_path == '/tmp/network-shared/stop-file.tmp')
             assert(p.output_json == '/var/tmp/x.json')
             assert(p.workload_table == '/var/tmp/x.csv')
             assert(p.duration == 60)
