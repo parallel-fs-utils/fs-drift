@@ -68,7 +68,7 @@ class FsDriftOpts:
         self.verbosity = 0
         self.tolerate_stale_fh = False
         self.launch_as_daemon = False
-        self.python_prog = getenv_or_default('PYTHONPROG', '/usr/bin/python')
+        self.python_prog = getenv_or_default('PYTHONPROG', '/usr/bin/python3')
         self.fsd_remote_dir = getenv_or_default('FSD_REMOTE_DIR', '/usr/local/bin')
 
     def kvtuplelist(self):
