@@ -1,4 +1,8 @@
 #!/bin/bash
+# package dependencies: jq
+# service dependencies: sshd
+# setup dependencies: password-less ssh to localhost
+
 OK=0  # process successful exit status
 NOTOK=1 # process failure exit status
 
@@ -50,21 +54,54 @@ echo "log directory is $logdir"
 
 chk "$PY fsop.py"
 chk "$PY event.py"
-#chk "$PY ssh_thread.py"
+chk "$PY ssh_thread.py"
 chk "$PY random_buffer.py"
 chk "$PY worker_thread.py"
 chk "$PY invoke_process.py"
+
 chk "$PY opts.py -h > /tmp/o"
 chk "grep 'option' /tmp/o"
 mkdir -p /tmp/x.d
 chk "$PY opts.py "
 chkfail "$PY opts.py --top /x"
-chk "./fs-drift.py"
+
+
+# test program that computes rates from counters
+
+rm -rf /tmp/fake-result
+mkdir /tmp/fake-result
+for hst in a b c ; do
+  for thr in `seq -f "%02g" 1 2` ; do
+    cat > /tmp/fake-result/counters.$thr.$hst.json <<EOF
+[{
+   "created": 2,
+   "write_bytes": 1048576
+},
+{
+   "created": 4,
+   "write_bytes": 2097152
+}]
+EOF
+  done
+done
+cat > /tmp/fake-result/result.json <<EOF
+{
+    "parameters": {
+        "stats report interval": 5
+    }
+}
+EOF
+ls /tmp/fake-result
+params_json_fn=/tmp/fake-result/result.json ./compute-rates.py /tmp/fake-result
+chk "jq .[].created /tmp/fake-result/cluster-rates.json | grep '^2.40'"
+chk "jq .[].write_MBps /tmp/fake-result/cluster-rates.json | grep '^1.20'"
+
 chk "./fs-drift.py -h"
 grep -iq 'usage: fs-drift.py' $logf || logf_fail
 chkfail "./fs-drift.py --zzz"
 grep -iq 'usage:' $logf || logf_fail
 
+chk "./fs-drift.py"
 chk "./fs-drift.py --random-distribution gaussian"
 
 #Check directIO
@@ -73,4 +110,7 @@ chk "./fs-drift.py --duration 5 --max-record-size-kb 4 --max-file-size-kb 32 --d
 chk "./fs-drift.py --duration 10 --max-record-size-kb 1 --max-file-size-kb 1 --directIO True"
 
 #Normal fs-drift usage (except the duration)
-chk "./fs-drift.py --duration 10 --response-times True --max-record-size-kb 4 --max-file-size-kb 4096 --threads 8 --max-files 10 --report-interval 1 --random-distribution gaussian --mean-velocity 10.0 --directIO True"
+rm -rf /var/tmp/mydir
+mkdir /var/tmp/mydir
+chk "./fs-drift.py --top /var/tmp/mydir --duration 10 --response-times True --max-record-size-kb 4 --max-file-size-kb 4096 --threads 8 --max-files 10 --report-interval 1 --random-distribution gaussian --mean-velocity 10.0 --directIO True --output-json /tmp/fs-drift-result.json"
+params_json_fn=/tmp/fs-drift-result.json ./compute-rates.py /var/tmp/mydir/network-shared
