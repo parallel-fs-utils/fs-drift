@@ -13,7 +13,6 @@ logf='not-here'
 # if you want to use python v2,
 # export PYTHON_PROG=/usr/bin/python
 PY=${PYTHON_PROG:-/usr/bin/python3}
-sudo systemctl start sshd
 
 # both of these scripts take a command string (in quotes) as param 1
 
@@ -91,6 +90,7 @@ chk "./fs-drift.py"
 
 # test program that computes rates from counters
 
+echo "testing rate computation"
 rm -rf /tmp/fake-result
 mkdir /tmp/fake-result
 for hst in a b c ; do
@@ -132,7 +132,21 @@ chk "./fs-drift.py --duration 5 --max-record-size-kb 4 --max-file-size-kb 32 --d
 #Check if auto-alignment works even with bad values
 chk "./fs-drift.py --duration 10 --max-record-size-kb 1 --max-file-size-kb 1 --directIO True"
 
-#Normal fs-drift usage (except the duration)
+# distributed filesystem usage
+# if you want this part of test to run, 
+# you must set up softlink /usr/local/bin/fs-drift-remote.py 
+# to point to your development directory,
+# and you must enable password-less ssh to localhost in this account,
+# and you must enable sudo 
+
+if [ -x /usr/local/bin/fs-drift-remote.py ] ; then
+  # ASSUMPTION: ssh localhost works without a password (you must set this up)
+  sudo systemctl start sshd
+  ssh localhost pwd
+  chk "./fs-drift.py --host-set localhost --response-times True --duration 10 --report-interval 1 --threads 4"
+fi
+
+# Normal fs-drift usage (except the duration)
 
 rm -rf /var/tmp/mydir
 mkdir /var/tmp/mydir
