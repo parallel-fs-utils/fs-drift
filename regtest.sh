@@ -2,6 +2,7 @@
 # package dependencies: jq
 # service dependencies: sshd
 # setup dependencies: password-less ssh to localhost
+# to run ssh-dependent tests, use environment variable test_ssh=1
 
 OK=0  # process successful exit status
 NOTOK=1 # process failure exit status
@@ -13,7 +14,6 @@ logf='not-here'
 # if you want to use python v2,
 # export PYTHON_PROG=/usr/bin/python
 PY=${PYTHON_PROG:-/usr/bin/python3}
-sudo systemctl start sshd
 
 # both of these scripts take a command string (in quotes) as param 1
 
@@ -54,7 +54,11 @@ echo "log directory is $logdir"
 
 chk "$PY fsop.py"
 chk "$PY event.py"
-chk "$PY ssh_thread.py"
+if [ -n "$test_ssh" ] ; then
+	sudo systemctl start sshd || exit 1
+	ssh -o PasswordAuthentication=no localhost pwd || exit 1
+	chk "$PY ssh_thread.py"
+fi
 chk "$PY random_buffer.py"
 chk "$PY worker_thread.py"
 chk "$PY invoke_process.py"
@@ -68,6 +72,7 @@ chkfail "$PY opts.py --top /x"
 
 # test program that computes rates from counters
 
+echo "testing rate computation"
 rm -rf /tmp/fake-result
 mkdir /tmp/fake-result
 for hst in a b c ; do
@@ -91,8 +96,7 @@ cat > /tmp/fake-result/result.json <<EOF
     }
 }
 EOF
-ls /tmp/fake-result
-params_json_fn=/tmp/fake-result/result.json ./compute-rates.py /tmp/fake-result
+chk "params_json_fn=/tmp/fake-result/result.json ./compute-rates.py /tmp/fake-result"
 chk "jq .[].created /tmp/fake-result/cluster-rates.json | grep '^2.40'"
 chk "jq .[].write_MBps /tmp/fake-result/cluster-rates.json | grep '^1.20'"
 
@@ -113,4 +117,13 @@ chk "./fs-drift.py --duration 10 --max-record-size-kb 1 --max-file-size-kb 1 --d
 rm -rf /var/tmp/mydir
 mkdir /var/tmp/mydir
 chk "./fs-drift.py --top /var/tmp/mydir --duration 10 --response-times True --max-record-size-kb 4 --max-file-size-kb 4096 --threads 8 --max-files 10 --report-interval 1 --random-distribution gaussian --mean-velocity 10.0 --directIO True --output-json /tmp/fs-drift-result.json"
-params_json_fn=/tmp/fs-drift-result.json ./compute-rates.py /var/tmp/mydir/network-shared
+export params_json_fn=/tmp/fs-drift-result.json
+chk "./compute-rates.py /var/tmp/mydir/network-shared"
+
+# test multi-host feature
+
+if [ -n "$test_ssh" ] ; then
+	rm -rf /var/tmp/mydir2
+	mkdir /var/tmp/mydir2
+	chk "./fs-drift.py --host-set localhost --top /var/tmp/mydir2 --response-times True --output-json /tmp/fs-drift-result2.json"
+fi
