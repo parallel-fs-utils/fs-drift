@@ -238,23 +238,12 @@ Sequential read. Will issue read IOs with given random block size (record size)
 
 Random discard. Will issue discard requests with given random block size (record size) via ioctl. Blocks to discard will be selected randomly similarly to random_write or random_read. Only available for rawdevice mode. Attempts to use this with file system mode results in no discards issued. **Warning**: Randomly discarding blocks on a device WILL corrupt any data or file systems present on that device. Make sure you're using testing device that doesn't contain anything important.
 
-## Future enhancements
+# how to test
 
-- logging - is a bit chaotic, done differently in different places, too many log files,
-should be simple and user-controllable while the test is running.
+you can run regtest.sh to exercise the code, this is highly recommended if you make changes.  This script should be updated
+to run any unit tests, with the least complex , quickest ones first.
 
-- make remounts work with multiple threads on a host
+# Future enhancements
 
-- allow mountpoint per process 
--- to simulate large client populations
--- to support block storage tests
+Use github issues to request or propose any future enhancements
 
-- extend number of filesystem operations
-
-- dynamic parameter adjustment - want to be able to change parameters while the test is running (to see how the
-  filesystem responds to major expansion/contraction, for example, or to see how different workload mixes impact the
-  filesystem without having to run a whole new test.
-
-- compression control - want to be able to specify buffers with different levels of compressibility
-
-- elastic search - import JSON results into Elastic Search so we can visualize results in Grafana
