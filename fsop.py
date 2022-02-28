@@ -116,9 +116,9 @@ class FSOPCtx:
         if self.params.random_distribution != common.FileAccessDistr.uniform:
             self.log.info('velocity=%f, stddev=%f, center=%f' % (self.velocity, self.params.gaussian_stddev, self.center))
 
-        if self.params.directIO and self.params.max_record_size_kb < 4:
-            self.log.debug('record size too low for directIO, raising to 4KiB')        
-            self.params.max_record_size_kb = 4
+#        if self.params.directIO and self.params.max_record_size_kb < 4:
+#            self.log.debug('record size too low for directIO, raising to 4KiB')        
+#            self.params.max_record_size_kb = 4
 
         if self.params.directIO and self.params.max_file_size_kb < 4:
             self.log.debug('file size too low for directIO, raising to 4KiB')        
@@ -273,14 +273,15 @@ class FSOPCtx:
 
 
     def random_record_size(self):
-        max_size = min(self.params.max_record_size_kb, self.params.max_file_size_kb)
-        min_size = 1
-        if self.params.directIO:
-            min_size = 4096
-        recsz = random.randint(min_size, max_size * BYTES_PER_KiB)
+        #In case user inputs range, do random file size
+        if isinstance(self.params.record_size, tuple):
+            recsz = random.randint(self.params.record_size[0], self.params.record_size[1])    
+        else:
+            recsz = self.params.record_size
         if self.params.directIO:
             return (recsz // 4096) * 4096
         return recsz
+
 
 
     def random_segment_size(self, filesz):

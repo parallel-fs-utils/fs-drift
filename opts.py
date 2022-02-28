@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 
 # fs-drift module dependencies
 
-from common import OK, NOTOK, FsDriftException, FileAccessDistr, USEC_PER_SEC
+from common import OK, NOTOK, FsDriftException, FileAccessDistr, USEC_PER_SEC, BYTES_PER_KiB
 from common import FileAccessDistr2str
 from parser_data_types import boolean, positive_integer, non_negative_integer, bitmask
 from parser_data_types import positive_float, non_negative_float, positive_percentage
@@ -22,6 +22,25 @@ def getenv_or_default(var_name, var_default):
     if v == None:
         v = var_default
     return v
+
+#If the input is g or G, multiply by 1024*1024*1024
+#If the input is m or M, multiply by 1024*1024
+#If the input is k, K or unspecified, multiply by 1024
+#If the input is b or B, return as is
+def size_unit_to_bytes(v):
+    try:
+        if 'g' in v.lower():
+            return int(v[:-1]) * BYTES_PER_KiB * BYTES_PER_KiB * BYTES_PER_KiB
+        elif 'm' in v.lower():
+            return int(v[:-1]) * BYTES_PER_KiB * BYTES_PER_KiB
+        elif 'k' in v.lower():
+            return int(v[:-1]) * BYTES_PER_KiB
+        elif 'b' in v.lower():
+            return int(v[:-1])
+        else:
+            return int(v)
+    except ValueError:
+        raise TypeExc('valid size expected: [b, k, m, g], not ', v)
 
 # command line parameter variables here
 
@@ -46,6 +65,7 @@ class FsDriftOpts:
         self.max_files = 200
         self.max_file_size_kb = 10
         self.max_record_size_kb = 1
+        self.record_size = '4k'        
         self.fdatasync_probability_pct = 10
         self.fsync_probability_pct = 20
         self.levels = 2
@@ -94,6 +114,7 @@ class FsDriftOpts:
             ('maximum file count', self.max_files),
             ('maximum file size (KB)', self.max_file_size_kb),
             ('maximum record size (KB)', self.max_record_size_kb),
+            ('record size ', self.record_size),
             ('fsync probability pct', self.fsync_probability_pct),
             ('fdatasync probability pct', self.fdatasync_probability_pct),
             ('directory levels', self.levels),
@@ -161,6 +182,28 @@ class FsDriftOpts:
             with open(self.workload_table_csv_path, 'w') as w_f:
                 w_f.write( '\n'.join(workload_table))
 
+def assure_block_alignment(size):
+    if size < 4 * BYTES_PER_KiB:
+        print('size too low for directIO, raising to 4KiB')    
+        return 4 * BYTES_PER_KiB
+    return size
+
+def resolve_size(size_input, directIO):
+    if ':' not in size_input:
+        size = size_unit_to_bytes(size_input)
+        if directIO:
+            return assure_block_alignment(size)
+        return size
+    else:
+        low_bound, high_bound = size_input.split(':')
+        low_bound = size_unit_to_bytes(low_bound)
+        high_bound = size_unit_to_bytes(high_bound)
+        if low_bound > high_bound:
+            raise FsDriftException('low bound (left) should be larger than high bound (right), got %s' % size_input)
+        if directIO:  
+            return (assure_block_alignment(low_bound), assure_block_alignment(high_bound))
+        return (low_bound, high_bound)
+
 def parseopts(cli_params=sys.argv[1:]):
     o = FsDriftOpts()
 
@@ -192,9 +235,12 @@ def parseopts(cli_params=sys.argv[1:]):
     add('--pause-between-ops', help='delay between ops in microsec',
             type=non_negative_integer,
             default=o.pause_between_ops)
-    add('--max-record-size-kb', help='maximum read/write size in KB',
+    add('--max-record-size-kb', help='maximum read/write size in KB. Deprecated, use --record-size instead',
             type=positive_integer, 
             default=o.max_record_size_kb)
+    add('--record-size', help='read/write record size. If no units specified, treated like B. For range, enter two values separated by ":". Eg. 4:64',
+            type=str, 
+            default=o.record_size)            
     add('--fdatasync-pct', help='probability of fdatasync after write',
             type=positive_percentage, 
             default=o.fdatasync_probability_pct)
@@ -261,7 +307,11 @@ def parseopts(cli_params=sys.argv[1:]):
     o.duration = args.duration
     o.max_files = args.max_files
     o.max_file_size_kb = args.max_file_size_kb
-    o.max_record_size_kb = args.max_record_size_kb
+    o.record_size = resolve_size(args.record_size, args.directIO)
+    if isinstance(o.record_size, tuple):
+        o.max_record_size_kb = o.record_size[-1] // BYTES_PER_KiB
+    else:
+        o.max_record_size_kb = o.record_size // BYTES_PER_KiB
     o.fdatasync_probability_pct = args.fdatasync_pct
     o.fsync_probability_pct = args.fsync_pct
     o.levels = args.levels
@@ -342,6 +392,12 @@ def parse_yaml(options, input_yaml_file):
                 options.pause_between_ops = non_negative_integer(v)
             elif k == 'max_record_size_kb':
                 options.max_record_size_kb = positive_integer(v)
+            elif k == 'record_size':
+                if ':' in v:
+                    low_bound, high_bound = v.split(':')
+                    options.record_size = (size_unit_to_bytes(low_bound), size_unit_to_bytes(high_bound))
+                else:
+                    options.record_size = positive_integer(size_unit_to_bytes(v))                          
             elif k == 'fdatasync_pct':
                 options.fdatasync_probability_pct = non_negative_integer(v)
             elif k == 'fsync_pct':
@@ -417,6 +473,7 @@ if __name__ == "__main__":
             params.extend(['--max-file-size-kb', '1000000'])
             params.extend(['--pause-between-ops', '100'])
             params.extend(['--max-record-size-kb', '4096'])
+            params.extend(['--record-size', '4k'])            
             params.extend(['--fdatasync-pct', '2'])
             params.extend(['--fsync-pct', '3'])
             params.extend(['--levels', '4'])
@@ -453,6 +510,7 @@ if __name__ == "__main__":
                 w( 'max_file_size_kb: 1000000')
                 w('pause_between_ops: 100')
                 w('max_record_size_kb: 4096')
+                w('record_size: 4k')                
                 w('fdatasync_pct: 2')
                 w('fsync_pct: 3')
                 w('levels: 4')
@@ -483,6 +541,7 @@ if __name__ == "__main__":
             assert(p.max_file_size_kb == 1000000)
             assert(p.pause_between_ops == 100)
             assert(p.max_record_size_kb == 4096)
+            assert(p.record_size == 4096)            
             assert(p.fdatasync_probability_pct == 2)
             assert(p.fsync_probability_pct == 3)
             assert(p.levels == 4)
