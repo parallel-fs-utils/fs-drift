@@ -109,14 +109,14 @@ chk "./fs-drift.py"
 chk "./fs-drift.py --random-distribution gaussian"
 
 #Check directIO
-chk "./fs-drift.py --duration 5 --max-record-size-kb 4 --max-file-size-kb 32 --directIO True"
+chk "./fs-drift.py --duration 5 --record-size 4k --max-file-size-kb 32 --directIO True"
 #Check if auto-alignment works even with bad values
-chk "./fs-drift.py --duration 10 --max-record-size-kb 1 --max-file-size-kb 1 --directIO True"
+chk "./fs-drift.py --duration 10 --record-size 1k --max-file-size-kb 1 --directIO True"
 
 #Normal fs-drift usage (except the duration)
 rm -rf /var/tmp/mydir
 mkdir /var/tmp/mydir
-chk "./fs-drift.py --top /var/tmp/mydir --duration 10 --response-times True --max-record-size-kb 4 --max-file-size-kb 4096 --threads 8 --max-files 10 --report-interval 1 --random-distribution gaussian --mean-velocity 10.0 --directIO True --output-json /tmp/fs-drift-result.json"
+chk "./fs-drift.py --top /var/tmp/mydir --duration 10 --response-times True --record-size 4k --max-file-size-kb 4096 --threads 8 --max-files 10 --report-interval 1 --random-distribution gaussian --mean-velocity 10.0 --directIO True --output-json /tmp/fs-drift-result.json"
 export params_json_fn=/tmp/fs-drift-result.json
 chk "./compute-rates.py /var/tmp/mydir/network-shared"
 
