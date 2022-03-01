@@ -195,7 +195,7 @@ last parameter in the command. This allows fs-drift to do the unmount operation 
 
 * --directIO
 
-[Default: **False**] If True, fs-drift will use flag O_DIRECT when opening files. All the issued IOs will be alligned to 4KB, i.e. record size and file size smaller than 4KB will be upscaled to 4KB.
+[Default: **False**] If True, fs-drift will use flag O_DIRECT when opening files. All the issued IOs will be alligned to 4KiB, i.e. record size and file size smaller than 4KiB will be upscaled to 4KiB. Other inputed sizes will be rounded to the nearest 4KiB size.
 
 
 * --rawdevice
