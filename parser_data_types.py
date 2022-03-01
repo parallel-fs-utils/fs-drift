@@ -1,7 +1,8 @@
 import argparse
 import os
 from common import FileSizeDistr, FileAccessDistr
- 
+from common import BYTES_PER_KiB
+
 TypeExc = argparse.ArgumentTypeError
 
 # if we throw exceptions, do it with this
@@ -27,6 +28,20 @@ def boolean(boolstr):
         raise TypeExc('boolean value must be y|yes|t|true|n|no|f|false')
     return bval
 
+def positive_integer_or_None(posintornone_str):
+    if isinstance (posintornone_str, str):    
+        if 'none' in posintornone_str.lower():
+            return None
+        else:
+            i = int(posintornone_str)
+            if i <= 0:
+                raise TypeExc( 'integer value greater than zero expected')
+        return i
+    if isinstance (posintornone_str, int):    
+        if posintornone_str <= 0:
+            raise TypeExc( 'integer value greater than zero expected')
+        return posintornone_str
+    
 def positive_integer(posint_str):
     i = int(posint_str)
     if i <= 0:
@@ -89,4 +104,35 @@ def file_access_distrib(distrib_str):
         # should never get here
         raise TypeExc(
             'file access distribution must be either "gaussian" or "uniform"')
+        
+#If the input is g or G, multiply by 1024*1024*1024
+#If the input is m or M, multiply by 1024*1024
+#If the input is k or K multiply by 1024
+#If the input is b or B, return as is
+def size_unit_to_bytes(v):
+    try:
+        if 'g' in v.lower():
+            return int(v[:-1]) * BYTES_PER_KiB * BYTES_PER_KiB * BYTES_PER_KiB
+        elif 'm' in v.lower():
+            return int(v[:-1]) * BYTES_PER_KiB * BYTES_PER_KiB
+        elif 'k' in v.lower():
+            return int(v[:-1]) * BYTES_PER_KiB
+        elif 'b' in v.lower():
+            return int(v[:-1])
+        else:
+            return int(v)
+    except ValueError:
+        raise TypeExc('valid size expected: [b, k, m, g], not ', v)            
 
+def size_or_range(size_input):
+    if isinstance(size_input, int):
+        return size_input
+    if ':' not in size_input:
+        return size_unit_to_bytes(size_input)
+    else:
+        low_bound, high_bound = size_input.split(':')
+        low_bound = size_unit_to_bytes(low_bound)
+        high_bound = size_unit_to_bytes(high_bound)
+        if low_bound > high_bound:
+            raise TypeExc('low bound (left) should be larger than high bound (right), got %s' % size_input)
+        return (low_bound, high_bound)

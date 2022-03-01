@@ -11,9 +11,9 @@ from argparse import ArgumentParser
 
 from common import OK, NOTOK, FsDriftException, FileAccessDistr, USEC_PER_SEC, BYTES_PER_KiB
 from common import FileAccessDistr2str
-from parser_data_types import boolean, positive_integer, non_negative_integer, bitmask
+from parser_data_types import boolean, positive_integer, non_negative_integer, bitmask, positive_integer_or_None
 from parser_data_types import positive_float, non_negative_float, positive_percentage
-from parser_data_types import host_set, file_access_distrib
+from parser_data_types import host_set, file_access_distrib, size_or_range
 from parser_data_types import FsDriftParseException, TypeExc
 
 
@@ -22,25 +22,6 @@ def getenv_or_default(var_name, var_default):
     if v == None:
         v = var_default
     return v
-
-#If the input is g or G, multiply by 1024*1024*1024
-#If the input is m or M, multiply by 1024*1024
-#If the input is k, K or unspecified, multiply by 1024
-#If the input is b or B, return as is
-def size_unit_to_bytes(v):
-    try:
-        if 'g' in v.lower():
-            return int(v[:-1]) * BYTES_PER_KiB * BYTES_PER_KiB * BYTES_PER_KiB
-        elif 'm' in v.lower():
-            return int(v[:-1]) * BYTES_PER_KiB * BYTES_PER_KiB
-        elif 'k' in v.lower():
-            return int(v[:-1]) * BYTES_PER_KiB
-        elif 'b' in v.lower():
-            return int(v[:-1])
-        else:
-            return int(v)
-    except ValueError:
-        raise TypeExc('valid size expected: [b, k, m, g], not ', v)
 
 # command line parameter variables here
 
@@ -64,8 +45,8 @@ class FsDriftOpts:
         self.duration = 1
         self.max_files = 200
         self.max_file_size_kb = 10
-        self.max_record_size_kb = 1
-        self.record_size = '4k'        
+        self.max_record_size_kb = None
+        self.record_size = 4096
         self.fdatasync_probability_pct = 10
         self.fsync_probability_pct = 20
         self.levels = 2
@@ -112,8 +93,8 @@ class FsDriftOpts:
             ('threads', self.threads),
             ('test duration', self.duration),
             ('maximum file count', self.max_files),
-            ('maximum file size (KB)', self.max_file_size_kb),
-            ('maximum record size (KB)', self.max_record_size_kb),
+            ('maximum file size (KiB)', self.max_file_size_kb),
+            ('maximum record size (KiB)', self.max_record_size_kb),
             ('record size ', self.record_size),
             ('fsync probability pct', self.fsync_probability_pct),
             ('fdatasync probability pct', self.fdatasync_probability_pct),
@@ -186,8 +167,8 @@ def assure_block_alignment(size):
     if size < 4 * BYTES_PER_KiB:
         print('size too low for directIO, raising to 4KiB')    
         return 4 * BYTES_PER_KiB
-    return size
-
+    return 4 * BYTES_PER_KiB * round(size / (4 * BYTES_PER_KiB))
+    
 def resolve_size(size_input, directIO):
     if ':' not in size_input:
         size = size_unit_to_bytes(size_input)
@@ -229,17 +210,17 @@ def parseopts(cli_params=sys.argv[1:]):
     add('--max-files', help='maximum number of files to access',
             type=positive_integer, 
             default=o.max_files)
-    add('--max-file-size-kb', help='maximum file size in KB',
+    add('--max-file-size-kb', help='maximum file size in KiB',
             type=positive_integer, 
             default=o.max_file_size_kb)
     add('--pause-between-ops', help='delay between ops in microsec',
             type=non_negative_integer,
             default=o.pause_between_ops)
-    add('--max-record-size-kb', help='maximum read/write size in KB. Deprecated, use --record-size instead',
+    add('--max-record-size-kb', help='maximum read/write size in KiB. Deprecated, use --record-size instead',
             type=positive_integer, 
             default=o.max_record_size_kb)
-    add('--record-size', help='read/write record size. If no units specified, treated like B. For range, enter two values separated by ":". Eg. 4:64',
-            type=str, 
+    add('--record-size', help='read/write record size. If no units specified, treated like B. Other units: k, m, g. For range, enter two values separated by ":". Eg. 4:64',
+            type=size_or_range, 
             default=o.record_size)            
     add('--fdatasync-pct', help='probability of fdatasync after write',
             type=positive_percentage, 
@@ -307,8 +288,11 @@ def parseopts(cli_params=sys.argv[1:]):
     o.duration = args.duration
     o.max_files = args.max_files
     o.max_file_size_kb = args.max_file_size_kb
-    o.record_size = resolve_size(args.record_size, args.directIO)
-    if isinstance(o.record_size, tuple):
+    o.record_size = args.record_size
+    if args.max_record_size_kb:
+        o.record_size = (1, args.max_record_size_kb * BYTES_PER_KiB)
+        o.max_record_size_kb = args.max_record_size_kb
+    elif isinstance(o.record_size, tuple):
         o.max_record_size_kb = o.record_size[-1] // BYTES_PER_KiB
     else:
         o.max_record_size_kb = o.record_size // BYTES_PER_KiB
@@ -317,7 +301,13 @@ def parseopts(cli_params=sys.argv[1:]):
     o.levels = args.levels
     o.subdirs_per_dir = args.dirs_per_level
     o.incompressible = args.incompressible
-    o.directIO = args.directIO    
+    o.directIO = args.directIO
+    if o.directIO:
+        o.max_record_size_kb = assure_block_alignment(o.max_record_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
+        if isinstance(o.record_size, tuple):
+            o.record_size = (assure_block_alignment(o.record_size[0]), assure_block_alignment(o.record_size[1]))
+        else:
+            o.record_size = assure_block_alignment(o.record_size)     
     o.rawdevice = args.rawdevice        
     o.pause_between_ops = args.pause_between_ops
     o.pause_secs = o.pause_between_ops / float(USEC_PER_SEC)
@@ -391,13 +381,9 @@ def parse_yaml(options, input_yaml_file):
             elif k == 'pause_between_ops':
                 options.pause_between_ops = non_negative_integer(v)
             elif k == 'max_record_size_kb':
-                options.max_record_size_kb = positive_integer(v)
+                options.max_record_size_kb = positive_integer_or_None(v)
             elif k == 'record_size':
-                if ':' in v:
-                    low_bound, high_bound = v.split(':')
-                    options.record_size = (size_unit_to_bytes(low_bound), size_unit_to_bytes(high_bound))
-                else:
-                    options.record_size = positive_integer(size_unit_to_bytes(v))                          
+                options.record_size = size_or_range(v)
             elif k == 'fdatasync_pct':
                 options.fdatasync_probability_pct = non_negative_integer(v)
             elif k == 'fsync_pct':
@@ -413,7 +399,7 @@ def parse_yaml(options, input_yaml_file):
             elif k == 'incompressible':
                 options.incompressible = boolean(v)
             elif k == 'directIO':
-                options.directIO = boolean(v)                
+                options.directIO = boolean(v)
             elif k == 'rawdevice':
                 options.rawdevice = v                    
             elif k == 'random_distribution':
@@ -434,6 +420,19 @@ def parse_yaml(options, input_yaml_file):
                 options.launch_as_daemon = boolean(v)
             else:
                 raise FsDriftParseException('unrecognized parameter name %s' % k)
+        if options.max_record_size_kb:
+            options.record_size = (1, options.max_record_size_kb * BYTES_PER_KiB)
+            options.max_record_size_kb = options.max_record_size_kb
+        elif isinstance(options.record_size, tuple):
+            options.max_record_size_kb = options.record_size[-1] // BYTES_PER_KiB
+        else:
+            options.max_record_size_kb = options.record_size // BYTES_PER_KiB
+        if options.directIO:
+            options.max_record_size_kb = assure_block_alignment(options.max_record_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
+            if isinstance(options.record_size, tuple):
+                options.record_size = (assure_block_alignment(options.record_size[0]), assure_block_alignment(options.record_size[1]))
+            else:
+                options.record_size = assure_block_alignment(options.record_size)
     except TypeExc as e:
         emsg = 'YAML parse error for key "%s" : %s' % (k, str(e))
         raise FsDriftParseException(emsg)
@@ -501,16 +500,16 @@ if __name__ == "__main__":
             fn = '/tmp/sample_parse.yaml'
             with open(fn, 'w') as f:
                 w = lambda s: f.write(s + '\n')
-                w('top: /tmp')
+                w('top: /var/tmp')
                 w('output_json: /var/tmp/x.json')
                 w('workload_table: /var/tmp/x.csv')
                 w('duration: 60')
                 w('threads: 30')
                 w('max_files: 10000')
-                w( 'max_file_size_kb: 1000000')
+                w('max_file_size_kb: 1000000')
                 w('pause_between_ops: 100')
-                w('max_record_size_kb: 4096')
-                w('record_size: 4k')                
+                w('max_record_size_kb: None')
+                w('record_size: 4096')                
                 w('fdatasync_pct: 2')
                 w('fsync_pct: 3')
                 w('levels: 4')
@@ -530,9 +529,9 @@ if __name__ == "__main__":
 
             p = self.params
             parse_yaml(p, fn)
-            assert(p.top_directory == '/tmp')
-            assert(p.network_shared_path == '/tmp/network-shared')
-            assert(p.stop_file_path == '/tmp/network-shared/stop-file.tmp')
+            assert(p.top_directory == '/var/tmp')
+            assert(p.network_shared_path == '/var/tmp/network-shared')
+            assert(p.stop_file_path == '/var/tmp/network-shared/stop-file.tmp')
             assert(p.output_json == '/var/tmp/x.json')
             assert(p.workload_table == '/var/tmp/x.csv')
             assert(p.duration == 60)
@@ -540,8 +539,8 @@ if __name__ == "__main__":
             assert(p.max_files == 10000)
             assert(p.max_file_size_kb == 1000000)
             assert(p.pause_between_ops == 100)
-            assert(p.max_record_size_kb == 4096)
-            assert(p.record_size == 4096)            
+            assert(p.max_record_size_kb == 4)
+            assert(p.record_size == 4096)
             assert(p.fdatasync_probability_pct == 2)
             assert(p.fsync_probability_pct == 3)
             assert(p.levels == 4)

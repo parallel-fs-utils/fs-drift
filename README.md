@@ -120,16 +120,16 @@ we can utilize more than 1 CPU core per host. But all subprocesses are just runn
 
 * --max-file-size-kb
 
-[Default: **10**] Set a limit on maximum file size in KB. File size is randomly generated and can be much less than this.
+[Default: **10**] Set a limit on maximum file size in KiB. File size is randomly generated and can be much less than this.
 
 
 * --max-record-size-kb
 
-[Default: **1**] Set a limit on maximum record size in KB. Record (I/O transfer) size is randomly generated and can be much less than this. Deprecated, use --record-size instead.
+[Default: **None**] Set a limit on maximum record size in KiB. Record (I/O transfer) size is randomly generated and can be much less than this. Deprecated, use --record-size instead. However, when set, this option will override --record-size, for compatibility reasons. Expected values: positive integer.
 
 * --record-size
 
-[Default: **4k**] Set a record size of either fixed value (4k) or range (1k:64k) for random record size. This parameter accepts units [b, k, m, g]. If no units specified, its treated as bytes. When using directIO, the value will be rounded to nearest 4kb and values less than 4kb will be increased to 4kb.
+[Default: **4k**] Set a record size of either fixed value (4k) or range (1k:64k) for random record size. This parameter accepts units [b, k, m, g]. If no units specified, input is treated as bytes. Specified units [k, m, g] are treated as KiB, MiB and GiB, respectively. When using directIO, the value will be rounded to nearest multiple of 4Kib.
 
 * --fsync-pct
 
