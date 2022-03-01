@@ -80,6 +80,9 @@ class FSOPCtx:
         for i in range(0, self.params.levels):
             self.total_dirs *= self.params.subdirs_per_dir
         self.max_files_per_dir = self.params.max_files // self.total_dirs
+        if self.max_files_per_dir == 0:
+            self.log.debug('Setting of max-files too low with number of dirs and levels, raising to one per dir')           
+            self.max_files_per_dir = 1
         # most recent center
         self.center = self.params.max_files * random.random() * 0.99
         # since mean of random.random() is 0.5, threads' average
