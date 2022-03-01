@@ -57,6 +57,8 @@ class FsDriftOpts:
         self.pause_between_ops = 100
         self.pause_secs = self.pause_between_ops / float(USEC_PER_SEC)
         self.incompressible = False
+        self.compress_ratio = 0.0
+        self.dedupe_pct = 0
         self.directIO = False
         self.rawdevice = None
         # new parameters related to gaussian filename distribution
@@ -101,6 +103,8 @@ class FsDriftOpts:
             ('directory levels', self.levels),
             ('subdirectories per directory', self.subdirs_per_dir),
             ('incompressible data', self.incompressible),
+            ('compression ratio', self.compress_ratio),
+            ('deduplication percentage', self.dedupe_pct),            
             ('use direct IO', self.directIO),            
             ('use this device for raw IO', self.rawdevice),                      
             ('pause between ops (usec)', self.pause_between_ops),
@@ -243,6 +247,12 @@ def parseopts(cli_params=sys.argv[1:]):
     add('--incompressible', help='if True then write incompressible data',
             type=boolean,
             default=o.incompressible)
+    add('--compress-ratio', help='desired compress ratio, e.g. 4.0 is compressibility of 75 percent, i.e. the compressed block occupies 25 percent of original space',
+            type=float,
+            default=o.compress_ratio)
+    add('--dedupe-pct', help='deduplication percentage, i.e. percentage of data blocks that will be deduplicable',
+            type=positive_percentage,
+            default=o.dedupe_pct)
     add('--directIO', help='if True then use directIO to open files/device',
             type=boolean,
             default=o.directIO)            
@@ -301,6 +311,8 @@ def parseopts(cli_params=sys.argv[1:]):
     o.levels = args.levels
     o.subdirs_per_dir = args.dirs_per_level
     o.incompressible = args.incompressible
+    o.compress_ratio = args.compress_ratio
+    o.dedupe_pct = args.dedupe_pct
     o.directIO = args.directIO
     if o.directIO:
         o.max_record_size_kb = assure_block_alignment(o.max_record_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
@@ -398,6 +410,10 @@ def parse_yaml(options, input_yaml_file):
                 options.rsptimes = boolean(v)
             elif k == 'incompressible':
                 options.incompressible = boolean(v)
+            elif k == 'compress-ratio':
+                options.compress_ratio = float(v)                
+            elif k == 'dedupe-pct':
+                options.dedupe_pct = positive_percentage(v)
             elif k == 'directIO':
                 options.directIO = boolean(v)
             elif k == 'rawdevice':
