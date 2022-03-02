@@ -31,6 +31,7 @@ class FsDriftOpts:
         self.stop_file_path        = os.path.join(self.network_shared_path,'stop-file.tmp')
         self.param_pickle_path     = os.path.join(self.network_shared_path,'params.pickle')
         self.rsptime_path          = os.path.join(self.network_shared_path,'host-%s_thrd-%s_rsptimes.csv')
+        self.bw_path               = os.path.join(self.network_shared_path,'host-%s_thrd-%s_bw.csv')
         self.abort_path            = os.path.join(self.network_shared_path,'abort.tmp')
         self.pause_path            = os.path.join(self.network_shared_path,'pause.tmp')
         self.checkerflag_path      = os.path.join(self.network_shared_path,'checkered_flag.tmp')
@@ -51,12 +52,15 @@ class FsDriftOpts:
         self.fsync_probability_pct = 20
         self.levels = 2
         self.subdirs_per_dir = 3
-        self.rsptimes = False
+        self.response_times = False
+        self.bw = False
         self.workload_table_csv_path = None
         self.stats_report_interval = max(self.duration // 60, 5)
         self.pause_between_ops = 100
         self.pause_secs = self.pause_between_ops / float(USEC_PER_SEC)
         self.incompressible = False
+        self.compress_ratio = 0.0
+        self.dedupe_pct = 0
         self.directIO = False
         self.rawdevice = None
         # new parameters related to gaussian filename distribution
@@ -86,7 +90,8 @@ class FsDriftOpts:
             ('input YAML', self.input_yaml),
             ('top directory', self.top_directory),
             ('JSON output file', self.output_json_path),
-            ('save response times?', self.rsptimes),
+            ('save response times?', self.response_times),
+            ('save bandwidth?', self.bw),            
             ('stats report interval', self.stats_report_interval),
             ('workload table csv path', self.workload_table_csv_path),
             ('host set', ','.join(self.host_set)),
@@ -101,6 +106,8 @@ class FsDriftOpts:
             ('directory levels', self.levels),
             ('subdirectories per directory', self.subdirs_per_dir),
             ('incompressible data', self.incompressible),
+            ('compression ratio', self.compress_ratio),
+            ('deduplication percentage', self.dedupe_pct),            
             ('use direct IO', self.directIO),            
             ('use this device for raw IO', self.rawdevice),                      
             ('pause between ops (usec)', self.pause_between_ops),
@@ -238,11 +245,20 @@ def parseopts(cli_params=sys.argv[1:]):
             type=positive_integer,
             default=o.stats_report_interval)
     add('--response-times', help='if True then save response times to CSV file',
-            type=boolean, 
-            default=o.rsptimes)
+            type=boolean,
+            default=o.response_times)
+    add('--save-bw', help='if True then save bandwidth to CSV file',
+            type=boolean,
+            default=o.bw)
     add('--incompressible', help='if True then write incompressible data',
             type=boolean,
             default=o.incompressible)
+    add('--compress-ratio', help='desired compress ratio, e.g. 4.0 is compressibility of 75 percent, i.e. the compressed block occupies 25 percent of original space',
+            type=positive_float,
+            default=o.compress_ratio)
+    add('--dedupe-pct', help='deduplication percentage, i.e. percentage of data blocks that will be deduplicable',
+            type=positive_percentage,
+            default=o.dedupe_pct)
     add('--directIO', help='if True then use directIO to open files/device',
             type=boolean,
             default=o.directIO)            
@@ -279,7 +295,6 @@ def parseopts(cli_params=sys.argv[1:]):
     args = parser.parse_args(cli_params)
     o.top_directory = args.top
     o.output_json_path = args.output_json
-    o.rsptimes = args.response_times
     o.stats_report_interval = args.report_interval
     o.host_set = args.host_set
     o.threads = args.threads
@@ -301,6 +316,8 @@ def parseopts(cli_params=sys.argv[1:]):
     o.levels = args.levels
     o.subdirs_per_dir = args.dirs_per_level
     o.incompressible = args.incompressible
+    o.compress_ratio = args.compress_ratio
+    o.dedupe_pct = args.dedupe_pct
     o.directIO = args.directIO
     if o.directIO:
         o.max_record_size_kb = assure_block_alignment(o.max_record_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
@@ -312,6 +329,7 @@ def parseopts(cli_params=sys.argv[1:]):
     o.pause_between_ops = args.pause_between_ops
     o.pause_secs = o.pause_between_ops / float(USEC_PER_SEC)
     o.response_times = args.response_times
+    o.bw = args.save_bw
     o.random_distribution = args.random_distribution
     o.mean_index_velocity = args.mean_velocity
     o.gaussian_stddev = args.gaussian_stddev
@@ -395,9 +413,15 @@ def parse_yaml(options, input_yaml_file):
             elif k == 'report_interval':
                 options.stats_report_interval = positive_integer(v)
             elif k == 'response_times':
-                options.rsptimes = boolean(v)
+                options.response_times = boolean(v)
+            elif k == 'bw':
+                options.bw = boolean(v)                
             elif k == 'incompressible':
                 options.incompressible = boolean(v)
+            elif k == 'compress-ratio':
+                options.compress_ratio = positive_float(v)                
+            elif k == 'dedupe-pct':
+                options.dedupe_pct = positive_percentage(v)
             elif k == 'directIO':
                 options.directIO = boolean(v)
             elif k == 'rawdevice':
@@ -546,7 +570,7 @@ if __name__ == "__main__":
             assert(p.levels == 4)
             assert(p.dirs_per_level == 50)
             assert(p.stats_report_interval == 60)
-            assert(p.rsptimes == True)
+            assert(p.response_times == True)
             assert(p.incompressible == False)
             assert(p.directIO == False)            
             assert(p.rawdevice == None)            

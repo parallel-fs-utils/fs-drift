@@ -116,7 +116,7 @@ chk "./fs-drift.py --duration 10 --record-size 1k --max-file-size-kb 1 --directI
 #Normal fs-drift usage (except the duration)
 rm -rf /var/tmp/mydir
 mkdir /var/tmp/mydir
-chk "./fs-drift.py --top /var/tmp/mydir --duration 10 --response-times True --record-size 4k --max-file-size-kb 4096 --threads 8 --max-files 10 --report-interval 1 --random-distribution gaussian --mean-velocity 10.0 --directIO True --output-json /tmp/fs-drift-result.json"
+chk "./fs-drift.py --top /var/tmp/mydir --duration 10 --response-times True --save-bw True --record-size 4k --max-file-size-kb 4096 --threads 8 --max-files 10 --report-interval 1 --random-distribution gaussian --mean-velocity 10.0 --directIO True --output-json /tmp/fs-drift-result.json"
 export params_json_fn=/tmp/fs-drift-result.json
 chk "./compute-rates.py /var/tmp/mydir/network-shared"
 
@@ -125,5 +125,5 @@ chk "./compute-rates.py /var/tmp/mydir/network-shared"
 if [ -n "$test_ssh" ] ; then
 	rm -rf /var/tmp/mydir2
 	mkdir /var/tmp/mydir2
-	chk "./fs-drift.py --host-set localhost --top /var/tmp/mydir2 --response-times True --output-json /tmp/fs-drift-result2.json"
+	chk "./fs-drift.py --host-set localhost --top /var/tmp/mydir2 --response-times True --save-bw True --output-json /tmp/fs-drift-result2.json"
 fi

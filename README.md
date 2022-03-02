@@ -86,8 +86,11 @@ command line.   Omit the double hyphen at the beginning of the parameter name wh
 
 * --response-times
 
-[Default: **False**] If true, save response time data for each thread to a CSV file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values.  The first value is time since the start of testing. The second value is the duration the operation lasted. Response times for different operations are separated.
+[Default: **False**] If true, save response time data for each thread to a CSV file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values. The first value is time since the start of testing. The second value is the duration the operation lasted. Response times for different operations are separated.
 
+* --save-bw
+
+[Default: **False**] If true, save bandwidth time data for each thread to a CSV file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values. The first value is time since the start of testing. The second value is the duration the operation lasted. Response times for different operations are separated.
 
 * --workload-table
 
@@ -202,6 +205,13 @@ last parameter in the command. This allows fs-drift to do the unmount operation 
 
 [Default: **None**] If set, fs-drift will use provided block device for raw device testing, i.e. all IOs will be issued directly to the device. **Warning**, testing a device like this WILL corrupt any data or file systems present on the device. Always make sure, there is nothing valuable present on the provided device.
 
+* --dedupe-pct
+
+[Default: **0**] If set, fs-drift will engage non-default random buffer to generate deduplicable data. The value is percentage of blocks that will be copies of other blocks. Works also in combination with --compress-ratio
+
+* --compress-ratio
+
+[Default: **0.0**] If set, fs-drift will engage non-default random buffer to generate compressible data. The value is ratio of which blocks should be compressible, i.e. 4.0 means 1/4 of the generated blocks (25 percent) will hold random data with the rest being padded with zeroes. Works also in combination with --dedupe-pct
 
 ## Operations
 
