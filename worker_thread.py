@@ -138,6 +138,7 @@ class FsDriftWorkload:
         # to measure file operation response times
         self.op_start_time = None
         self.rsptimes = []
+        self.bw = []        
 
 
     # create per-thread log file
@@ -192,24 +193,36 @@ class FsDriftWorkload:
     # this appends the elapsed time of the operation to .rsptimes array
 
     def op_endtime(self, opname):
-        if self.params.rsptimes:
-            end_time = time.time()
+        if self.params.response_times:
+            end_time = time.perf_counter()
             rsp_time = end_time - self.op_start_time
-            self.rsptimes.append((opname, self.op_start_time, rsp_time))
-            self.op_start_time = None
-
+            self.rsptimes.append((self.op_start_time, rsp_time, opname))
+            
+        if self.params.bw:
+            self.bw.append((self.op_start_time, self.ctx.measured_bw, opname))
+            self.ctx.measured_bw = None
+        self.op_start_time = None
+        
     # save response times seen by this thread
-
     def save_rsptimes(self):
         fname = self.params.rsptime_path % (self.onhost, self.tid)
         with open(fname, 'w') as f:
-            for (opname, start_time, rsp_time) in self.rsptimes:
+            for (start_time, rsp_time, opname) in self.rsptimes:
                 # time granularity is microseconds, accuracy is less
-                f.write('%8s, %9.6f, %9.6f\n' %
-                        (opname, start_time - self.start_time, rsp_time))
+                f.write('%9.6f, %9.6f, %s\n' % (start_time, rsp_time, opname))
             os.fsync(f.fileno())  # particularly for NFS this is needed
         self.log.info('response times saved in %s' % fname)
 
+    def save_bw(self):
+        fname = self.params.bw_path % (self.onhost, self.tid)
+        with open(fname, 'w') as f:
+            for (start_time, bw, opname) in self.bw:
+                if not bw:
+                    continue
+                f.write('%9.6f, %9.6f, %s\n' % (start_time, bw, opname))
+            os.fsync(f.fileno())  # particularly for NFS this is needed
+        self.log.info('bandwidth saved in %s' % fname)
+        
     # determine if test interval is over for this thread
 
     # each thread uses this to signal that it is at the starting gate
@@ -388,7 +401,7 @@ class FsDriftWorkload:
             name = FSOPCtx.opcode_to_opname[x]
             if self.verbosity & 0x1:
                 self.log.debug('event %d name %s' % (x, name))
-            self.op_start_time = time.time()
+            self.op_start_time = time.perf_counter()
             rc = NOTOK
             try:
                 rc = self.ctx.invoke_rq(x)
@@ -443,8 +456,10 @@ class FsDriftWorkload:
             self.counter_file.write(']')
             self.counter_file.close()
         self.end_test()
-        if self.params.rsptimes:
+        if self.params.response_times:
             self.save_rsptimes()
+        if self.params.bw:
+            self.save_bw()
         if self.status != OK:
             self.log.error('invocation did not complete cleanly')
         self.log.info('worker_thread do_workload finished')

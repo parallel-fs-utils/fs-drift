@@ -86,8 +86,11 @@ command line.   Omit the double hyphen at the beginning of the parameter name wh
 
 * --response-times
 
-[Default: **False**] If true, save response time data for each thread to a CSV file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values.  The first value is time since the start of testing. The second value is the duration the operation lasted. Response times for different operations are separated.
+[Default: **False**] If true, save response time data for each thread to a CSV file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values. The first value is time since the start of testing. The second value is the duration the operation lasted. Response times for different operations are separated.
 
+* --save-bw
+
+[Default: **False**] If true, save bandwidth time data for each thread to a CSV file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values. The first value is time since the start of testing. The second value is the duration the operation lasted. Response times for different operations are separated.
 
 * --workload-table
 

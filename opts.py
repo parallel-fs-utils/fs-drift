@@ -31,6 +31,7 @@ class FsDriftOpts:
         self.stop_file_path        = os.path.join(self.network_shared_path,'stop-file.tmp')
         self.param_pickle_path     = os.path.join(self.network_shared_path,'params.pickle')
         self.rsptime_path          = os.path.join(self.network_shared_path,'host-%s_thrd-%s_rsptimes.csv')
+        self.bw_path               = os.path.join(self.network_shared_path,'host-%s_thrd-%s_bw.csv')
         self.abort_path            = os.path.join(self.network_shared_path,'abort.tmp')
         self.pause_path            = os.path.join(self.network_shared_path,'pause.tmp')
         self.checkerflag_path      = os.path.join(self.network_shared_path,'checkered_flag.tmp')
@@ -51,7 +52,8 @@ class FsDriftOpts:
         self.fsync_probability_pct = 20
         self.levels = 2
         self.subdirs_per_dir = 3
-        self.rsptimes = False
+        self.response_times = False
+        self.bw = False
         self.workload_table_csv_path = None
         self.stats_report_interval = max(self.duration // 60, 5)
         self.pause_between_ops = 100
@@ -88,7 +90,8 @@ class FsDriftOpts:
             ('input YAML', self.input_yaml),
             ('top directory', self.top_directory),
             ('JSON output file', self.output_json_path),
-            ('save response times?', self.rsptimes),
+            ('save response times?', self.response_times),
+            ('save bandwidth?', self.bw),            
             ('stats report interval', self.stats_report_interval),
             ('workload table csv path', self.workload_table_csv_path),
             ('host set', ','.join(self.host_set)),
@@ -242,8 +245,11 @@ def parseopts(cli_params=sys.argv[1:]):
             type=positive_integer,
             default=o.stats_report_interval)
     add('--response-times', help='if True then save response times to CSV file',
-            type=boolean, 
-            default=o.rsptimes)
+            type=boolean,
+            default=o.response_times)
+    add('--save-bw', help='if True then save bandwidth to CSV file',
+            type=boolean,
+            default=o.bw)
     add('--incompressible', help='if True then write incompressible data',
             type=boolean,
             default=o.incompressible)
@@ -289,7 +295,6 @@ def parseopts(cli_params=sys.argv[1:]):
     args = parser.parse_args(cli_params)
     o.top_directory = args.top
     o.output_json_path = args.output_json
-    o.rsptimes = args.response_times
     o.stats_report_interval = args.report_interval
     o.host_set = args.host_set
     o.threads = args.threads
@@ -324,6 +329,7 @@ def parseopts(cli_params=sys.argv[1:]):
     o.pause_between_ops = args.pause_between_ops
     o.pause_secs = o.pause_between_ops / float(USEC_PER_SEC)
     o.response_times = args.response_times
+    o.bw = args.save_bw
     o.random_distribution = args.random_distribution
     o.mean_index_velocity = args.mean_velocity
     o.gaussian_stddev = args.gaussian_stddev
@@ -407,7 +413,9 @@ def parse_yaml(options, input_yaml_file):
             elif k == 'report_interval':
                 options.stats_report_interval = positive_integer(v)
             elif k == 'response_times':
-                options.rsptimes = boolean(v)
+                options.response_times = boolean(v)
+            elif k == 'bw':
+                options.bw = boolean(v)                
             elif k == 'incompressible':
                 options.incompressible = boolean(v)
             elif k == 'compress-ratio':
@@ -562,7 +570,7 @@ if __name__ == "__main__":
             assert(p.levels == 4)
             assert(p.dirs_per_level == 50)
             assert(p.stats_report_interval == 60)
-            assert(p.rsptimes == True)
+            assert(p.response_times == True)
             assert(p.incompressible == False)
             assert(p.directIO == False)            
             assert(p.rawdevice == None)            
