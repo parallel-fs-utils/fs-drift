@@ -194,7 +194,7 @@ class FsDriftWorkload:
 
     def op_endtime(self, opname):
         if self.params.response_times:
-            end_time = time.perf_counter()
+            end_time = time.time()
             rsp_time = end_time - self.op_start_time
             self.rsptimes.append((self.op_start_time, rsp_time, opname))
             
@@ -209,7 +209,7 @@ class FsDriftWorkload:
         with open(fname, 'w') as f:
             for (start_time, rsp_time, opname) in self.rsptimes:
                 # time granularity is microseconds, accuracy is less
-                f.write('%9.6f, %9.6f, %s\n' % (start_time, rsp_time, opname))
+                f.write('%9.6f, %9.6f, %s\n' % (start_time - self.start_time, rsp_time, opname))
             os.fsync(f.fileno())  # particularly for NFS this is needed
         self.log.info('response times saved in %s' % fname)
 
@@ -219,7 +219,7 @@ class FsDriftWorkload:
             for (start_time, bw, opname) in self.bw:
                 if not bw:
                     continue
-                f.write('%9.6f, %9.6f, %s\n' % (start_time, bw, opname))
+                f.write('%9.6f, %9.6f, %s\n' % (start_time - self.start_time, bw, opname))
             os.fsync(f.fileno())  # particularly for NFS this is needed
         self.log.info('bandwidth saved in %s' % fname)
         
@@ -401,7 +401,7 @@ class FsDriftWorkload:
             name = FSOPCtx.opcode_to_opname[x]
             if self.verbosity & 0x1:
                 self.log.debug('event %d name %s' % (x, name))
-            self.op_start_time = time.perf_counter()
+            self.op_start_time = time.time()
             rc = NOTOK
             try:
                 rc = self.ctx.invoke_rq(x)
