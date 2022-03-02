@@ -2,32 +2,31 @@
 
 import string
 import array
-import os
+import os, mmap
 from numpy import append
 from common import myassert, BYTES_PER_KiB
 
-def gen_block(compress):
-    bytes_per_block = 4 * BYTES_PER_KiB
-    random_bytes = int((1/compress) * bytes_per_block)
-    return bytearray(os.urandom(random_bytes)) + bytearray((bytes_per_block-random_bytes)*b'\0')
-
-def gen_compressible_buffer(size, dedupe, compress):
+#Generate buffer of deduplicable and compressible data
+#*Step 1: generate some compressible blocks by fillng a portion
+#with random data and pad the rest with zeroes
+#*Step 2: repeat these blocks in the buffer to achieve deduplicability
+#Note, I know this looks bad, but I'm trying to squeeze in as much performance
+#as possible
+def gen_compressible_buffer(size_bytes, dedupe, compression_ratio):
+    compress = 1/compression_ratio
     to_dedupe = (dedupe/100)
     if not to_dedupe:
         to_dedupe = 1
         repeat_buf = 1
     else:
         repeat_buf = int(1 / (1 - to_dedupe))
-    number_of_blocks = int((size / 4096) * to_dedupe)
+    number_of_blocks = int((size_bytes / (4 * BYTES_PER_KiB)) * to_dedupe)
 
     blocks = bytearray()
     for i in range(number_of_blocks):
-        blocks += gen_block(compress)
+        blocks.extend(bytearray(os.urandom(int(compress * 4 * BYTES_PER_KiB))) + bytearray(((4 * BYTES_PER_KiB)-int(compress * 4 * BYTES_PER_KiB))*b'\0'))            
     
-    buf = bytearray()
-    for i in range(repeat_buf):
-        buf += blocks
-    return buf
+    return repeat_buf * blocks
     
 starter_array_len = 1024
 
@@ -66,5 +65,7 @@ if __name__ == '__main__':
     buf = gen_buffer(1000000)
     print('Time elapsed:', (time.perf_counter() - start_time)*1000)
     start_time = time.perf_counter()
-    buf = gen_compressible_buffer(4096*245, 50, 75)
+    buf = gen_compressible_buffer(4096*245, 50, 4.0)
     print('Time elapsed:', (time.perf_counter() - start_time)*1000)
+    
+    

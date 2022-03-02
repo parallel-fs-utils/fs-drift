@@ -332,7 +332,7 @@ class FSOPCtx:
         target_sz = self.random_file_size()
         buf_offset = 0        
         if self.params.compress_ratio or self.params.dedupe_pct:
-            self.buf = gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)
+            self.buf = random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)
         if self.verbosity & 0x8000:
             self.log.debug('write %s size %s' % (fn, target_sz))
         try:
@@ -501,7 +501,7 @@ class FSOPCtx:
         target_sz = self.random_file_size()
         buf_offset = 0        
         if self.params.compress_ratio or self.params.dedupe_pct:
-            self.buf = gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)        
+            self.buf = random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)        
         if self.verbosity & 0x1000:
             self.log.debug('create %s sz %s' % (fn, target_sz))
         subdir = os.path.dirname(fn)
@@ -568,7 +568,7 @@ class FSOPCtx:
         target_sz = self.random_file_size()
         buf_offset = 0        
         if self.params.compress_ratio or self.params.dedupe_pct:
-            self.buf = gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)        
+            self.buf = random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)        
         if self.verbosity & 0x8000:
             self.log.debug('append %s sz %s' % (fn, target_sz))
         try:
@@ -627,7 +627,7 @@ class FSOPCtx:
             target_size = self.random_file_size()
             buf_offset = 0        
             if self.params.compress_ratio or self.params.dedupe_pct:
-            self.buf = gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)            
+            self.buf = random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)            
             #Lets make sure, we won't write 100MB into 4KB file
             #This way, we'll at most rewrite the whole file
             if target_size > file_size:
