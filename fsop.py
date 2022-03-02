@@ -538,6 +538,7 @@ class FSOPCtx:
                 total_sz += count
                 c.write_requests += 1
                 c.write_bytes += count
+                buf_offset += count                
             rc = self.maybe_fsync(fd)
             c.have_created += 1
         except OSError as e:
@@ -593,6 +594,7 @@ class FSOPCtx:
                 count = os.write(fd, m)                    
                 myassert(count == recsz)
                 total_appended += count
+                buf_offset += count                
                 c.write_requests += 1
                 c.write_bytes += count
             rc = self.maybe_fsync(fd)
@@ -655,6 +657,7 @@ class FSOPCtx:
                     self.log.debug('randwrite count %u record size %u' % (count, record_size))
                 myassert(count == record_size)
                 total_count += count
+                buf_offset += count
                 c.randwrite_requests += 1
                 c.randwrite_bytes += total_count
                 rc = self.maybe_fsync(fd)
