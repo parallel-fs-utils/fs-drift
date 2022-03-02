@@ -208,7 +208,7 @@ last parameter in the command. This allows fs-drift to do the unmount operation 
 
 * --compress-ratio
 
-[Default: **0.0**] If set, fs-drift will engage non-default random buffer to generate compressible data. The value is ratio of which blocks should be compressible, i.e. 4.0 means 1/4 of the generated blocks (25 percent) will hold random data with the rest being padded with zeroes
+[Default: **0.0**] If set, fs-drift will engage non-default random buffer to generate compressible data. The value is ratio of which blocks should be compressible, i.e. 4.0 means 1/4 of the generated blocks (25 percent) will hold random data with the rest being padded with zeroes. Works also in combination with --dedupe-pct
 
 ## Operations
 
