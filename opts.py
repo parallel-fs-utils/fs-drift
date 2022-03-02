@@ -411,7 +411,7 @@ def parse_yaml(options, input_yaml_file):
             elif k == 'incompressible':
                 options.incompressible = boolean(v)
             elif k == 'compress-ratio':
-                options.compress_ratio = float(v)                
+                options.compress_ratio = positive_float(v)                
             elif k == 'dedupe-pct':
                 options.dedupe_pct = positive_percentage(v)
             elif k == 'directIO':
