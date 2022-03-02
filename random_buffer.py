@@ -12,8 +12,10 @@ from common import myassert, BYTES_PER_KiB
 #*Step 2: repeat these blocks in the buffer to achieve deduplicability
 #Note, I know this looks bad, but I'm trying to squeeze in as much performance
 #as possible
-def gen_compressible_buffer(size_bytes, dedupe, compression_ratio):
-    compress = 1/compression_ratio
+def gen_compressible_buffer(size_bytes, compression_ratio, dedupe):
+    compress = 1
+    if compression_ratio:
+        compress = 1/compression_ratio
     to_dedupe = (dedupe/100)
     if not to_dedupe:
         to_dedupe = 1

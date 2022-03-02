@@ -627,7 +627,7 @@ class FSOPCtx:
             target_size = self.random_file_size()
             buf_offset = 0        
             if self.params.compress_ratio or self.params.dedupe_pct:
-            self.buf = random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)            
+                self.buf = random_buffer.gen_compressible_buffer(target_size, self.params.compress_ratio, self.params.dedupe_pct)            
             #Lets make sure, we won't write 100MB into 4KB file
             #This way, we'll at most rewrite the whole file
             if target_size > file_size:
@@ -647,9 +647,9 @@ class FSOPCtx:
                 #using mmap for memory alignment    
                 m = mmap.mmap(-1, record_size)             
                 if self.params.compress_ratio or self.params.dedupe_pct:
-                    m.write(self.buf[buf_offset:buf_offset+recsz])
+                    m.write(self.buf[buf_offset:buf_offset+record_size])
                 else:
-                    m.write(self.buf[0:recsz])           
+                    m.write(self.buf[0:record_size])
                 count = os.write(fd, m)                        
                 if self.verbosity & 0x20000:
                     self.log.debug('randwrite count %u record size %u' % (count, record_size))
