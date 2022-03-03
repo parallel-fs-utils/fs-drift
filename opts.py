@@ -45,7 +45,8 @@ class FsDriftOpts:
         self.is_slave = False
         self.duration = 1
         self.max_files = 200
-        self.max_file_size_kb = 10
+        self.max_file_size_kb = None
+        self.file_size = 100 * BYTES_PER_KiB
         self.max_record_size_kb = None
         self.record_size = 4096
         self.fdatasync_probability_pct = 10
@@ -99,6 +100,7 @@ class FsDriftOpts:
             ('test duration', self.duration),
             ('maximum file count', self.max_files),
             ('maximum file size (KiB)', self.max_file_size_kb),
+            ('file size', self.file_size),
             ('maximum record size (KiB)', self.max_record_size_kb),
             ('record size ', self.record_size),
             ('fsync probability pct', self.fsync_probability_pct),
@@ -220,6 +222,9 @@ def parseopts(cli_params=sys.argv[1:]):
     add('--max-file-size-kb', help='maximum file size in KiB',
             type=positive_integer, 
             default=o.max_file_size_kb)
+    add('--file-size', help='file size. If no units specified, treated like B. Other units: k, m, g. For range, enter two values separated by ":". Eg. 4:64',
+            type=size_or_range,
+            default=o.file_size)            
     add('--pause-between-ops', help='delay between ops in microsec',
             type=non_negative_integer,
             default=o.pause_between_ops)
@@ -303,6 +308,14 @@ def parseopts(cli_params=sys.argv[1:]):
     o.duration = args.duration
     o.max_files = args.max_files
     o.max_file_size_kb = args.max_file_size_kb
+    o.file_size = args.file_size
+    if args.max_file_size_kb:
+        o.file_size = (1, args.max_file_size_kb * BYTES_PER_KiB)
+        o.max_file_size_kb = args.max_file_size_kb
+    elif isinstance(o.file_size, tuple):
+        o.max_file_size_kb = o.file_size[-1] // BYTES_PER_KiB
+    else:
+        o.max_file_size_kb = o.file_size // BYTES_PER_KiB    
     o.record_size = args.record_size
     if args.max_record_size_kb:
         o.record_size = (1, args.max_record_size_kb * BYTES_PER_KiB)
@@ -325,6 +338,11 @@ def parseopts(cli_params=sys.argv[1:]):
             o.record_size = (assure_block_alignment(o.record_size[0]), assure_block_alignment(o.record_size[1]))
         else:
             o.record_size = assure_block_alignment(o.record_size)     
+        o.max_file_size_kb = assure_block_alignment(o.max_file_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
+        if isinstance(o.file_size, tuple):
+            o.file_size = (assure_block_alignment(o.file_size[0]), assure_block_alignment(o.file_size[1]))
+        else:
+            o.file_size = assure_block_alignment(o.file_size)     
     o.rawdevice = args.rawdevice        
     o.pause_between_ops = args.pause_between_ops
     o.pause_secs = o.pause_between_ops / float(USEC_PER_SEC)
@@ -396,6 +414,8 @@ def parse_yaml(options, input_yaml_file):
                 options.max_files = positive_integer(v)
             elif k == 'max_file_size_kb':
                 options.max_file_size_kb = positive_integer(v)
+            elif k == 'file_size':
+                options.file_size = size_or_range(v)                
             elif k == 'pause_between_ops':
                 options.pause_between_ops = non_negative_integer(v)
             elif k == 'max_record_size_kb':
@@ -451,12 +471,19 @@ def parse_yaml(options, input_yaml_file):
             options.max_record_size_kb = options.record_size[-1] // BYTES_PER_KiB
         else:
             options.max_record_size_kb = options.record_size // BYTES_PER_KiB
+        if options.max_file_size_kb:
+            options.file_size = (1, options.max_file_size_kb * BYTES_PER_KiB)
+            options.max_file_size_kb = options.max_file_size_kb
+        elif isinstance(options.file_size, tuple):
+            options.max_file_size_kb = options.file_size[-1] // BYTES_PER_KiB
+        else:
+            options.max_file_size_kb = options.file_size // BYTES_PER_KiB            
         if options.directIO:
-            options.max_record_size_kb = assure_block_alignment(options.max_record_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
-            if isinstance(options.record_size, tuple):
-                options.record_size = (assure_block_alignment(options.record_size[0]), assure_block_alignment(options.record_size[1]))
+            options.max_file_size_kb = assure_block_alignment(options.max_file_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
+            if isinstance(options.file_size, tuple):
+                options.file_size = (assure_block_alignment(options.file_size[0]), assure_block_alignment(options.file_size[1]))
             else:
-                options.record_size = assure_block_alignment(options.record_size)
+                options.file_size = assure_block_alignment(options.file_size)
     except TypeExc as e:
         emsg = 'YAML parse error for key "%s" : %s' % (k, str(e))
         raise FsDriftParseException(emsg)
