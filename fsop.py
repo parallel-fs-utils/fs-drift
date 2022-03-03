@@ -271,11 +271,14 @@ class FSOPCtx:
 
 
     def random_file_size(self):
-        fsz = random.randint(0, self.params.max_file_size_kb * BYTES_PER_KiB)
+        #In case user inputs range, do random file size
+        if isinstance(self.params.file_size, tuple):
+            file_size = random.randint(self.params.file_size[0], self.params.file_size[1])    
+        else:
+            file_size = self.params.file_size
         if self.params.directIO:
-            return (fsz // 4096) * 4096
-        return fsz
-
+            return (file_size // 4096) * 4096
+        return file_size
 
     def random_record_size(self):
         #In case user inputs range, do random file size
@@ -286,8 +289,6 @@ class FSOPCtx:
         if self.params.directIO:
             return (recsz // 4096) * 4096
         return recsz
-
-
 
     def random_segment_size(self, filesz):
         segsize = 2 * self.random_record_size()
