@@ -123,8 +123,11 @@ we can utilize more than 1 CPU core per host. But all subprocesses are just runn
 
 * --max-file-size-kb
 
-[Default: **10**] Set a limit on maximum file size in KiB. File size is randomly generated and can be much less than this.
+[Default: **None**] Set a limit on maximum file size in KiB. File size is randomly generated and can be much less than this. Deprecated, use --file-size instead. However, when set, this option will override --file-size, for compatibility reasons. Expected values: positive integer.
 
+* --file-size
+
+[Default: **100k**] Set file size of either fixed value (4k) or range (1k:64k) for random record size. This parameter accepts units [b, k, m, g]. If no units specified, input is treated as bytes. Specified units [k, m, g] are treated as KiB, MiB and GiB, respectively. When using directIO, the value will be rounded to nearest multiple of 4Kib.
 
 * --max-record-size-kb
 
