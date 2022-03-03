@@ -374,7 +374,6 @@ class FSOPCtx:
             if total_count:
                 self.measured_bw = total_count / precise_time
         except OSError as e:
-            self.try_to_close(fd, fn)        
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -384,7 +383,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('write', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
         
     def op_read(self):
@@ -429,7 +429,6 @@ class FSOPCtx:
             if total_count:
                 self.measured_bw = total_count / precise_time            
         except OSError as e:
-            self.try_to_close(fd, fn, f=f)
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
@@ -437,7 +436,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('op_read', fn, e, fd=fd)
-        self.try_to_close(fd, fn, f=f)
+        finally:
+            self.try_to_close(fd, fn, f=f)
         return OK
 
     def op_random_read(self):
@@ -489,7 +489,6 @@ class FSOPCtx:
             if total_count:
                 self.measured_bw = total_count / precise_time
         except OSError as e:
-            self.try_to_close(fd, fn, f=f)
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
@@ -497,7 +496,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('random_read', fn, e, fd=fd)
-        self.try_to_close(fd, fn, f=f)
+        finally:
+            self.try_to_close(fd, fn, f=f)
         return OK
 
 
@@ -572,8 +572,7 @@ class FSOPCtx:
             c.have_created += 1
             if total_count:
                 self.measured_bw = total_count / precise_time
-        except OSError as e:
-            self.try_to_close(fd, fn)        
+        except OSError as e:   
             if e.errno == errno.EEXIST:
                 c.e_already_exists += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -586,7 +585,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('create', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
 
 
@@ -637,7 +637,6 @@ class FSOPCtx:
             if total_count:
                 self.measured_bw = total_count / precise_time
         except OSError as e:
-            self.try_to_close(fd, fn)        
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -647,7 +646,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('append', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
 
 
@@ -705,8 +705,7 @@ class FSOPCtx:
             c.have_randomly_written += 1
             if total_count:
                 self.measured_bw = total_count / precise_time
-        except OSError as e:
-            self.try_to_close(fd, fn)        
+        except OSError as e:     
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -716,7 +715,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('random write', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
 
 
@@ -738,7 +738,6 @@ class FSOPCtx:
             os.ftruncate(fd, new_file_size)
             c.have_truncated += 1
         except OSError as e:
-            self.try_to_close(fd, fn)        
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -748,7 +747,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('truncate', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
 
 
@@ -919,8 +919,7 @@ class FSOPCtx:
             c.have_randomly_discarded += 1
             if total_count:
                 self.measured_bw = total_count / precise_time
-        except OSError as e:
-            self.try_to_close(fd, fn)        
+        except OSError as e: 
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -930,7 +929,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('random discard', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
 
     # unmounting is so risky that we shouldn't try to figure it out
