@@ -86,8 +86,11 @@ command line.   Omit the double hyphen at the beginning of the parameter name wh
 
 * --response-times
 
-[Default: **False**] If true, save response time data for each thread to a CSV file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values.  The first value is time since the start of testing. The second value is the duration the operation lasted. Response times for different operations are separated.
+[Default: **False**] If true, save response time data for each thread to a CSV file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values. The first value is time since the start of testing. The second value is the duration the operation lasted. Response times for different operations are separated.
 
+* --save-bw
+
+[Default: **False**] If true, save bandwidth time data for each thread to a CSV file in the network shared directory. Each record in this file contains 2 comma-separated floating-point values. The first value is time since the start of testing. The second value is the duration the operation lasted. Response times for different operations are separated.
 
 * --workload-table
 
@@ -120,13 +123,19 @@ we can utilize more than 1 CPU core per host. But all subprocesses are just runn
 
 * --max-file-size-kb
 
-[Default: **10**] Set a limit on maximum file size in KB. File size is randomly generated and can be much less than this.
+[Default: **None**] Set a limit on maximum file size in KiB. File size is randomly generated and can be much less than this. Deprecated, use --file-size instead. However, when set, this option will override --file-size, for compatibility reasons. Expected values: positive integer.
 
+* --file-size
+
+[Default: **100k**] Set file size of either fixed value (4k) or range (1k:64k) for random record size. This parameter accepts units [b, k, m, g]. If no units specified, input is treated as bytes. Specified units [k, m, g] are treated as KiB, MiB and GiB, respectively. When using directIO, the value will be rounded to nearest multiple of 4Kib.
 
 * --max-record-size-kb
 
-[Default: **1**] Set a limit on maximum record size in KB. Record (I/O transfer) size is randomly generated and can be much less than this.
+[Default: **None**] Set a limit on maximum record size in KiB. Record (I/O transfer) size is randomly generated and can be much less than this. Deprecated, use --record-size instead. However, when set, this option will override --record-size, for compatibility reasons. Expected values: positive integer.
 
+* --record-size
+
+[Default: **4k**] Set a record size of either fixed value (4k) or range (1k:64k) for random record size. This parameter accepts units [b, k, m, g]. If no units specified, input is treated as bytes. Specified units [k, m, g] are treated as KiB, MiB and GiB, respectively. When using directIO, the value will be rounded to nearest multiple of 4Kib.
 
 * --fsync-pct
 
@@ -192,13 +201,20 @@ last parameter in the command. This allows fs-drift to do the unmount operation 
 
 * --directIO
 
-[Default: **False**] If True, fs-drift will use flag O_DIRECT when opening files. All the issued IOs will be alligned to 4KB, i.e. record size and file size smaller than 4KB will be upscaled to 4KB.
+[Default: **False**] If True, fs-drift will use flag O_DIRECT when opening files. All the issued IOs will be alligned to 4KiB, i.e. record size and file size smaller than 4KiB will be upscaled to 4KiB. Other inputed sizes will be rounded to the nearest 4KiB size. Note: using directIO with /tmp or any other tmpfs will result in EINVAL error.
 
 
 * --rawdevice
 
 [Default: **None**] If set, fs-drift will use provided block device for raw device testing, i.e. all IOs will be issued directly to the device. **Warning**, testing a device like this WILL corrupt any data or file systems present on the device. Always make sure, there is nothing valuable present on the provided device.
 
+* --dedupe-pct
+
+[Default: **0**] If set, fs-drift will engage non-default random buffer to generate deduplicable data. The value is percentage of blocks that will be copies of other blocks. Works also in combination with --compress-ratio
+
+* --compress-ratio
+
+[Default: **0.0**] If set, fs-drift will engage non-default random buffer to generate compressible data. The value is ratio of which blocks should be compressible, i.e. 4.0 means 1/4 of the generated blocks (25 percent) will hold random data with the rest being padded with zeroes. Works also in combination with --dedupe-pct
 
 ## Operations
 

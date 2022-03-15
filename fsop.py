@@ -12,6 +12,7 @@ import subprocess
 import mmap
 import struct
 from fcntl import ioctl
+import time
 
 # my modules
 import common
@@ -76,10 +77,14 @@ class FSOPCtx:
         self.tid = tid
         self.buf = random_buffer.gen_buffer(params.max_record_size_kb*BYTES_PER_KiB)
         self.total_dirs = 1
-        self.verbosity = self.params.verbosity 
+        self.verbosity = self.params.verbosity
+        self.measured_bw = None
         for i in range(0, self.params.levels):
             self.total_dirs *= self.params.subdirs_per_dir
         self.max_files_per_dir = self.params.max_files // self.total_dirs
+        if self.max_files_per_dir == 0:
+            self.log.debug('Setting of max-files too low with number of dirs and levels, raising to one per dir')           
+            self.max_files_per_dir = 1
         # most recent center
         self.center = self.params.max_files * random.random() * 0.99
         # since mean of random.random() is 0.5, threads' average
@@ -116,9 +121,9 @@ class FSOPCtx:
         if self.params.random_distribution != common.FileAccessDistr.uniform:
             self.log.info('velocity=%f, stddev=%f, center=%f' % (self.velocity, self.params.gaussian_stddev, self.center))
 
-        if self.params.directIO and self.params.max_record_size_kb < 4:
-            self.log.debug('record size too low for directIO, raising to 4KiB')        
-            self.params.max_record_size_kb = 4
+#        if self.params.directIO and self.params.max_record_size_kb < 4:
+#            self.log.debug('record size too low for directIO, raising to 4KiB')        
+#            self.params.max_record_size_kb = 4
 
         if self.params.directIO and self.params.max_file_size_kb < 4:
             self.log.debug('file size too low for directIO, raising to 4KiB')        
@@ -266,22 +271,24 @@ class FSOPCtx:
 
 
     def random_file_size(self):
-        fsz = random.randint(0, self.params.max_file_size_kb * BYTES_PER_KiB)
+        #In case user inputs range, do random file size
+        if isinstance(self.params.file_size, tuple):
+            file_size = random.randint(self.params.file_size[0], self.params.file_size[1])    
+        else:
+            file_size = self.params.file_size
         if self.params.directIO:
-            return (fsz // 4096) * 4096
-        return fsz
-
+            return (file_size // 4096) * 4096
+        return file_size
 
     def random_record_size(self):
-        max_size = min(self.params.max_record_size_kb, self.params.max_file_size_kb)
-        min_size = 1
-        if self.params.directIO:
-            min_size = 4096
-        recsz = random.randint(min_size, max_size * BYTES_PER_KiB)
+        #In case user inputs range, do random file size
+        if isinstance(self.params.record_size, tuple):
+            recsz = random.randint(self.params.record_size[0], self.params.record_size[1])    
+        else:
+            recsz = self.params.record_size
         if self.params.directIO:
             return (recsz // 4096) * 4096
         return recsz
-
 
     def random_segment_size(self, filesz):
         segsize = 2 * self.random_record_size()
@@ -326,6 +333,11 @@ class FSOPCtx:
         c = self.ctrs
         fn = self.gen_random_fn()
         target_sz = self.random_file_size()
+        buf_offset = 0
+        precise_time = 0
+        total_count = 0
+        if self.params.compress_ratio or self.params.dedupe_pct:
+            self.buf = random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)
         if self.verbosity & 0x8000:
             self.log.debug('write %s size %s' % (fn, target_sz))
         try:
@@ -342,17 +354,26 @@ class FSOPCtx:
                 if self.verbosity & 0x8000:
                     self.log.debug('write record size %u' % (recsz))
                 #using mmap for memory alignment    
-                m = mmap.mmap(-1, recsz)             
-                m.write(self.buf[0:recsz])       
-                count = os.write(fd, m)                    
+                m = mmap.mmap(-1, recsz)
+                if self.params.compress_ratio or self.params.dedupe_pct:
+                    m.write(self.buf[buf_offset:buf_offset+recsz])
+                else:
+                    m.write(self.buf[0:recsz])
+                start = time.perf_counter()
+                count = os.write(fd, m)
+                end = time.perf_counter()
+                precise_time += float(end - start)
                 myassert(count == recsz)
                 total_written += count
                 c.write_requests += 1
                 c.write_bytes += count
+                buf_offset += count
+                total_count += count
             rc = self.maybe_fsync(fd)
             c.have_appended += 1
+            if total_count:
+                self.measured_bw = total_count / precise_time
         except OSError as e:
-            self.try_to_close(fd, fn)        
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -362,7 +383,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('write', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
         
     def op_read(self):
@@ -385,23 +407,28 @@ class FSOPCtx:
                 target_size = file_size
             if self.verbosity & 0x4000:
                 self.log.debug('read file sz %u' % target_size)
-            total_read = 0
-            while total_read < target_size:
+            total_count = 0
+            precise_time = 0
+            while total_count < target_size:
                 rdsz = self.random_record_size()
                 #using mmap for correct memory alignment
-                bytebuf = mmap.mmap(-1, rdsz)                
+                bytebuf = mmap.mmap(-1, rdsz)
+                start = time.perf_counter()
                 count = f.readinto(bytebuf)
+                end = time.perf_counter()
+                precise_time += float(end - start)
                 if count < 1:
                     break
                 c.read_requests += 1
                 c.read_bytes += count
                 if self.verbosity & 0x4000:
                     self.log.debug('seq. read off %u sz %u got %u' %\
-                        (total_read, rdsz, count))
-                total_read += count
+                        (total_count, rdsz, count))
+                total_count += count
             c.have_read += 1
+            if total_count:
+                self.measured_bw = total_count / precise_time            
         except OSError as e:
-            self.try_to_close(fd, fn, f=f)
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
@@ -409,7 +436,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('op_read', fn, e, fd=fd)
-        self.try_to_close(fd, fn, f=f)
+        finally:
+            self.try_to_close(fd, fn, f=f)
         return OK
 
     def op_random_read(self):
@@ -433,7 +461,8 @@ class FSOPCtx:
                 target_size = file_size            
             if self.verbosity & 0x20000:
                 self.log.debug('randread %s size %u' % (fn, target_size))          
-            total_count = 0                    
+            total_count = 0
+            precise_time = 0            
             while total_count < target_size:
                 record_size = self.random_record_size()
                 if record_size + total_count > target_size:
@@ -447,16 +476,19 @@ class FSOPCtx:
                                     
                 #using mmap for memory alignment
                 bytebuf = mmap.mmap(-1, record_size)
+                start = time.perf_counter()
                 count = f.readinto(bytebuf)
-
+                end = time.perf_counter()
+                precise_time += float(end - start)
                 if self.verbosity & 0x2000:
                     self.log.debug('randread count %u recsz %u' % (count, record_size))
                 total_count += count
                 c.randread_bytes += count
                 c.randread_requests += 1
             c.have_randomly_read += 1
+            if total_count:
+                self.measured_bw = total_count / precise_time
         except OSError as e:
-            self.try_to_close(fd, fn, f=f)
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ESTALE and self.params.tolerate_stale_fh:
@@ -464,7 +496,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('random_read', fn, e, fd=fd)
-        self.try_to_close(fd, fn, f=f)
+        finally:
+            self.try_to_close(fd, fn, f=f)
         return OK
 
 
@@ -488,6 +521,10 @@ class FSOPCtx:
         fd = FD_UNDEFINED
         fn = self.gen_random_fn(is_create=True)
         target_sz = self.random_file_size()
+        buf_offset = 0
+        precise_time = 0
+        if self.params.compress_ratio or self.params.dedupe_pct:
+            self.buf = random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)        
         if self.verbosity & 0x1000:
             self.log.debug('create %s sz %s' % (fn, target_sz))
         subdir = os.path.dirname(fn)
@@ -505,26 +542,37 @@ class FSOPCtx:
             if self.params.rawdevice != None:
                 fd = self.rawdevice_fd
             else:
+                start = time.perf_counter()
                 fd = os.open(fn, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_DIRECT * self.params.directIO)
-            total_sz = 0
-            while total_sz < target_sz:
+                end = time.perf_counter()
+                precise_time += float(end - start)
+            total_count = 0
+            while total_count < target_sz:
                 recsz = self.random_record_size()
-                if recsz + total_sz > target_sz:
-                    recsz = target_sz - total_sz
+                if recsz + total_count > target_sz:
+                    recsz = target_sz - total_count
                 #using mmap for memory alignment   
                 m = mmap.mmap(-1, recsz)             
-                m.write(self.buf[0:recsz])       
+                if self.params.compress_ratio or self.params.dedupe_pct:
+                    m.write(self.buf[buf_offset:buf_offset+recsz])
+                else:
+                    m.write(self.buf[0:recsz])
+                start = time.perf_counter()
                 count = os.write(fd, m)
+                end = time.perf_counter()
+                precise_time += float(end - start)
                 myassert(count == recsz)
                 if self.verbosity & 0x1000:
                     self.log.debug('create sz %u written %u' % (recsz, count))
-                total_sz += count
+                total_count += count
                 c.write_requests += 1
                 c.write_bytes += count
+                buf_offset += count
             rc = self.maybe_fsync(fd)
             c.have_created += 1
-        except OSError as e:
-            self.try_to_close(fd, fn)        
+            if total_count:
+                self.measured_bw = total_count / precise_time
+        except OSError as e:   
             if e.errno == errno.EEXIST:
                 c.e_already_exists += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -537,7 +585,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('create', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
 
 
@@ -549,6 +598,10 @@ class FSOPCtx:
         c = self.ctrs
         fn = self.gen_random_fn()
         target_sz = self.random_file_size()
+        buf_offset = 0
+        precise_time = 0
+        if self.params.compress_ratio or self.params.dedupe_pct:
+            self.buf = random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)        
         if self.verbosity & 0x8000:
             self.log.debug('append %s sz %s' % (fn, target_sz))
         try:
@@ -556,26 +609,34 @@ class FSOPCtx:
                 fd = self.rawdevice_fd
             else:        
                 fd = os.open(fn, os.O_WRONLY | os.O_APPEND | os.O_DIRECT * self.params.directIO)
-            total_appended = 0
-            while total_appended < target_sz:
+            total_count = 0
+            while total_count < target_sz:
                 recsz = self.random_record_size()
-                if recsz + total_appended > target_sz:
-                    recsz = target_sz - total_appended
+                if recsz + total_count > target_sz:
+                    recsz = target_sz - total_count
                 myassert(recsz > 0)
                 if self.verbosity & 0x8000:
                     self.log.debug('append rsz %u' % (recsz))
                 #using mmap for memory alignment    
                 m = mmap.mmap(-1, recsz)             
-                m.write(self.buf[0:recsz])       
-                count = os.write(fd, m)                    
+                if self.params.compress_ratio or self.params.dedupe_pct:
+                    m.write(self.buf[buf_offset:buf_offset+recsz])
+                else:
+                    m.write(self.buf[0:recsz])     
+                start = time.perf_counter()
+                count = os.write(fd, m)
+                end = time.perf_counter()
+                precise_time += float(end - start)
                 myassert(count == recsz)
-                total_appended += count
+                total_count += count
+                buf_offset += count                
                 c.write_requests += 1
                 c.write_bytes += count
             rc = self.maybe_fsync(fd)
             c.have_appended += 1
+            if total_count:
+                self.measured_bw = total_count / precise_time
         except OSError as e:
-            self.try_to_close(fd, fn)        
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -585,7 +646,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('append', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
 
 
@@ -602,11 +664,15 @@ class FSOPCtx:
                 fd = os.open(fn, os.O_WRONLY | os.O_DIRECT * self.params.directIO)
             file_size = self.get_file_size(fd)
             target_size = self.random_file_size()
+            buf_offset = 0        
+            if self.params.compress_ratio or self.params.dedupe_pct:
+                self.buf = random_buffer.gen_compressible_buffer(target_size, self.params.compress_ratio, self.params.dedupe_pct)            
             #Lets make sure, we won't write 100MB into 4KB file
             #This way, we'll at most rewrite the whole file
             if target_size > file_size:
                 target_size = file_size
-            total_count = 0            
+            total_count = 0
+            precise_time = 0         
             while total_count < target_size:
                 record_size = self.random_record_size()
                 if record_size + total_count > target_size:
@@ -620,18 +686,26 @@ class FSOPCtx:
                                                  
                 #using mmap for memory alignment    
                 m = mmap.mmap(-1, record_size)             
-                m.write(self.buf[0:record_size])       
-                count = os.write(fd, m)                        
+                if self.params.compress_ratio or self.params.dedupe_pct:
+                    m.write(self.buf[buf_offset:buf_offset+record_size])
+                else:
+                    m.write(self.buf[0:record_size])
+                start = time.perf_counter()
+                count = os.write(fd, m)
+                end = time.perf_counter()      
+                precise_time += float(end - start)          
                 if self.verbosity & 0x20000:
                     self.log.debug('randwrite count %u record size %u' % (count, record_size))
                 myassert(count == record_size)
                 total_count += count
+                buf_offset += count
                 c.randwrite_requests += 1
                 c.randwrite_bytes += total_count
                 rc = self.maybe_fsync(fd)
             c.have_randomly_written += 1
-        except OSError as e:
-            self.try_to_close(fd, fn)        
+            if total_count:
+                self.measured_bw = total_count / precise_time
+        except OSError as e:     
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -641,7 +715,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('random write', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
 
 
@@ -663,7 +738,6 @@ class FSOPCtx:
             os.ftruncate(fd, new_file_size)
             c.have_truncated += 1
         except OSError as e:
-            self.try_to_close(fd, fn)        
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -673,7 +747,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('truncate', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
 
 
@@ -819,7 +894,8 @@ class FSOPCtx:
                 target_size = file_size
             if self.verbosity & 0x20000:
                 self.log.debug('randwrite %s size %u' % (fn, target_size))                
-            total_count = 0        
+            total_count = 0
+            precise_time = 0
             while total_count < target_size:
                 record_size = self.random_record_size()
                 if record_size + total_count > target_size:
@@ -830,7 +906,10 @@ class FSOPCtx:
                 if self.verbosity & 0x20000:
                     self.log.debug('random discard off %u size %u' % (offset, record_size))
                 args = struct.pack('QQ', offset, record_size)
+                start = time.perf_counter()
                 ioctl(fd, BLKDISCARD, args, 0)
+                end = time.perf_counter()
+                precise_time += float(end - start)
                 count = record_size
                 if self.verbosity & 0x20000:
                     self.log.debug('random discard count %u record size %u' % (count, record_size))
@@ -838,8 +917,9 @@ class FSOPCtx:
                 c.randdiscard_requests += 1
                 c.randdiscard_bytes += total_count
             c.have_randomly_discarded += 1
-        except OSError as e:
-            self.try_to_close(fd, fn)        
+            if total_count:
+                self.measured_bw = total_count / precise_time
+        except OSError as e: 
             if e.errno == errno.ENOENT:
                 c.e_file_not_found += 1
             elif e.errno == errno.ENOSPC or e.errno == errno.EDQUOT:
@@ -849,7 +929,8 @@ class FSOPCtx:
                 return NOTOK
             else:
                 return self.scallerr('random discard', fn, e, fd=fd)
-        self.try_to_close(fd, fn)
+        finally:
+            self.try_to_close(fd, fn)
         return OK
 
     # unmounting is so risky that we shouldn't try to figure it out

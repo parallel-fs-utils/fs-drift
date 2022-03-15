@@ -9,11 +9,11 @@ from argparse import ArgumentParser
 
 # fs-drift module dependencies
 
-from common import OK, NOTOK, FsDriftException, FileAccessDistr, USEC_PER_SEC
+from common import OK, NOTOK, FsDriftException, FileAccessDistr, USEC_PER_SEC, BYTES_PER_KiB
 from common import FileAccessDistr2str
-from parser_data_types import boolean, positive_integer, non_negative_integer, bitmask
+from parser_data_types import boolean, positive_integer, non_negative_integer, bitmask, positive_integer_or_None
 from parser_data_types import positive_float, non_negative_float, positive_percentage
-from parser_data_types import host_set, file_access_distrib
+from parser_data_types import host_set, file_access_distrib, size_or_range
 from parser_data_types import FsDriftParseException, TypeExc
 
 
@@ -26,6 +26,16 @@ def getenv_or_default(var_name, var_default):
 # command line parameter variables here
 
 class FsDriftOpts:
+    def derive_paths(self):
+        self.starting_gun_path     = os.path.join(self.network_shared_path,'starting-gun.tmp')
+        self.stop_file_path        = os.path.join(self.network_shared_path,'stop-file.tmp')
+        self.param_pickle_path     = os.path.join(self.network_shared_path,'params.pickle')
+        self.rsptime_path          = os.path.join(self.network_shared_path,'host-%s_thrd-%s_rsptimes.csv')
+        self.bw_path               = os.path.join(self.network_shared_path,'host-%s_thrd-%s_bw.csv')
+        self.abort_path            = os.path.join(self.network_shared_path,'abort.tmp')
+        self.pause_path            = os.path.join(self.network_shared_path,'pause.tmp')
+        self.checkerflag_path      = os.path.join(self.network_shared_path,'checkered_flag.tmp')
+
     def __init__(self):
         self.input_yaml = None
         self.output_json_path = None  # filled in later
@@ -35,18 +45,23 @@ class FsDriftOpts:
         self.is_slave = False
         self.duration = 1
         self.max_files = 200
-        self.max_file_size_kb = 10
-        self.max_record_size_kb = 1
+        self.max_file_size_kb = None
+        self.file_size = 100 * BYTES_PER_KiB
+        self.max_record_size_kb = None
+        self.record_size = 4096
         self.fdatasync_probability_pct = 10
         self.fsync_probability_pct = 20
         self.levels = 2
         self.subdirs_per_dir = 3
-        self.rsptimes = False
+        self.response_times = False
+        self.bw = False
         self.workload_table_csv_path = None
         self.stats_report_interval = max(self.duration // 60, 5)
         self.pause_between_ops = 100
         self.pause_secs = self.pause_between_ops / float(USEC_PER_SEC)
         self.incompressible = False
+        self.compress_ratio = 0.0
+        self.dedupe_pct = 0
         self.directIO = False
         self.rawdevice = None
         # new parameters related to gaussian filename distribution
@@ -76,20 +91,25 @@ class FsDriftOpts:
             ('input YAML', self.input_yaml),
             ('top directory', self.top_directory),
             ('JSON output file', self.output_json_path),
-            ('save response times?', self.rsptimes),
+            ('save response times?', self.response_times),
+            ('save bandwidth?', self.bw),            
             ('stats report interval', self.stats_report_interval),
             ('workload table csv path', self.workload_table_csv_path),
             ('host set', ','.join(self.host_set)),
             ('threads', self.threads),
             ('test duration', self.duration),
             ('maximum file count', self.max_files),
-            ('maximum file size (KB)', self.max_file_size_kb),
-            ('maximum record size (KB)', self.max_record_size_kb),
+            ('maximum file size (KiB)', self.max_file_size_kb),
+            ('file size', self.file_size),
+            ('maximum record size (KiB)', self.max_record_size_kb),
+            ('record size ', self.record_size),
             ('fsync probability pct', self.fsync_probability_pct),
             ('fdatasync probability pct', self.fdatasync_probability_pct),
             ('directory levels', self.levels),
             ('subdirectories per directory', self.subdirs_per_dir),
             ('incompressible data', self.incompressible),
+            ('compression ratio', self.compress_ratio),
+            ('deduplication percentage', self.dedupe_pct),            
             ('use direct IO', self.directIO),            
             ('use this device for raw IO', self.rawdevice),                      
             ('pause between ops (usec)', self.pause_between_ops),
@@ -152,6 +172,28 @@ class FsDriftOpts:
             with open(self.workload_table_csv_path, 'w') as w_f:
                 w_f.write( '\n'.join(workload_table))
 
+def assure_block_alignment(size):
+    if size < 4 * BYTES_PER_KiB:
+        print('size too low for directIO, raising to 4KiB')    
+        return 4 * BYTES_PER_KiB
+    return 4 * BYTES_PER_KiB * round(size / (4 * BYTES_PER_KiB))
+    
+def resolve_size(size_input, directIO):
+    if ':' not in size_input:
+        size = size_unit_to_bytes(size_input)
+        if directIO:
+            return assure_block_alignment(size)
+        return size
+    else:
+        low_bound, high_bound = size_input.split(':')
+        low_bound = size_unit_to_bytes(low_bound)
+        high_bound = size_unit_to_bytes(high_bound)
+        if low_bound > high_bound:
+            raise FsDriftException('low bound (left) should be larger than high bound (right), got %s' % size_input)
+        if directIO:  
+            return (assure_block_alignment(low_bound), assure_block_alignment(high_bound))
+        return (low_bound, high_bound)
+
 def parseopts(cli_params=sys.argv[1:]):
     o = FsDriftOpts()
 
@@ -177,15 +219,21 @@ def parseopts(cli_params=sys.argv[1:]):
     add('--max-files', help='maximum number of files to access',
             type=positive_integer, 
             default=o.max_files)
-    add('--max-file-size-kb', help='maximum file size in KB',
+    add('--max-file-size-kb', help='maximum file size in KiB',
             type=positive_integer, 
             default=o.max_file_size_kb)
+    add('--file-size', help='file size. If no units specified, treated like B. Other units: k, m, g. For range, enter two values separated by ":". Eg. 4:64',
+            type=size_or_range,
+            default=o.file_size)            
     add('--pause-between-ops', help='delay between ops in microsec',
             type=non_negative_integer,
             default=o.pause_between_ops)
-    add('--max-record-size-kb', help='maximum read/write size in KB',
+    add('--max-record-size-kb', help='maximum read/write size in KiB. Deprecated, use --record-size instead',
             type=positive_integer, 
             default=o.max_record_size_kb)
+    add('--record-size', help='read/write record size. If no units specified, treated like B. Other units: k, m, g. For range, enter two values separated by ":". Eg. 4:64',
+            type=size_or_range, 
+            default=o.record_size)            
     add('--fdatasync-pct', help='probability of fdatasync after write',
             type=positive_percentage, 
             default=o.fdatasync_probability_pct)
@@ -202,11 +250,20 @@ def parseopts(cli_params=sys.argv[1:]):
             type=positive_integer,
             default=o.stats_report_interval)
     add('--response-times', help='if True then save response times to CSV file',
-            type=boolean, 
-            default=o.rsptimes)
+            type=boolean,
+            default=o.response_times)
+    add('--save-bw', help='if True then save bandwidth to CSV file',
+            type=boolean,
+            default=o.bw)
     add('--incompressible', help='if True then write incompressible data',
             type=boolean,
             default=o.incompressible)
+    add('--compress-ratio', help='desired compress ratio, e.g. 4.0 is compressibility of 75 percent, i.e. the compressed block occupies 25 percent of original space',
+            type=positive_float,
+            default=o.compress_ratio)
+    add('--dedupe-pct', help='deduplication percentage, i.e. percentage of data blocks that will be deduplicable',
+            type=positive_percentage,
+            default=o.dedupe_pct)
     add('--directIO', help='if True then use directIO to open files/device',
             type=boolean,
             default=o.directIO)            
@@ -243,7 +300,6 @@ def parseopts(cli_params=sys.argv[1:]):
     args = parser.parse_args(cli_params)
     o.top_directory = args.top
     o.output_json_path = args.output_json
-    o.rsptimes = args.response_times
     o.stats_report_interval = args.report_interval
     o.host_set = args.host_set
     o.threads = args.threads
@@ -252,17 +308,46 @@ def parseopts(cli_params=sys.argv[1:]):
     o.duration = args.duration
     o.max_files = args.max_files
     o.max_file_size_kb = args.max_file_size_kb
-    o.max_record_size_kb = args.max_record_size_kb
+    o.file_size = args.file_size
+    if args.max_file_size_kb:
+        o.file_size = (1, args.max_file_size_kb * BYTES_PER_KiB)
+        o.max_file_size_kb = args.max_file_size_kb
+    elif isinstance(o.file_size, tuple):
+        o.max_file_size_kb = o.file_size[-1] // BYTES_PER_KiB
+    else:
+        o.max_file_size_kb = o.file_size // BYTES_PER_KiB    
+    o.record_size = args.record_size
+    if args.max_record_size_kb:
+        o.record_size = (1, args.max_record_size_kb * BYTES_PER_KiB)
+        o.max_record_size_kb = args.max_record_size_kb
+    elif isinstance(o.record_size, tuple):
+        o.max_record_size_kb = o.record_size[-1] // BYTES_PER_KiB
+    else:
+        o.max_record_size_kb = o.record_size // BYTES_PER_KiB
     o.fdatasync_probability_pct = args.fdatasync_pct
     o.fsync_probability_pct = args.fsync_pct
     o.levels = args.levels
     o.subdirs_per_dir = args.dirs_per_level
     o.incompressible = args.incompressible
-    o.directIO = args.directIO    
+    o.compress_ratio = args.compress_ratio
+    o.dedupe_pct = args.dedupe_pct
+    o.directIO = args.directIO
+    if o.directIO:
+        o.max_record_size_kb = assure_block_alignment(o.max_record_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
+        if isinstance(o.record_size, tuple):
+            o.record_size = (assure_block_alignment(o.record_size[0]), assure_block_alignment(o.record_size[1]))
+        else:
+            o.record_size = assure_block_alignment(o.record_size)     
+        o.max_file_size_kb = assure_block_alignment(o.max_file_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
+        if isinstance(o.file_size, tuple):
+            o.file_size = (assure_block_alignment(o.file_size[0]), assure_block_alignment(o.file_size[1]))
+        else:
+            o.file_size = assure_block_alignment(o.file_size)     
     o.rawdevice = args.rawdevice        
     o.pause_between_ops = args.pause_between_ops
     o.pause_secs = o.pause_between_ops / float(USEC_PER_SEC)
     o.response_times = args.response_times
+    o.bw = args.save_bw
     o.random_distribution = args.random_distribution
     o.mean_index_velocity = args.mean_velocity
     o.gaussian_stddev = args.gaussian_stddev
@@ -279,15 +364,7 @@ def parseopts(cli_params=sys.argv[1:]):
     # some fields derived from user inputs
 
     o.network_shared_path = os.path.join(o.top_directory, 'network-shared')
-
-    nsjoin = lambda fn : os.path.join(o.network_shared_path, fn)
-    o.starting_gun_path     = nsjoin('starting-gun.tmp')
-    o.stop_file_path        = nsjoin('stop-file.tmp')
-    o.param_pickle_path     = nsjoin('params.pickle')
-    o.rsptime_path          = nsjoin('host-%s_thrd-%s_rsptimes.csv')
-    o.abort_path            = nsjoin('abort.tmp')
-    o.pause_path            = nsjoin('pause.tmp')
-    o.checkerflag_path      = nsjoin('checkered_flag.tmp')
+    o.derive_paths()
 
     #o.remote_pgm_dir = os.path.dirname(sys.argv[0])
     #if o.remote_pgm_dir == '.':
@@ -321,6 +398,8 @@ def parse_yaml(options, input_yaml_file):
                 raise FsDriftParseException('cannot specify YAML input file from within itself!')
             elif k == 'top':
                 options.top_directory = v
+                options.network_shared_path = os.path.join(v, 'network-shared')
+                options.derive_paths()
             elif k == 'output_json':
                 options.output_json = v
             elif k == 'workload_table':
@@ -335,10 +414,14 @@ def parse_yaml(options, input_yaml_file):
                 options.max_files = positive_integer(v)
             elif k == 'max_file_size_kb':
                 options.max_file_size_kb = positive_integer(v)
+            elif k == 'file_size':
+                options.file_size = size_or_range(v)                
             elif k == 'pause_between_ops':
                 options.pause_between_ops = non_negative_integer(v)
             elif k == 'max_record_size_kb':
-                options.max_record_size_kb = positive_integer(v)
+                options.max_record_size_kb = positive_integer_or_None(v)
+            elif k == 'record_size':
+                options.record_size = size_or_range(v)
             elif k == 'fdatasync_pct':
                 options.fdatasync_probability_pct = non_negative_integer(v)
             elif k == 'fsync_pct':
@@ -350,11 +433,17 @@ def parse_yaml(options, input_yaml_file):
             elif k == 'report_interval':
                 options.stats_report_interval = positive_integer(v)
             elif k == 'response_times':
-                options.rsptimes = boolean(v)
+                options.response_times = boolean(v)
+            elif k == 'bw':
+                options.bw = boolean(v)                
             elif k == 'incompressible':
                 options.incompressible = boolean(v)
+            elif k == 'compress-ratio':
+                options.compress_ratio = positive_float(v)                
+            elif k == 'dedupe-pct':
+                options.dedupe_pct = positive_percentage(v)
             elif k == 'directIO':
-                options.directIO = boolean(v)                
+                options.directIO = boolean(v)
             elif k == 'rawdevice':
                 options.rawdevice = v                    
             elif k == 'random_distribution':
@@ -375,6 +464,26 @@ def parse_yaml(options, input_yaml_file):
                 options.launch_as_daemon = boolean(v)
             else:
                 raise FsDriftParseException('unrecognized parameter name %s' % k)
+        if options.max_record_size_kb:
+            options.record_size = (1, options.max_record_size_kb * BYTES_PER_KiB)
+            options.max_record_size_kb = options.max_record_size_kb
+        elif isinstance(options.record_size, tuple):
+            options.max_record_size_kb = options.record_size[-1] // BYTES_PER_KiB
+        else:
+            options.max_record_size_kb = options.record_size // BYTES_PER_KiB
+        if options.max_file_size_kb:
+            options.file_size = (1, options.max_file_size_kb * BYTES_PER_KiB)
+            options.max_file_size_kb = options.max_file_size_kb
+        elif isinstance(options.file_size, tuple):
+            options.max_file_size_kb = options.file_size[-1] // BYTES_PER_KiB
+        else:
+            options.max_file_size_kb = options.file_size // BYTES_PER_KiB            
+        if options.directIO:
+            options.max_file_size_kb = assure_block_alignment(options.max_file_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
+            if isinstance(options.file_size, tuple):
+                options.file_size = (assure_block_alignment(options.file_size[0]), assure_block_alignment(options.file_size[1]))
+            else:
+                options.file_size = assure_block_alignment(options.file_size)
     except TypeExc as e:
         emsg = 'YAML parse error for key "%s" : %s' % (k, str(e))
         raise FsDriftParseException(emsg)
@@ -414,6 +523,7 @@ if __name__ == "__main__":
             params.extend(['--max-file-size-kb', '1000000'])
             params.extend(['--pause-between-ops', '100'])
             params.extend(['--max-record-size-kb', '4096'])
+            params.extend(['--record-size', '4k'])            
             params.extend(['--fdatasync-pct', '2'])
             params.extend(['--fsync-pct', '3'])
             params.extend(['--levels', '4'])
@@ -441,15 +551,16 @@ if __name__ == "__main__":
             fn = '/tmp/sample_parse.yaml'
             with open(fn, 'w') as f:
                 w = lambda s: f.write(s + '\n')
-                w('top: /tmp')
+                w('top: /var/tmp')
                 w('output_json: /var/tmp/x.json')
                 w('workload_table: /var/tmp/x.csv')
                 w('duration: 60')
                 w('threads: 30')
                 w('max_files: 10000')
-                w( 'max_file_size_kb: 1000000')
+                w('max_file_size_kb: 1000000')
                 w('pause_between_ops: 100')
-                w('max_record_size_kb: 4096')
+                w('max_record_size_kb: None')
+                w('record_size: 4096')                
                 w('fdatasync_pct: 2')
                 w('fsync_pct: 3')
                 w('levels: 4')
@@ -469,7 +580,9 @@ if __name__ == "__main__":
 
             p = self.params
             parse_yaml(p, fn)
-            assert(p.top_directory == '/tmp')
+            assert(p.top_directory == '/var/tmp')
+            assert(p.network_shared_path == '/var/tmp/network-shared')
+            assert(p.stop_file_path == '/var/tmp/network-shared/stop-file.tmp')
             assert(p.output_json == '/var/tmp/x.json')
             assert(p.workload_table == '/var/tmp/x.csv')
             assert(p.duration == 60)
@@ -477,13 +590,14 @@ if __name__ == "__main__":
             assert(p.max_files == 10000)
             assert(p.max_file_size_kb == 1000000)
             assert(p.pause_between_ops == 100)
-            assert(p.max_record_size_kb == 4096)
+            assert(p.max_record_size_kb == 4)
+            assert(p.record_size == 4096)
             assert(p.fdatasync_probability_pct == 2)
             assert(p.fsync_probability_pct == 3)
             assert(p.levels == 4)
             assert(p.dirs_per_level == 50)
             assert(p.stats_report_interval == 60)
-            assert(p.rsptimes == True)
+            assert(p.response_times == True)
             assert(p.incompressible == False)
             assert(p.directIO == False)            
             assert(p.rawdevice == None)            
