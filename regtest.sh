@@ -124,7 +124,7 @@ export params_json_fn=/tmp/fs-drift-result.json
 # rates are used for visualization of fs-drift results
 chk "./compute-rates.py /var/tmp/mydir/network-shared"
 # response time processing used by benchmark-operator
-chk "./rsptime_stats.py --time-interval 1 /var/tmp/mydir"
+chk "./rsptime_stats.py --time-interval 1 /var/tmp/mydir/network-shared"
 
 # test multi-host feature
 
