@@ -53,9 +53,9 @@ def parse_rsptime_file( result_dir, csv_pathname ):
         records = [ l.strip() for l in f.readlines() ]
         for sample in records:
             components = sample.split(',')
-            op = components[0]
-            at_time = float(components[1])
-            rsp_time = float(components[2])
+            at_time = float(components[0])
+            rsp_time = float(components[1])
+            op = components[2]
             samples.append( (op, at_time, rsp_time) )
     return samples
 
@@ -199,11 +199,10 @@ samples_by_thread = {}
 hosts = {}
 pathname_matcher = lambda path : path.startswith('host') and path.endswith('.csv')
 pathnames = filter(pathname_matcher, os.listdir(directory))
-max_thread = 0
+max_thread = -1
 for p in pathnames:
     m = re.match(new_regex, p)
     if not m:
-        sys.stderr.write("warning: pathname could not be matched by regex %s: %s\n" % (new_regex, p))
         continue
     (host, threadstr) = m.group(1,2)
     thread = int(threadstr)
