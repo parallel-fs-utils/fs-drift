@@ -109,9 +109,11 @@ chk "./fs-drift.py"
 chk "./fs-drift.py --random-distribution gaussian"
 
 #Check directIO
-chk "./fs-drift.py --duration 5 --max-record-size-kb 4 --max-file-size-kb 32 --directIO True"
+rm -rf /var/tmp/fsd-direct
+mkdir /var/tmp/fsd-direct
+chk "./fs-drift.py --top /var/tmp/fsd-direct --duration 5 --max-record-size-kb 4 --max-file-size-kb 32 --directIO True"
 #Check if auto-alignment works even with bad values
-chk "./fs-drift.py --duration 10 --max-record-size-kb 1 --max-file-size-kb 1 --directIO True"
+chk "./fs-drift.py --top /var/tmp/fsd-direct --duration 10 --max-record-size-kb 1 --max-file-size-kb 1 --directIO True"
 
 #Normal fs-drift usage (except the duration)
 rm -rf /var/tmp/mydir
@@ -119,7 +121,7 @@ mkdir /var/tmp/mydir
 chk "./fs-drift.py --top /var/tmp/mydir --duration 10 --response-times True --max-record-size-kb 4 --max-file-size-kb 4096 --threads 8 --max-files 10 --report-interval 1 --random-distribution gaussian --mean-velocity 10.0 --directIO True --output-json /tmp/fs-drift-result.json"
 export params_json_fn=/tmp/fs-drift-result.json
 chk "./compute-rates.py /var/tmp/mydir/network-shared"
-
+chk "./rsptime_stats.py --time-interval 1 /var/tmp/mydir/network-shared"
 # test multi-host feature
 
 if [ -n "$test_ssh" ] ; then
