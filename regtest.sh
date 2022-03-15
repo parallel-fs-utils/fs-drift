@@ -108,17 +108,23 @@ grep -iq 'usage:' $logf || logf_fail
 chk "./fs-drift.py"
 chk "./fs-drift.py --random-distribution gaussian"
 
-#Check directIO
-chk "./fs-drift.py --duration 5 --record-size 4k --max-file-size-kb 32 --directIO True"
+#Check directIO, must not use tmpfs for this
+directio_dir=/var/tmp/fsd-direct
+rm -rf $directio_dir
+mkdir $directio_dir
+chk "./fs-drift.py --top $directio_dir --duration 5 --record-size 4k --max-file-size-kb 32 --directIO True"
 #Check if auto-alignment works even with bad values
-chk "./fs-drift.py --duration 10 --record-size 1k --max-file-size-kb 1 --directIO True"
+chk "./fs-drift.py --top $directio_dir --duration 10 --record-size 1k --max-file-size-kb 1 --directIO True"
 
 #Normal fs-drift usage (except the duration)
 rm -rf /var/tmp/mydir
 mkdir /var/tmp/mydir
 chk "./fs-drift.py --top /var/tmp/mydir --duration 10 --response-times True --save-bw True --record-size 4k --max-file-size-kb 4096 --threads 8 --max-files 10 --report-interval 1 --random-distribution gaussian --mean-velocity 10.0 --directIO True --output-json /tmp/fs-drift-result.json"
 export params_json_fn=/tmp/fs-drift-result.json
+# rates are used for visualization of fs-drift results
 chk "./compute-rates.py /var/tmp/mydir/network-shared"
+# response time processing used by benchmark-operator
+chk "./rsptime_stats.py --time-interval 1 /var/tmp/mydir"
 
 # test multi-host feature
 
