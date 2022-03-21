@@ -19,8 +19,12 @@ def output_results(params, subprocess_list):
     host_ids = {}
     rslt = {}
     rslt['in-host'] = {}
-    print('host, thread, elapsed, files, I/O requests, MiB, status')
-    fmt = '%s, %s, %f, %d, %d, %9.3f, %s'
+    if not params.rawdevice:
+        print('host, thread, elapsed, files, I/O requests, MiB, status')
+        fmt = '%s, %s, %f, %d, %d, %9.3f, %s'
+    else:
+        print('host, thread, elapsed, I/O requests, MiB, status')
+        fmt = '%s, %s, %f, %d, %9.3f, %s'        
 
     max_elapsed_time = 0.0
     for p in subprocess_list:
@@ -49,9 +53,10 @@ def output_results(params, subprocess_list):
             thrd['files-per-sec'] = thrd['files'] / max_elapsed_time
             thrd['IOPS'] = thrd['ios'] / max_elapsed_time
             thrd['MiB-per-sec'] = thrd['MiB'] / max_elapsed_time
-        print(fmt %
-              (p.onhost, p.tid, p.elapsed_time,
-               thrd['files'], thrd['ios'], thrd['MiB'], status))
+        if not params.rawdevice:
+            print(fmt % (p.onhost, p.tid, p.elapsed_time, thrd['files'], thrd['ios'], thrd['MiB'], status))
+        else:
+            print(fmt % (p.onhost, p.tid, p.elapsed_time, thrd['ios'], thrd['MiB'], status))
 
         # for JSON, show nesting of threads within hosts
         # first map host name to host number in test
@@ -96,8 +101,9 @@ def output_results(params, subprocess_list):
     print('total threads = %d' % len(subprocess_list))
     rslt['threads'] = len(subprocess_list)
 
-    print('total files = %d' % cluster.total_files())
-    rslt['files'] = cluster.total_files()
+    if not params.rawdevice:
+        print('total files = %d' % cluster.total_files())
+        rslt['files'] = cluster.total_files()
 
     print('total I/O requests = %d' % cluster.total_ios())
     rslt['ios'] = cluster.total_ios()
@@ -123,9 +129,10 @@ def output_results(params, subprocess_list):
 
     if max_elapsed_time > 0.001:  # can't compute rates if it ended too quickly
 
-        files_per_sec = cluster.total_files() / max_elapsed_time
-        print('files/sec = %f' % files_per_sec)
-        rslt['files-per-sec'] = files_per_sec
+        if not params.rawdevice:
+            files_per_sec = cluster.total_files() / max_elapsed_time
+            print('files/sec = %f' % files_per_sec)
+            rslt['files-per-sec'] = files_per_sec
 
         iops = float(cluster.total_ios()) / max_elapsed_time
         print('IOPS = %f' % iops)
