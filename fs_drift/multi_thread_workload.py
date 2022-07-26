@@ -7,7 +7,7 @@ import copy
 import socket
 import logging
 
-import worker_thread
+import fs_drift.worker_thread
 import fs_drift.common
 from fs_drift.common import OK, NOTOK, FsDriftException, ensure_deleted
 import fs_drift.fsd_log
