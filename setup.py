@@ -22,7 +22,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'fs-drift = fs_drift:__main__:run_workload',
+            'fs-drift = fs_drift.__main__:run_workload',
         ]
     }
 )
