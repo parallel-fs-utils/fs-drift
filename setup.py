@@ -22,7 +22,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'fs-drift = .:__main__',
+            'fs-drift = fs-drift.py:__main__',
         ]
     }
 )
