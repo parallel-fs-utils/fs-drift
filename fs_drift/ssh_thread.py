@@ -17,7 +17,7 @@ import logging
 # fs-drift modules
 from fs_drift.fsd_log import start_log
 from fs_drift.common import OK, NOTOK, FsDriftException
-from unit_test_module import get_unit_test_module
+from fs_drift.unit_test_module import get_unit_test_module
 
 # this class is just used to create a python thread
 # for each remote host that we want to use as a workload generator

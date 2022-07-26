@@ -16,13 +16,14 @@ See Appendix on this page for instructions pertaining to license.
 import threading
 import os
 import time
-from common import ensure_deleted, OK, NOTOK
+from fs_drift.common import ensure_deleted, OK, NOTOK
 from os.path import join
 import fs_drift.sync_files
 
 # this class is just used to create a python thread
 # for each remote host that we want to use as a workload generator
 # the thread just executes an ssh command to run this program on a remote host
+
 
 class launcher_thread(threading.Thread):
 
@@ -35,7 +36,7 @@ class launcher_thread(threading.Thread):
                             self.params.network_shared_path,
                             self.remote_host + '.fsd_launch')
         self.pickle_fn = join(
-                            self.params.network_shared_path, 
+                            self.params.network_shared_path,
                             self.remote_host + '_result.pickle')
         self.remote_cmd = remote_cmd_in
         self.status = None
@@ -56,6 +57,5 @@ class launcher_thread(threading.Thread):
         self.status = OK  # success!
 
     def terminate(self):
-        sync_files.write_sync_file(self.params.abort_path, 'shut it down')
+        fs_drift.sync_files.write_sync_file(self.params.abort_path, 'shut it down')
         self.status = NOTOK
-

@@ -9,11 +9,12 @@ import logging
 
 import worker_thread
 import fs_drift.common
-from common import OK, NOTOK, FsDriftException, ensure_deleted
+from fs_drift.common import OK, NOTOK, FsDriftException, ensure_deleted
 import fs_drift.fsd_log
-import invoke_process
+import fs_drift.invoke_process
 import fs_drift.sync_files
 import fs_drift.output_results
+
 
 def create_worker_list(prm):
 
@@ -24,19 +25,19 @@ def create_worker_list(prm):
     for k in range(0, prm.threads):
         nextinv = worker_thread.FsDriftWorkload(prm)
         nextinv.tid = '%02d' % k
-        t = invoke_process.subprocess(nextinv)
+        t = fs_drift.invoke_process.subprocess(nextinv)
         thread_list.append(t)
         ensure_deleted(nextinv.gen_thread_ready_fname(nextinv.tid))
     return thread_list
 
 
 # abort routine just cleans up threads
-# and makes sure that any running threads 
+# and makes sure that any running threads
 # on remote hosts will terminate by setting abort flag file
 
 def abort_test(abort_fn, thread_list):
     if not os.path.exists(abort_fn):
-        common.touch(abort_fn)
+        fs_drift.common.touch(abort_fn)
     for t in thread_list:
         t.terminate()
 
@@ -65,16 +66,16 @@ def run_multi_thread_workload(prm):
         host = 'localhost'
     prm_slave = (prm.host_set != [])
     # FIXME: get coherent logging level interface
-    host_startup_timeout = 5  + len(prm.host_set) / 3
+    host_startup_timeout = 5 + len(prm.host_set) / 3
 
     # for each thread set up SmallfileWorkload instance,
     # create a thread instance, and delete the thread-ready file
 
     thread_list = create_worker_list(prm)
     my_host_invoke = thread_list[0].invoke
-    my_log = fsd_log.start_log('%s.master' % host)
+    my_log = fs_drift.fsd_log.start_log('%s.master' % host)
     if prm.verbosity & 0x1000:
-        fsd_log.change_loglevel(my_log, logging.DEBUG)
+        fs_drift.fsd_log.change_loglevel(my_log, logging.DEBUG)
     my_log.debug(prm)
 
     # start threads, wait for them to reach starting gate
@@ -85,7 +86,7 @@ def run_multi_thread_workload(prm):
     for t in thread_list:
         t.start()
     my_log.debug('started %d worker threads on host %s' %
-                                (len(thread_list), host))
+                 (len(thread_list), host))
 
     # wait for all threads to reach the starting gate
     # this makes it more likely that they will start simultaneously
@@ -100,8 +101,8 @@ def run_multi_thread_workload(prm):
             t = thread_list[k]
             fn = t.invoke.gen_thread_ready_fname(t.invoke.tid)
             if not os.path.exists(fn):
-                my_log.debug('thread %d thread-ready file %s not found yet with %f sec left' % 
-                            (k, fn, (startup_timeout - sec)))
+                my_log.debug('thread %d thread-ready file %s not found yet with %f sec left' %
+                             (k, fn, (startup_timeout - sec)))
                 break
             thread_to_wait_for = k + 1
             # we only timeout if no more threads have reached starting gate
@@ -118,8 +119,8 @@ def run_multi_thread_workload(prm):
 
     if thread_to_wait_for < thread_count:
         abort_test(abort_fname, thread_list)
-        raise FsDriftException('only %d threads reached starting gate' 
-                                % thread_to_wait_for)
+        raise FsDriftException('only %d threads reached starting gate'
+                               % thread_to_wait_for)
 
     # declare that this host is at the starting gate
 
@@ -127,12 +128,12 @@ def run_multi_thread_workload(prm):
         host_ready_fn = gen_host_ready_fname(prm, prm.as_host)
         my_log.debug('host %s creating ready file %s' %
                      (my_host_invoke.onhost, host_ready_fn))
-        common.touch(host_ready_fn)
+        fs_drift.common.touch(host_ready_fn)
 
     sg = prm.starting_gun_path
     if not prm_slave:
         my_log.debug('wrote starting gate file ')
-        sync_files.write_sync_file(sg, 'hi there')
+        fs_drift.sync_files.write_sync_file(sg, 'hi there')
 
     # wait for starting_gate file to be created by test driver
     # every second we resume scan from last host file not found
@@ -151,7 +152,7 @@ def run_multi_thread_workload(prm):
         if not os.path.exists(sg):
             abort_test(prm.abort_path, thread_list)
             raise FsDriftException('starting signal not seen within %d seconds'
-                            % host_startup_timeout)
+                                   % host_startup_timeout)
     if prm.verbosity & 0x800:
         my_log.info('starting test on host ' + host + ' in 2 seconds')
     time.sleep(2 + random.random())  # let other hosts see starting gate file
@@ -171,8 +172,8 @@ def run_multi_thread_workload(prm):
 
     if not prm_slave:
         try:
-            worker_list = [ t.invoke for t in thread_list ] 
-            output_results.output_results(prm, worker_list)
+            worker_list = [t.invoke for t in thread_list]
+            fs_drift.output_results.output_results(prm, worker_list)
         except FsDriftException as e:
             my_log.exception(e)
             return NOTOK
@@ -184,8 +185,8 @@ def run_multi_thread_workload(prm):
 
         result_filename = host_result_filename(prm, prm.as_host)
         my_log.debug('saving result to filename %s' % result_filename)
-        worker_list = [ t.invoke for t in thread_list ]
-        sync_files.write_pickle(result_filename, worker_list)
+        worker_list = [t.invoke for t in thread_list]
+        fs_drift.sync_files.write_pickle(result_filename, worker_list)
         time.sleep(1.2)  # for benefit of NFS with actimeo=1
 
     debug_time = os.getenv('DEBUG_DELAY_TIME')

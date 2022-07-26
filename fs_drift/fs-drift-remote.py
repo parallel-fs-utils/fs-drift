@@ -17,24 +17,25 @@ import socket
 
 import fs_drift.multi_thread_workload
 import fs_drift.common
-from sync_files import read_pickle
+from fs_drift.sync_files import read_pickle
 
 # parse command line and return unpickled test params
 # pass via --network-sync-dir option
 # optionally pass host identity of this remote invocation
 
+
 def parse():
 
     parser = argparse.ArgumentParser(
             description='parse remote fs-drift parameters')
-    parser.add_argument( '--network-sync-dir',
-            help='directory used to synchronize with test driver')
-    parser.add_argument( '--as-host',
-            default=socket.gethostname(),
-            help='directory used to synchronize with test driver')
+    parser.add_argument('--network-sync-dir',
+                        help='directory used to synchronize with test driver')
+    parser.add_argument('--as-host',
+                        default=socket.gethostname(),
+                        help='directory used to synchronize with test driver')
     args = parser.parse_args()
     if args.network_sync_dir == None:
-        raise common.FsDriftException('you must specify --network-sync-dir')
+        raise fs_drift.common.FsDriftException('you must specify --network-sync-dir')
     param_pickle_fname = os.path.join(args.network_sync_dir, 'params.pickle')
     if not os.path.exists(param_pickle_fname):
         time.sleep(1.1)
@@ -52,7 +53,7 @@ def run_workload():
     # each remote instance will wait until all instances reach starting gate
 
     params = parse()
-    return multi_thread_workload.run_multi_thread_workload(params)
+    return fs_drift.multi_thread_workload.run_multi_thread_workload(params)
 
 
 # for windows compatibility,

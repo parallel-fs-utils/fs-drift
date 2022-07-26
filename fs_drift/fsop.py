@@ -76,7 +76,7 @@ class FSOPCtx:
         self.log = log
         self.onhost = onhost
         self.tid = tid
-        self.buf = random_buffer.gen_buffer(params.max_record_size_kb*BYTES_PER_KiB)
+        self.buf = fs_drift.random_buffer.gen_buffer(params.max_record_size_kb*BYTES_PER_KiB)
         self.total_dirs = 1
         self.verbosity = self.params.verbosity
         self.measured_bw = None
@@ -119,7 +119,7 @@ class FSOPCtx:
             rq.RANDOM_DISCARD: self.op_random_discard,
             rq.WRITE:       self.op_write,
             }
-        if self.params.random_distribution != common.FileAccessDistr.uniform:
+        if self.params.random_distribution != fs_drift.common.FileAccessDistr.uniform:
             self.log.info('velocity=%f, stddev=%f, center=%f' % (self.velocity, self.params.gaussian_stddev, self.center))
 
 #        if self.params.directIO and self.params.max_record_size_kb < 4:
@@ -520,7 +520,7 @@ class FSOPCtx:
         buf_offset = 0
         precise_time = 0
         if self.params.compress_ratio or self.params.dedupe_pct:
-            self.buf = random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)
+            self.buf = fs_drift.random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)
         if self.verbosity & 0x1000:
             self.log.debug('create %s sz %s' % (fn, target_sz))
         subdir = os.path.dirname(fn)
@@ -596,7 +596,7 @@ class FSOPCtx:
         buf_offset = 0
         precise_time = 0
         if self.params.compress_ratio or self.params.dedupe_pct:
-            self.buf = random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)
+            self.buf = fs_drift.random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)
         if self.verbosity & 0x8000:
             self.log.debug('append %s sz %s' % (fn, target_sz))
         try:
@@ -660,7 +660,7 @@ class FSOPCtx:
             target_size = self.random_file_size()
             buf_offset = 0
             if self.params.compress_ratio or self.params.dedupe_pct:
-                self.buf = random_buffer.gen_compressible_buffer(target_size, self.params.compress_ratio, self.params.dedupe_pct)
+                self.buf = fs_drift.random_buffer.gen_compressible_buffer(target_size, self.params.compress_ratio, self.params.dedupe_pct)
             #Lets make sure, we won't write 100MB into 4KB file
             #This way, we'll at most rewrite the whole file
             if target_size > file_size:
@@ -937,7 +937,7 @@ class FSOPCtx:
             self.log.debug('remount: %s' % self.params.mount_command)
         mountpoint = self.params.mount_command.split()[-1].strip()
         if not self.params.top_directory.startswith(mountpoint):
-            raise common.FsDriftException(
+            raise fs_drift.common.FsDriftException(
                     'mountpoint %s does not contain topdir %s' %
                     (mountpoint, topdir))
         with open('/proc/mounts', 'r') as mount_f:
@@ -988,7 +988,7 @@ if __name__ == "__main__":
     import opts
     import fs_drift.fsd_log
     options = opts.parseopts()
-    log = fsd_log.start_log('fsop-unittest')
+    log = fs_drift.fsd_log.start_log('fsop-unittest')
     log.info('hi there')
     if not options.top_directory.__contains__('/tmp/'):
         raise FsDriftException('bad top directory')
@@ -1033,7 +1033,7 @@ if __name__ == "__main__":
 
     #simulate a run where max record size = max file size
     ctx.params.max_record_size_kb = ctx.params.max_file_size_kb = 1024
-    ctx.buf = random_buffer.gen_buffer(ctx.params.max_record_size_kb*BYTES_PER_KiB)
+    ctx.buf = fs_drift.random_buffer.gen_buffer(ctx.params.max_record_size_kb*BYTES_PER_KiB)
     for j in range(0, 200):
         for k in FSOPCtx.opcode_to_opname.keys():
             if k != rq.REMOUNT:
@@ -1049,7 +1049,7 @@ if __name__ == "__main__":
     print(ctrs.json_dict())
 
     # simulate a gaussian run
-    options.random_distribution = common.FileAccessDistr.gaussian
+    options.random_distribution = fs_drift.common.FileAccessDistr.gaussian
     ctrs = FSOPCounters()
     ctx = FSOPCtx(options, log, ctrs, 'test-host', 'test-tid')
     ctx.verbosity = -1
