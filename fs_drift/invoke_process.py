@@ -86,7 +86,7 @@ if __name__ == '__main__':
                     'create, 4']
 
         def setUp(self):
-            self.params = opts.parseopts()
+            self.params = fs_drift.opts.parseopts()
             self.params.duration = 2
             self.params.workload_table_csv_path = '/tmp/weights.csv'
             self.log = fs_drift.fsd_log.start_log('invoke_process')
@@ -106,7 +106,7 @@ if __name__ == '__main__':
             thread_count = 4
             invokeList = []
             for j in range(0, thread_count):
-                s = worker_thread.FsDriftWorkload(self.params)
+                s = fs_drift.worker_thread.FsDriftWorkload(self.params)
                 s.tid = str(j)
                 invokeList.append(s)
             threadList = []
