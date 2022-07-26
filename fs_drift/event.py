@@ -5,14 +5,15 @@ import sys
 import random
 # from fs-drift modules
 import fs_drift.common
-from common import rq, FsDriftException
-from fsop import FSOPCtx
-from fsop_counters import FSOPCounters
+from fs_drift.common import rq, FsDriftException
+from fs_drift.fsop import FSOPCtx
+from fs_drift.fsop_counters import FSOPCounters
 
-# read weights in from a CSV file where each record contains 
+# read weights in from a CSV file where each record contains
 # operation name, relative weight
 # operation name is one of names in fsop.FSOPCtx.opnames table
 # relative weight is a non-negative floating-point number
+
 
 def parse_weights(opts):
     linenum = 0
@@ -34,8 +35,8 @@ def parse_weights(opts):
                     opcode = FSOPCtx.opname_to_opcode[opname]
                     weights[opcode] = float(relweight)
                     if weights[opcode] < 0.0:
-                        raise FsDriftException('%s: negative weights not allowed' % 
-                                                opts.workload_table_csv_path)
+                        raise FsDriftException('%s: negative weights not allowed' %
+                                               opts.workload_table_csv_path)
                 except KeyError:
                     raise FsDriftException('%s: unrecognized opname' % opname)
                 except ValueError:
@@ -66,13 +67,13 @@ def print_weights(normalized_weights, out_f=sys.stdout):
 
 
 # user-defined weights are then normalized to be
-# probabilities here.  We sort them by weight 
+# probabilities here.  We sort them by weight
 # so that the loop will normally exit after very
 # few iterations
 
 def normalize_weights(weights):
     def extract_weight(weight_tuple):
-        (typ,wgt) = weight_tuple
+        (typ, wgt) = weight_tuple
         return wgt
     total_weight = 0.0
     for (opcode, weight) in weights.items():
@@ -87,12 +88,13 @@ def normalize_weights(weights):
         if cum_probability > 1.0 and cum_probability < 1.000001:
             # floating point noise, round it down to 1.0
             cum_probability = 1.0
-        normalized_weights.append( (typ, cum_probability) )
+        normalized_weights.append((typ, cum_probability))
     return normalized_weights
 
-# FIXME: this could use binary search 
+# FIXME: this could use binary search
 # or python equivalent if there are enough codes
 # to justify avoiding linear search
+
 
 def gen_event(normalized_weights):
     r = random.uniform(0.0, 1.0)
@@ -104,13 +106,14 @@ def gen_event(normalized_weights):
 
 # unit test
 
+
 if __name__ == '__main__':
     import opts
     import logging
     import fs_drift.fsd_log
 
     with open('/tmp/weights.csv', 'w') as w_f:
-        w_f.write( '\n'.join( [
+        w_f.write('\n'.join([
             'read, 2',
             'random_read, 2',
             'random_write, 2',
