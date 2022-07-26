@@ -7,19 +7,26 @@ Licensed under the Apache License at http://www.apache.org/licenses/LICENSE-2.0
 See Appendix on this page for instructions pertaining to license.
 '''
 
-import threading, os, errno, copy, time, subprocess, logging
+import threading
+import os
+import errno
+import copy
+import time
+import subprocess
+import logging
 # fs-drift modules
-from fsd_log import start_log
-from common import OK, NOTOK, FsDriftException
+from fs_drift.fsd_log import start_log
+from fs_drift.common import OK, NOTOK, FsDriftException
 from unit_test_module import get_unit_test_module
 
 # this class is just used to create a python thread
 # for each remote host that we want to use as a workload generator
 # the thread just executes an ssh command to run this program on a remote host
 
+
 class ssh_thread(threading.Thread):
 
-    ssh_prefix = [ 'ssh', '-x', '-o', 'StrictHostKeyChecking=no' ]
+    ssh_prefix = ['ssh', '-x', '-o', 'StrictHostKeyChecking=no']
 
     def __str__(self):
         return 'ssh-thread:%s:%s:%s' % \
@@ -52,9 +59,10 @@ class ssh_thread(threading.Thread):
             except OSError as e:
                 if e.errno != errno.ESRCH:
                     raise e
-                self.log.debug('tried to kill non existent process %d', 
+                self.log.debug('tried to kill non existent process %d',
                                self.popen_obj.pid)
         self.status = NOTOK
+
 
 if __name__ == '__main__':
     unittest_module = get_unit_test_module()

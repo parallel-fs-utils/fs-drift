@@ -15,7 +15,7 @@ from fcntl import ioctl
 import time
 
 # my modules
-import common
+import fs_drift.common
 from common import rq, FileAccessDistr, FileSizeDistr
 from common import OK, NOTOK, BYTES_PER_KiB, FD_UNDEFINED, FsDriftException
 from common import myassert
@@ -996,7 +996,7 @@ class FSOPCtx:
 if __name__ == "__main__":
     import logging
     import opts
-    import fsd_log
+    import fs_drift.fsd_log
     options = opts.parseopts()
     log = fsd_log.start_log('fsop-unittest')
     log.info('hi there')

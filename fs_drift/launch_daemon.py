@@ -13,7 +13,7 @@
 # as the Windows clients, so you don't need to specify
 # --substitute_top in any other situation.
 #
-# Example for Windows: 
+# Example for Windows:
 # if mountpoint on Linux test driver is /mnt/cifs/testshare
 # and mountpoint on Windows is z:\
 # you run:
@@ -28,11 +28,11 @@
 #   CMD: python launch_daemon.py --top $top_dir --as-host container$container_id
 #
 # for example, you could include this as the last line in your Dockerfile
-# and fill in top_dir and container_id as environment variables in 
+# and fill in top_dir and container_id as environment variables in
 # your docker run command using the -e option
 # # docker run -e top_dir=/mnt/fs/smf -e container_id="container-2"
 #
-# 
+#
 import sys
 import os
 import time
@@ -41,7 +41,7 @@ import logging
 import socket
 import argparse
 
-from fsd_log import start_log
+from fs_drift.fsd_log import start_log
 
 OK = 0
 NOTOK = 1
@@ -49,13 +49,15 @@ NOTOK = 1
 verbose = (os.getenv("VERBOSE") != None)
 log = start_log('launcher', verbosity=verbose)
 
+
 def myabort(msg):
     log.error(msg)
     sys.exit(NOTOK)
 
+
 substitute_dir = None
 top_dir = None
-# get short hostname 
+# get short hostname
 as_host = socket.gethostname().split('.')[0]
 
 parser = argparse.ArgumentParser(description='parse fs-drift/launch_daemon.py parameters')
@@ -69,8 +71,8 @@ top_dir = args.top
 as_host = args.as_host
 substitute_dir = args.substitute_top
 
-log.info('substitute-top %s, top directory %s, as-host %s' % 
-        (substitute_dir, top_dir, as_host))
+log.info('substitute-top %s, top directory %s, as-host %s' %
+         (substitute_dir, top_dir, as_host))
 
 if top_dir == None:
     myabort('you must define --top parameter')

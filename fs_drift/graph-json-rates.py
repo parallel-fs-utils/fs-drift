@@ -9,8 +9,8 @@
 # in these cases you have to choose one, and it will help you by listing possibilities
 # so for example:
 #   $ graph-json-rates.py /mnt/cephfs/network-shared/cluster-rates.json MBps 5
-#   $ graph-json-rates.py /mnt/cephfs/network-shared/per-host-rates.json fps 5 localhost.localdomain.00 
-# it generates a .png file containing the desired graph with a unique filename 
+#   $ graph-json-rates.py /mnt/cephfs/network-shared/per-host-rates.json fps 5 localhost.localdomain.00
+# it generates a .png file containing the desired graph with a unique filename
 # in the same directory as the .json file that generated it
 # if you don't want to see the graph and you just want .png file, unset DISPLAY env. var.
 
@@ -21,10 +21,12 @@ import matplotlib.pyplot as plt
 from matplotlib.transforms import Bbox
 import json
 
+
 def usage(errmsg):
     print('ERROR: %s' % errmsg)
     print('usage: graph-json-rates.py fs-drift-rates-json-file fps|mbps interval-sec [ optional-key ] ')
     sys.exit(1)
+
 
 if len(argv) < 3:
     usage('not enough CLI parameters')
@@ -101,12 +103,12 @@ fig, ax = plt.subplots()
 plt.subplot(plot_number)
 if want_fps:
     for k in files_data.keys():
-        files_lines.append(ax.plot(range(0,sample_count), files_data[k], label=k))
+        files_lines.append(ax.plot(range(0, sample_count), files_data[k], label=k))
 else:
     for k in bytes_data.keys():
-        bytes_lines.append(ax.plot(range(0,sample_count), bytes_data[k], label=k))
+        bytes_lines.append(ax.plot(range(0, sample_count), bytes_data[k], label=k))
 
-ax.legend(loc='upper right', fontsize='medium',bbox_to_anchor=(1.1,1.0))
+ax.legend(loc='upper right', fontsize='medium', bbox_to_anchor=(1.1, 1.0))
 ax.set_ylim([0.0, max_value])
 plt.xlabel('fraction of elapsed time', fontdict=font)
 plt.ylabel('files/sec' if want_fps else 'MiB/sec', fontdict=font)
@@ -128,5 +130,3 @@ if select_key is not None:
 output_path = os.path.join(input_directory, input_filename+'.png')
 print('writing graph to %s' % output_path)
 fig.savefig(output_path)
-
-

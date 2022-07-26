@@ -36,15 +36,15 @@ import errno
 import codecs
 
 # fs-drift modules
-import common
+import fs_drift.common
 from common import touch, FsDriftException, FileSizeDistr, FileAccessDistr
 from common import ensure_dir_exists, deltree, OK
 import fs_drift.event
 from fsop import FSOPCtx
 from fsop_counters import FSOPCounters
-import fsd_log
+import fs_drift.fsd_log
 from sync_files import write_pickle, read_pickle
-import output_results
+import fs_drift.output_results
 
 # process exit status for success and failure
 OK = 0

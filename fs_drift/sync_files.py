@@ -4,7 +4,7 @@ import pickle
 import shutil
 import time
 # from fs-drift...
-import common
+import fs_drift.common
 
 notyet = '.notyet'
 

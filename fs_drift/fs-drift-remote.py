@@ -15,8 +15,8 @@ import pickle
 import argparse
 import socket
 
-import multi_thread_workload
-import common
+import fs_drift.multi_thread_workload
+import fs_drift.common
 from sync_files import read_pickle
 
 # parse command line and return unpickled test params

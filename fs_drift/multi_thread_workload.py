@@ -8,12 +8,12 @@ import socket
 import logging
 
 import worker_thread
-import common
+import fs_drift.common
 from common import OK, NOTOK, FsDriftException, ensure_deleted
-import fsd_log
+import fs_drift.fsd_log
 import invoke_process
-import sync_files
-import output_results
+import fs_drift.sync_files
+import fs_drift.output_results
 
 def create_worker_list(prm):
 

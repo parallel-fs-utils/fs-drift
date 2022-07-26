@@ -18,7 +18,7 @@ import os
 import time
 from common import ensure_deleted, OK, NOTOK
 from os.path import join
-import sync_files
+import fs_drift.sync_files
 
 # this class is just used to create a python thread
 # for each remote host that we want to use as a workload generator

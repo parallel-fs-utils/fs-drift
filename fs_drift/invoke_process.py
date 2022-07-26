@@ -14,8 +14,8 @@ import pickle
 
 import opts
 import worker_thread
-import fsd_log
-import common
+import fs_drift.fsd_log
+import fs_drift.common
 from common import FsDriftException, OK, NOTOK, deltree
 from sync_files import write_pickle
 

@@ -4,7 +4,7 @@
 import sys
 import random
 # from fs-drift modules
-import common
+import fs_drift.common
 from common import rq, FsDriftException
 from fsop import FSOPCtx
 from fsop_counters import FSOPCounters
@@ -107,7 +107,7 @@ def gen_event(normalized_weights):
 if __name__ == '__main__':
     import opts
     import logging
-    import fsd_log
+    import fs_drift.fsd_log
 
     with open('/tmp/weights.csv', 'w') as w_f:
         w_f.write( '\n'.join( [

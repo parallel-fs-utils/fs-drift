@@ -31,18 +31,17 @@ import errno
 import pickle
 import logging
 
-import common
-from common import rq, OK, NOTOK
-from common import ensure_deleted, FsDriftException
+import fs_drift.common
+from fs_drift.common import rq, OK, NOTOK
+from fs_drift.common import ensure_deleted, FsDriftException
 import opts
-import fsd_log
-import output_results
-import ssh_thread
-import launcher_thread
-import sync_files
-import output_results
-import multi_thread_workload
-from sync_files import write_pickle, read_pickle
+import fs_drift.fsd_log
+import fs_drift.output_results
+import fs_drift.ssh_thread
+import fs_drift.launcher_thread
+import fs_drift.sync_files
+import fs_drift.multi_thread_workload
+from fs_drift.sync_files import write_pickle, read_pickle
 
 
 def abort_test(prm):
