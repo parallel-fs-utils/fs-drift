@@ -12,12 +12,12 @@ import time
 import multiprocessing
 import pickle
 
-import opts
-import worker_thread
+import fs_drift.opts
+import fs_drift.worker_thread
 import fs_drift.fsd_log
 import fs_drift.common
-from common import FsDriftException, OK, NOTOK, deltree
-from sync_files import write_pickle
+from fs_drift.common import FsDriftException, OK, NOTOK, deltree
+from fs_drift.sync_files import write_pickle
 
 # this class launches multiple threads with FsDriftWorkload instances
 # we do this because we can use > 1 core this way, with python threading,
