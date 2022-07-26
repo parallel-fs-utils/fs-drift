@@ -7,7 +7,7 @@
 # how to run:
 #
 # ./fs-drift.py
-# 
+#
 # how to get help:
 #
 # ./fs-drift.py -h
@@ -180,7 +180,7 @@ def run_multi_host_workload(prm, log):
             log.error('error writing starting gun file: %s' % os.strerror(e.errno))
             multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)
             raise e
-            
+
     # wait for them to finish
 
     for t in remote_thread_list:
@@ -265,7 +265,7 @@ def run_workload():
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise FsDriftException(
-                'you must create the top-level directory %s' % 
+                'you must create the top-level directory %s' %
                 params.top_directory)
 
     # put parameters where all threads can see them
