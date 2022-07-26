@@ -26,7 +26,7 @@ import os.path
 import time
 import sys
 import random
-import event
+import fs_drift.event
 import errno
 import pickle
 import logging
@@ -44,11 +44,13 @@ import output_results
 import multi_thread_workload
 from sync_files import write_pickle, read_pickle
 
+
 def abort_test(prm):
     multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)
     sys.exit(NOTOK)
 
 # run a multi-host test
+
 
 def run_multi_host_workload(prm, log):
 
@@ -63,7 +65,7 @@ def run_multi_host_workload(prm, log):
     else:
         raise FsDriftException('unrecognized python version %s' % sys.version)
 
-    log.debug('python_prog = %s'%python_prog)
+    log.debug('python_prog = %s' % python_prog)
 
     remote_thread_list = []
     host_ct = len(prm.host_set)
@@ -175,7 +177,7 @@ def run_multi_host_workload(prm, log):
         try:
             sync_files.write_sync_file(prm.starting_gun_path, 'hi')
             log.info('starting all threads by creating starting gun file %s' %
-                        prm.starting_gun_path)
+                     prm.starting_gun_path)
         except IOError as e:
             log.error('error writing starting gun file: %s' % os.strerror(e.errno))
             multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)

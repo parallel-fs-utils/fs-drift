@@ -39,7 +39,7 @@ import codecs
 import common
 from common import touch, FsDriftException, FileSizeDistr, FileAccessDistr
 from common import ensure_dir_exists, deltree, OK
-import event
+import fs_drift.event
 from fsop import FSOPCtx
 from fsop_counters import FSOPCounters
 import fsd_log
