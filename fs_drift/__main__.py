@@ -34,7 +34,7 @@ import logging
 import fs_drift.common
 from fs_drift.common import rq, OK, NOTOK
 from fs_drift.common import ensure_deleted, FsDriftException
-import opts
+import fs_drift.opts
 import fs_drift.fsd_log
 import fs_drift.output_results
 import fs_drift.ssh_thread
