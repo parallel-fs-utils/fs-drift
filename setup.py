@@ -11,7 +11,7 @@ setup(
     url="https://github.com/parallel-fs-utils/fs-drift",
     keywords=[],
     include_package_data=True,
-    packages=["fs_drift"],
+    packages=find_packages(),
     classifiers=[
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
