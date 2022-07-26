@@ -3,7 +3,7 @@ import sys
 import os
 import json
 import copy
-from fsop_counters import FSOPCounters
+from fs_drift.fsop_counters import FSOPCounters
 from fs_drift.common import FsDriftException, OK
 from fs_drift.common import KiB_PER_GiB, BYTES_PER_KiB, MiB_PER_GiB, BYTES_PER_MiB
 
