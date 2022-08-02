@@ -129,7 +129,7 @@ if __name__ == '__main__':
     params = opts.parseopts()
     params.workload_table_csv_path = '/tmp/weights.csv'
     weights = {}
-    log = fsd_log.start_log('fsdevent')
+    log = fs_drift.fsd_log.start_log('fsdevent')
     weights = parse_weights(params)
     normalized_weights = normalize_weights(weights)
     print_weights(normalized_weights)

@@ -23,7 +23,7 @@ def create_worker_list(prm):
 
     thread_list = []
     for k in range(0, prm.threads):
-        nextinv = worker_thread.FsDriftWorkload(prm)
+        nextinv = fs_drift.worker_thread.FsDriftWorkload(prm)
         nextinv.tid = '%02d' % k
         t = fs_drift.invoke_process.subprocess(nextinv)
         thread_list.append(t)
@@ -146,7 +146,7 @@ def run_multi_thread_workload(prm):
             if os.path.exists(sg):
                 break
             if os.path.exists(prm.abort_path):
-                log.info('saw abort file %s, aborting test' % prm.abort_path)
+                logging.info('saw abort file %s, aborting test' % prm.abort_path)
                 break
             time.sleep(1)
         if not os.path.exists(sg):

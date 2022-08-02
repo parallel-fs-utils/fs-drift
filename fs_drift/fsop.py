@@ -334,7 +334,7 @@ class FSOPCtx:
         precise_time = 0
         total_count = 0
         if self.params.compress_ratio or self.params.dedupe_pct:
-            self.buf = random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)
+            self.buf = fs_drift.random_buffer.gen_compressible_buffer(target_sz, self.params.compress_ratio, self.params.dedupe_pct)
         if self.verbosity & 0x8000:
             self.log.debug('write %s size %s' % (fn, target_sz))
         try:
