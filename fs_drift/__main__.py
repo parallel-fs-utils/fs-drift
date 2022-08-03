@@ -7,7 +7,7 @@
 # how to run:
 #
 # ./fs-drift.py
-# 
+#
 # how to get help:
 #
 # ./fs-drift.py -h
@@ -26,29 +26,30 @@ import os.path
 import time
 import sys
 import random
-import event
+import fs_drift.event
 import errno
 import pickle
 import logging
 
-import common
-from common import rq, OK, NOTOK
-from common import ensure_deleted, FsDriftException
-import opts
-import fsd_log
-import output_results
-import ssh_thread
-import launcher_thread
-import sync_files
-import output_results
-import multi_thread_workload
-from sync_files import write_pickle, read_pickle
+import fs_drift.common
+from fs_drift.common import rq, OK, NOTOK
+from fs_drift.common import ensure_deleted, FsDriftException
+import fs_drift.opts
+import fs_drift.fsd_log
+import fs_drift.output_results
+import fs_drift.ssh_thread
+import fs_drift.launcher_thread
+import fs_drift.sync_files
+import fs_drift.multi_thread_workload
+from fs_drift.sync_files import write_pickle, read_pickle
+
 
 def abort_test(prm):
-    multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)
+    fs_drift.multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)
     sys.exit(NOTOK)
 
 # run a multi-host test
+
 
 def run_multi_host_workload(prm, log):
 
@@ -63,7 +64,7 @@ def run_multi_host_workload(prm, log):
     else:
         raise FsDriftException('unrecognized python version %s' % sys.version)
 
-    log.debug('python_prog = %s'%python_prog)
+    log.debug('python_prog = %s' % python_prog)
 
     remote_thread_list = []
     host_ct = len(prm.host_set)
@@ -78,10 +79,10 @@ def run_multi_host_workload(prm, log):
         log.debug(this_remote_cmd)
         if prm.launch_as_daemon:
             remote_thread_list.append(
-                launcher_thread.launcher_thread(prm, log, remote_host, this_remote_cmd))
+                fs_drift.launcher_thread.launcher_thread(prm, log, remote_host, this_remote_cmd))
         else:
             remote_thread_list.append(
-                ssh_thread.ssh_thread(log, remote_host, this_remote_cmd))
+                fs_drift.ssh_thread.ssh_thread(log, remote_host, this_remote_cmd))
 
     # start them, pacing starts so that we don't get ssh errors
 
@@ -118,7 +119,7 @@ def run_multi_host_workload(prm, log):
                 raise FsDriftException('worker host signaled abort')
             for j in range(last_host_seen + 1, len(prm.host_set)):
                 h = prm.host_set[j]
-                fn = multi_thread_workload.gen_host_ready_fname(prm, h.strip())
+                fn = fs_drift.multi_thread_workload.gen_host_ready_fname(prm, h.strip())
                 log.debug('checking for host filename ' + fn)
                 if not os.path.exists(fn):
                     log.info('did not see host filename %s after %f sec' % (fn, sec))
@@ -161,7 +162,7 @@ def run_multi_host_workload(prm, log):
         log.exception(e)
         hosts_ready = False
     if not hosts_ready:
-        multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)
+        fs_drift.multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)
         if not exception_seen:
             log.error(
                 'no additional hosts reached starting gate within %5.1f seconds' % per_host_timeout)
@@ -173,14 +174,14 @@ def run_multi_host_workload(prm, log):
         # this is like firing the gun at the track meet
 
         try:
-            sync_files.write_sync_file(prm.starting_gun_path, 'hi')
+            fs_drift.sync_files.write_sync_file(prm.starting_gun_path, 'hi')
             log.info('starting all threads by creating starting gun file %s' %
-                        prm.starting_gun_path)
+                     prm.starting_gun_path)
         except IOError as e:
             log.error('error writing starting gun file: %s' % os.strerror(e.errno))
-            multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)
+            fs_drift.multi_thread_workload.abort_test(prm.abort_path, remote_thread_list)
             raise e
-            
+
     # wait for them to finish
 
     for t in remote_thread_list:
@@ -201,7 +202,7 @@ def run_multi_host_workload(prm, log):
             # read results for each thread run in that host
             # from python pickle of the list of worker thread objects
 
-            pickle_fn = multi_thread_workload.host_result_filename(prm, h)
+            pickle_fn = fs_drift.multi_thread_workload.host_result_filename(prm, h)
             log.debug('reading pickle file: %s' % pickle_fn)
             host_invoke_list = []
             try:
@@ -222,7 +223,7 @@ def run_multi_host_workload(prm, log):
                     raise e
                 log.error('  pickle file %s not found' % pickle_fn)
 
-        output_results.output_results(prm, invoke_list)
+        fs_drift.output_results.output_results(prm, invoke_list)
     except IOError as e:
         log.exception(e)
         log.error('host %s filename %s: %s' % (h, pickle_fn, str(e)))
@@ -240,7 +241,7 @@ def run_multi_host_workload(prm, log):
 
 def run_workload():
 
-    log = fsd_log.start_log('fs-drift')
+    log = fs_drift.fsd_log.start_log('fs-drift')
 
     # if a --host-set parameter was passed,
     # it's a multi-host workload
@@ -248,7 +249,7 @@ def run_workload():
     # until all instances have reached starting gate
 
     try:
-        params = opts.parseopts()
+        params = fs_drift.opts.parseopts()
         params.validate()
     except FsDriftException as e:
         log.exception(e)
@@ -258,14 +259,14 @@ def run_workload():
     print(params)
 
     if params.verbosity & 0x1000:
-        fsd_log.change_loglevel(log, logging.DEBUG)
+        fs_drift.fsd_log.change_loglevel(log, logging.DEBUG)
 
     try:
-        sync_files.create_top_dirs(params)
+        fs_drift.sync_files.create_top_dirs(params)
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise FsDriftException(
-                'you must create the top-level directory %s' % 
+                'you must create the top-level directory %s' %
                 params.top_directory)
 
     # put parameters where all threads can see them
@@ -276,7 +277,7 @@ def run_workload():
 
     if params.host_set != [] and not params.is_slave:
         return run_multi_host_workload(params, log)
-    return multi_thread_workload.run_multi_thread_workload(params)
+    return fs_drift.multi_thread_workload.run_multi_thread_workload(params)
 
 
 # for future windows compatibility,

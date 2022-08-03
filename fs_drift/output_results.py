@@ -1,10 +1,12 @@
-import time, sys
+import time
+import sys
 import os
 import json
 import copy
-from fsop_counters import FSOPCounters
-from common import FsDriftException, OK
-from common import KiB_PER_GiB, BYTES_PER_KiB, MiB_PER_GiB, BYTES_PER_MiB
+from fs_drift.fsop_counters import FSOPCounters
+from fs_drift.common import FsDriftException, OK
+from fs_drift.common import KiB_PER_GiB, BYTES_PER_KiB, MiB_PER_GiB, BYTES_PER_MiB
+
 
 def output_thread_counters(outfile, start_time, total_errors, fsop_ctrs):
     jsondict = fsop_ctrs.json_dict()
@@ -12,6 +14,7 @@ def output_thread_counters(outfile, start_time, total_errors, fsop_ctrs):
     jsondict['total-errors'] = '%9u' % total_errors
     outfile.write(json.dumps(jsondict, indent=4) + '\n')
     outfile.flush()
+
 
 def output_results(params, subprocess_list):
     cluster = FSOPCounters()
@@ -24,7 +27,7 @@ def output_results(params, subprocess_list):
         fmt = '%s, %s, %f, %d, %d, %9.3f, %s'
     else:
         print('host, thread, elapsed, I/O requests, MiB, status')
-        fmt = '%s, %s, %f, %d, %9.3f, %s'        
+        fmt = '%s, %s, %f, %d, %9.3f, %s'
 
     max_elapsed_time = 0.0
     for p in subprocess_list:
@@ -71,7 +74,7 @@ def output_results(params, subprocess_list):
         try:
             per_host_results = rslt['in-host'][host_number]
         except KeyError:
-            per_host_results = { 'hostname':p.onhost, 'in-thread':{}, 'files':0, 'ios':0, 'MiB':0.0 }
+            per_host_results = {'hostname': p.onhost, 'in-thread': {}, 'files': 0, 'ios': 0, 'MiB': 0.0}
             rslt['in-host'][host_number] = per_host_results
             per_host_counters = FSOPCounters()
 
@@ -151,4 +154,3 @@ def output_results(params, subprocess_list):
         json_obj['results'] = rslt
         with open(params.output_json_path, 'w') as jsonf:
             json.dump(json_obj, jsonf, indent=4, sort_keys=True)
-

@@ -36,15 +36,15 @@ import errno
 import codecs
 
 # fs-drift modules
-import common
-from common import touch, FsDriftException, FileSizeDistr, FileAccessDistr
-from common import ensure_dir_exists, deltree, OK
-import event
-from fsop import FSOPCtx
-from fsop_counters import FSOPCounters
-import fsd_log
-from sync_files import write_pickle, read_pickle
-import output_results
+import fs_drift.common
+from fs_drift.common import touch, FsDriftException, FileSizeDistr, FileAccessDistr
+from fs_drift.common import ensure_dir_exists, deltree, OK
+import fs_drift.event
+from fs_drift.fsop import FSOPCtx
+from fs_drift.fsop_counters import FSOPCounters
+import fs_drift.fsd_log
+from fs_drift.sync_files import write_pickle, read_pickle
+import fs_drift.output_results
 
 # process exit status for success and failure
 OK = 0
@@ -121,10 +121,10 @@ class FsDriftWorkload:
         self.abort = False
         self.status = OK
 
-        # every few seconds we see if there is a verbosity file 
+        # every few seconds we see if there is a verbosity file
         # in network_shared_path, and if it has changed, if it has
         # then we reload verbosity from this file
-        # so you can turn on/off debug logging in different areas 
+        # so you can turn on/off debug logging in different areas
         # in the middle of a run
         self.verbosity = self.params.verbosity
         self.verbosity_last_checked = 0
@@ -138,8 +138,7 @@ class FsDriftWorkload:
         # to measure file operation response times
         self.op_start_time = None
         self.rsptimes = []
-        self.bw = []        
-
+        self.bw = []
 
     # create per-thread log file
     # we have to avoid getting the logger for self.tid more than once,
@@ -147,7 +146,7 @@ class FsDriftWorkload:
     # and cause duplicate log messages in per-invoke log file
 
     def start_log(self):
-        self.log = fsd_log.start_log('thrd.%s' % self.tid, verbosity = self.verbosity)
+        self.log = fs_drift.fsd_log.start_log('thrd.%s' % self.tid, verbosity=self.verbosity)
 
     # update verbosity if necessary
 
@@ -197,12 +196,12 @@ class FsDriftWorkload:
             end_time = time.time()
             rsp_time = end_time - self.op_start_time
             self.rsptimes.append((self.op_start_time, rsp_time, opname))
-            
+
         if self.params.bw:
             self.bw.append((self.op_start_time, self.ctx.measured_bw, opname))
             self.ctx.measured_bw = None
         self.op_start_time = None
-        
+
     # save response times seen by this thread
     def save_rsptimes(self):
         fname = self.params.rsptime_path % (self.onhost, self.tid)
@@ -222,7 +221,7 @@ class FsDriftWorkload:
                 f.write('%9.6f, %9.6f, %s\n' % (start_time - self.start_time, bw, opname))
             os.fsync(f.fileno())  # particularly for NFS this is needed
         self.log.info('bandwidth saved in %s' % fname)
-        
+
     # determine if test interval is over for this thread
 
     # each thread uses this to signal that it is at the starting gate
@@ -245,7 +244,6 @@ class FsDriftWorkload:
             if self.log_level == logging.DEBUG:
                 self.log.debug('rnd expn file size %d KB' % next_size)
         return next_size
-
 
     # tell test driver that we're at the starting gate
     # this is a 2 phase process
@@ -271,11 +269,9 @@ class FsDriftWorkload:
         # with actimeo=1
         time.sleep(2)
 
-
     def thread_done_record(self):
         # must be fixed-length string so we can compute threads done from file size
         return '%012.6f %12s %60s\n' % (self.elapsed_time, self.tid, self.onhost)
-
 
     # record info needed to compute test statistics
 
@@ -344,7 +340,7 @@ class FsDriftWorkload:
         self.params = read_pickle(self.params.param_pickle_path)
         self.ctx = FSOPCtx(self.params, self.log, self.ctrs, self.onhost, self.tid)
 
-        # retrieve params from pickle file so that 
+        # retrieve params from pickle file so that
         # remote workload generators can read them
 
         if self.params.stats_report_interval > 0:
@@ -359,8 +355,8 @@ class FsDriftWorkload:
         total_errors = 0
         op = 0
         stop_file = self.params.stop_file_path
-        weights = event.parse_weights(self.params)
-        normalized_weights = event.normalize_weights(weights)
+        weights = fs_drift.event.parse_weights(self.params)
+        normalized_weights = fs_drift.event.normalize_weights(weights)
 
         self.wait_for_gate()
 
@@ -397,7 +393,7 @@ class FsDriftWorkload:
                     self.log.debug('fs fullness = %f' % self.ctx.fs_fullness)
             event_count += 1
 
-            x = event.gen_event(normalized_weights)
+            x = fs_drift.event.gen_event(normalized_weights)
             name = FSOPCtx.opcode_to_opname[x]
             if self.verbosity & 0x1:
                 self.log.debug('event %d name %s' % (x, name))
@@ -416,11 +412,11 @@ class FsDriftWorkload:
 
             # periodically output counters
 
-            if ( (self.params.stats_report_interval > 0) and 
-                 (self.op_start_time - last_stat_time > self.params.stats_report_interval)):
+            if ((self.params.stats_report_interval > 0)
+                    and (self.op_start_time - last_stat_time > self.params.stats_report_interval)):
                 if first_counters_written:
                     self.counter_file.write(',')
-                output_results.output_thread_counters(self.counter_file, self.start_time, total_errors, self.ctrs)
+                fs_drift.output_results.output_thread_counters(self.counter_file, self.start_time, total_errors, self.ctrs)
                 first_counters_written = True
                 last_stat_time = self.op_start_time
 
@@ -473,15 +469,16 @@ class FsDriftWorkload:
 
 # so you can just do "python worker_thread.py " to test it
 
+
 if __name__ == '__main__':
     from unit_test_module import get_unit_test_module
     unittest_module = get_unit_test_module()
     import opts
 
     # threads used to do multi-threaded unit testing
-    
+
     class TestThread(threading.Thread):
-    
+
         def __init__(self, my_worker, my_name):
             threading.Thread.__init__(self, name=my_name)
             self.worker = my_worker
@@ -490,7 +487,7 @@ if __name__ == '__main__':
         def __str__(self):
             return 'TestThread ' + str(self.worker) + ' ' + \
                 threading.Thread.__str__(self)
-    
+
         def run(self):
             try:
                 self.worker.do_workload()
@@ -509,10 +506,10 @@ if __name__ == '__main__':
                     'truncate, 0.05',
                     'rename, 1',
                     'create, 4']
-    
+
         def setUp(self):
             with open('/tmp/weights.csv', 'w') as w_f:
-                w_f.write( '\n'.join(Test.workload_table))
+                w_f.write('\n'.join(Test.workload_table))
             self.params = opts.parseopts()
             self.params.duration = 5
             self.params.stats_report_interval = 1
@@ -530,7 +527,7 @@ if __name__ == '__main__':
             deltree(self.params.top_directory)
             ensure_dir_exists(self.params.top_directory)
             ensure_dir_exists(self.params.network_shared_path)
-    
+
         def test_a_runthread(self):
             self.cleanup_files()
 
@@ -550,10 +547,10 @@ if __name__ == '__main__':
             verbosity_fn = os.path.join(self.params.network_shared_path, 'verbosity')
             with open(verbosity_fn, 'w') as vf:
                 vf.write('0xffffffff')
-            threads = [ t1, t2 ]
-            for t in threads: 
+            threads = [t1, t2]
+            for t in threads:
                 t.start()
-            mylog = fsd_log.start_log('run2threads')
+            mylog = fs_drift.fsd_log.start_log('run2threads')
             mylog.info('threads started')
             time.sleep(2)
             touch(self.params.starting_gun_path)
@@ -569,4 +566,3 @@ if __name__ == '__main__':
             print('total counters:')
             print(totals)
     unittest_module.main()
-

@@ -12,17 +12,18 @@ import time
 import multiprocessing
 import pickle
 
-import opts
-import worker_thread
-import fsd_log
-import common
-from common import FsDriftException, OK, NOTOK, deltree
-from sync_files import write_pickle
+import fs_drift.opts
+import fs_drift.worker_thread
+import fs_drift.fsd_log
+import fs_drift.common
+from fs_drift.common import FsDriftException, OK, NOTOK, deltree
+from fs_drift.sync_files import write_pickle
 
 # this class launches multiple threads with FsDriftWorkload instances
 # we do this because we can use > 1 core this way, with python threading,
 # a python process doesn't really use > 1 core because of the GIL (global lock)
 # occasional status reports could be sent back using pipe as well
+
 
 class subprocess(multiprocessing.Process):
 
@@ -66,10 +67,11 @@ class subprocess(multiprocessing.Process):
 
 # so you can just do "python invoke_process.py" to test it
 
+
 if __name__ == '__main__':
     from unit_test_module import get_unit_test_module
     unittest_module = get_unit_test_module()
-    
+
     class Test(unittest_module.TestCase):
         workload_table = [
                     'read, 2',
@@ -82,29 +84,29 @@ if __name__ == '__main__':
                     'truncate, 0.05',
                     'rename, 1',
                     'create, 4']
-    
+
         def setUp(self):
-            self.params = opts.parseopts()
+            self.params = fs_drift.opts.parseopts()
             self.params.duration = 2
             self.params.workload_table_csv_path = '/tmp/weights.csv'
-            self.log = fsd_log.start_log('invoke_process')
-    
+            self.log = fs_drift.fsd_log.start_log('invoke_process')
+
         def resetDir(self):
             deltree(self.params.top_directory)
             os.mkdir(self.params.top_directory)
             os.mkdir(self.params.network_shared_path)
             write_pickle(self.params.param_pickle_path, self.params)
-    
+
         def test_multiproc(self):
             self.log.info('starting test')
             self.resetDir()
             with open('/tmp/weights.csv', 'w') as w_f:
-                w_f.write( '\n'.join(Test.workload_table))
+                w_f.write('\n'.join(Test.workload_table))
             thread_ready_timeout = 4
             thread_count = 4
             invokeList = []
             for j in range(0, thread_count):
-                s = worker_thread.FsDriftWorkload(self.params)
+                s = fs_drift.worker_thread.FsDriftWorkload(self.params)
                 s.tid = str(j)
                 invokeList.append(s)
             threadList = []
@@ -125,10 +127,10 @@ if __name__ == '__main__':
                 time.sleep(1)
             if not threads_ready:
                 raise FsDriftException('threads did not show up within %d seconds'
-                                % thread_ready_timeout)
+                                       % thread_ready_timeout)
             time.sleep(1)
             self.log.info('threads awaiting starting gun')
-            common.touch(self.params.starting_gun_path)
+            fs_drift.common.touch(self.params.starting_gun_path)
             for t in threadList:
                 t.retrieve()
                 t.join()

@@ -9,12 +9,12 @@ from argparse import ArgumentParser
 
 # fs-drift module dependencies
 
-from common import OK, NOTOK, FsDriftException, FileAccessDistr, USEC_PER_SEC, BYTES_PER_KiB
-from common import FileAccessDistr2str
-from parser_data_types import boolean, positive_integer, non_negative_integer, bitmask, positive_integer_or_None
-from parser_data_types import positive_float, non_negative_float, positive_percentage
-from parser_data_types import host_set, file_access_distrib, size_or_range
-from parser_data_types import FsDriftParseException, TypeExc
+from fs_drift.common import OK, NOTOK, FsDriftException, FileAccessDistr, USEC_PER_SEC, BYTES_PER_KiB
+from fs_drift.common import FileAccessDistr2str
+from fs_drift.parser_data_types import boolean, positive_integer, non_negative_integer, bitmask, positive_integer_or_None
+from fs_drift.parser_data_types import positive_float, non_negative_float, positive_percentage
+from fs_drift.parser_data_types import host_set, file_access_distrib, size_or_range
+from fs_drift.parser_data_types import FsDriftParseException, TypeExc
 
 
 def getenv_or_default(var_name, var_default):
@@ -25,23 +25,24 @@ def getenv_or_default(var_name, var_default):
 
 # command line parameter variables here
 
+
 class FsDriftOpts:
     def derive_paths(self):
-        self.starting_gun_path     = os.path.join(self.network_shared_path,'starting-gun.tmp')
-        self.stop_file_path        = os.path.join(self.network_shared_path,'stop-file.tmp')
-        self.param_pickle_path     = os.path.join(self.network_shared_path,'params.pickle')
-        self.rsptime_path          = os.path.join(self.network_shared_path,'host-%s_thrd-%s_rsptimes.csv')
-        self.bw_path               = os.path.join(self.network_shared_path,'host-%s_thrd-%s_bw.csv')
-        self.abort_path            = os.path.join(self.network_shared_path,'abort.tmp')
-        self.pause_path            = os.path.join(self.network_shared_path,'pause.tmp')
-        self.checkerflag_path      = os.path.join(self.network_shared_path,'checkered_flag.tmp')
+        self.starting_gun_path = os.path.join(self.network_shared_path, 'starting-gun.tmp')
+        self.stop_file_path = os.path.join(self.network_shared_path, 'stop-file.tmp')
+        self.param_pickle_path = os.path.join(self.network_shared_path, 'params.pickle')
+        self.rsptime_path = os.path.join(self.network_shared_path, 'host-%s_thrd-%s_rsptimes.csv')
+        self.bw_path = os.path.join(self.network_shared_path, 'host-%s_thrd-%s_bw.csv')
+        self.abort_path = os.path.join(self.network_shared_path, 'abort.tmp')
+        self.pause_path = os.path.join(self.network_shared_path, 'pause.tmp')
+        self.checkerflag_path = os.path.join(self.network_shared_path, 'checkered_flag.tmp')
 
     def __init__(self):
         self.input_yaml = None
         self.output_json_path = None  # filled in later
-        self.host_set = [] # default is local test
+        self.host_set = []  # default is local test
         self.top_directory = '/tmp/foo'
-        self.threads = 2 #  number of subprocesses per host
+        self.threads = 2  # number of subprocesses per host
         self.is_slave = False
         self.duration = 1
         self.max_files = 200
@@ -67,7 +68,7 @@ class FsDriftOpts:
         # new parameters related to gaussian filename distribution
         self.random_distribution = FileAccessDistr.uniform
         self.mean_index_velocity = 1.0  # default is a fixed mean for the distribution
-        # just a guess, means most of accesses are limited to 1% of total files 
+        # just a guess, means most of accesses are limited to 1% of total files
         # so more cache-friendly
         self.gaussian_stddev = self.max_files * 0.01
         if self.max_files < 1000:
@@ -92,7 +93,7 @@ class FsDriftOpts:
             ('top directory', self.top_directory),
             ('JSON output file', self.output_json_path),
             ('save response times?', self.response_times),
-            ('save bandwidth?', self.bw),            
+            ('save bandwidth?', self.bw),
             ('stats report interval', self.stats_report_interval),
             ('workload table csv path', self.workload_table_csv_path),
             ('host set', ','.join(self.host_set)),
@@ -109,9 +110,9 @@ class FsDriftOpts:
             ('subdirectories per directory', self.subdirs_per_dir),
             ('incompressible data', self.incompressible),
             ('compression ratio', self.compress_ratio),
-            ('deduplication percentage', self.dedupe_pct),            
-            ('use direct IO', self.directIO),            
-            ('use this device for raw IO', self.rawdevice),                      
+            ('deduplication percentage', self.dedupe_pct),
+            ('use direct IO', self.directIO),
+            ('use this device for raw IO', self.rawdevice),
             ('pause between ops (usec)', self.pause_between_ops),
             ('distribution', FileAccessDistr2str(self.random_distribution)),
             ('mean index velocity', self.mean_index_velocity),
@@ -129,7 +130,7 @@ class FsDriftOpts:
             ]
 
     def __str__(self, use_newline=True, indentation='  '):
-        kvlist = [ '%-40s = %s' % (k, str(v)) for (k, v) in self.kvtuplelist() ]
+        kvlist = ['%-40s = %s' % (k, str(v)) for (k, v) in self.kvtuplelist()]
         if use_newline:
             return indentation + ('\n%s' % indentation).join(kvlist)
         else:
@@ -145,7 +146,7 @@ class FsDriftOpts:
 
         if len(self.top_directory) < 6:
             raise FsDriftException(
-                'top directory %s too short, may be system directory' % 
+                'top directory %s too short, may be system directory' %
                 self.top_directory)
 
         if not os.path.isdir(self.top_directory):
@@ -154,7 +155,7 @@ class FsDriftOpts:
                 self.top_directory)
 
         if self.workload_table_csv_path == None:
-            self.workload_table_csv_path = os.path.join(self.top_directory, 
+            self.workload_table_csv_path = os.path.join(self.top_directory,
                                                         'example_workload_table.csv')
             workload_table = [
                     'read, 2',
@@ -170,14 +171,16 @@ class FsDriftOpts:
                     'create, 4',
                     'write, 2']
             with open(self.workload_table_csv_path, 'w') as w_f:
-                w_f.write( '\n'.join(workload_table))
+                w_f.write('\n'.join(workload_table))
+
 
 def assure_block_alignment(size):
     if size < 4 * BYTES_PER_KiB:
-        print('size too low for directIO, raising to 4KiB')    
+        print('size too low for directIO, raising to 4KiB')
         return 4 * BYTES_PER_KiB
     return 4 * BYTES_PER_KiB * round(size / (4 * BYTES_PER_KiB))
-    
+
+
 def resolve_size(size_input, directIO):
     if ':' not in size_input:
         size = size_unit_to_bytes(size_input)
@@ -190,9 +193,10 @@ def resolve_size(size_input, directIO):
         high_bound = size_unit_to_bytes(high_bound)
         if low_bound > high_bound:
             raise FsDriftException('low bound (left) should be larger than high bound (right), got %s' % size_input)
-        if directIO:  
+        if directIO:
             return (assure_block_alignment(low_bound), assure_block_alignment(high_bound))
         return (low_bound, high_bound)
+
 
 def parseopts(cli_params=sys.argv[1:]):
     o = FsDriftOpts()
@@ -200,101 +204,101 @@ def parseopts(cli_params=sys.argv[1:]):
     parser = ArgumentParser(description='parse fs-drift parameters')
     add = parser.add_argument
     add('--input-yaml', help='input YAML file containing parameters',
-            default=None)
+        default=None)
     add('--output-json', help='output file containing results in JSON format',
-            default=None)
+        default=None)
     add('--workload-table', help='.csv file containing workload mix',
-            default=None)
+        default=None)
     add('--duration', help='seconds to run test',
-            type=positive_integer, 
-            default=o.duration)
+        type=positive_integer,
+        default=o.duration)
     add('--host-set', help='comma-delimited list of host names/ips',
-            type=host_set,
-            default=o.host_set)
+        type=host_set,
+        default=o.host_set)
     add('--top', help='directory containing all file accesses',
-            default=o.top_directory)
+        default=o.top_directory)
     add('--threads', help='number of subprocesses per host',
-            type=positive_integer,
-            default=o.threads)
+        type=positive_integer,
+        default=o.threads)
     add('--max-files', help='maximum number of files to access',
-            type=positive_integer, 
-            default=o.max_files)
+        type=positive_integer,
+        default=o.max_files)
     add('--max-file-size-kb', help='maximum file size in KiB',
-            type=positive_integer, 
-            default=o.max_file_size_kb)
+        type=positive_integer,
+        default=o.max_file_size_kb)
     add('--file-size', help='file size. If no units specified, treated like B. Other units: k, m, g. For range, enter two values separated by ":". Eg. 4:64',
-            type=size_or_range,
-            default=o.file_size)            
+        type=size_or_range,
+        default=o.file_size)
     add('--pause-between-ops', help='delay between ops in microsec',
-            type=non_negative_integer,
-            default=o.pause_between_ops)
+        type=non_negative_integer,
+        default=o.pause_between_ops)
     add('--max-record-size-kb', help='maximum read/write size in KiB. Deprecated, use --record-size instead',
-            type=positive_integer, 
-            default=o.max_record_size_kb)
+        type=positive_integer,
+        default=o.max_record_size_kb)
     add('--record-size', help='read/write record size. If no units specified, treated like B. Other units: k, m, g. For range, enter two values separated by ":". Eg. 4:64',
-            type=size_or_range, 
-            default=o.record_size)            
+        type=size_or_range,
+        default=o.record_size)
     add('--fdatasync-pct', help='probability of fdatasync after write',
-            type=positive_percentage, 
-            default=o.fdatasync_probability_pct)
+        type=positive_percentage,
+        default=o.fdatasync_probability_pct)
     add('--fsync-pct', help='probability of fsync after write',
-            type=positive_percentage, 
-            default=o.fsync_probability_pct)
+        type=positive_percentage,
+        default=o.fsync_probability_pct)
     add('--levels', help='number of directory levels in tree',
-            type=non_negative_integer, 
-            default=o.levels)
+        type=non_negative_integer,
+        default=o.levels)
     add('--dirs-per-level', help='number of subdirectories per directory',
-            type=non_negative_integer,
-            default=o.subdirs_per_dir)
+        type=non_negative_integer,
+        default=o.subdirs_per_dir)
     add('--report-interval', help='seconds between counter output',
-            type=positive_integer,
-            default=o.stats_report_interval)
+        type=positive_integer,
+        default=o.stats_report_interval)
     add('--response-times', help='if True then save response times to CSV file',
-            type=boolean,
-            default=o.response_times)
+        type=boolean,
+        default=o.response_times)
     add('--save-bw', help='if True then save bandwidth to CSV file',
-            type=boolean,
-            default=o.bw)
+        type=boolean,
+        default=o.bw)
     add('--incompressible', help='if True then write incompressible data',
-            type=boolean,
-            default=o.incompressible)
+        type=boolean,
+        default=o.incompressible)
     add('--compress-ratio', help='desired compress ratio, e.g. 4.0 is compressibility of 75 percent, i.e. the compressed block occupies 25 percent of original space',
-            type=positive_float,
-            default=o.compress_ratio)
+        type=positive_float,
+        default=o.compress_ratio)
     add('--dedupe-pct', help='deduplication percentage, i.e. percentage of data blocks that will be deduplicable',
-            type=positive_percentage,
-            default=o.dedupe_pct)
+        type=positive_percentage,
+        default=o.dedupe_pct)
     add('--directIO', help='if True then use directIO to open files/device',
-            type=boolean,
-            default=o.directIO)            
+        type=boolean,
+        default=o.directIO)
     add('--rawdevice', help='if set, use this device as a target for rawdevice testing (Warning: Data/File systems on this device will be corrupted)',
-            default=o.rawdevice)                
+        default=o.rawdevice)
     add('--random-distribution', help='either "uniform" or "gaussian"',
-            type=file_access_distrib, 
-            default=FileAccessDistr.uniform)
+        type=file_access_distrib,
+        default=FileAccessDistr.uniform)
     add('--mean-velocity', help='rate at which mean advances through files',
-            type=float, 
-            default=o.mean_index_velocity)
+        type=float,
+        default=o.mean_index_velocity)
     add('--gaussian-stddev', help='std. dev. of file number',
-            type=float, 
-            default=o.gaussian_stddev)
+        type=float,
+        default=o.gaussian_stddev)
     add('--create-stddevs-ahead', help='file creation ahead of other opts by this many stddevs',
-            type=float, 
-            default=o.create_stddevs_ahead)
+        type=float,
+        default=o.create_stddevs_ahead)
     add('--mount-command', help='command to mount the filesystem containing top directory',
-            default=o.mount_command)
+        default=o.mount_command)
     add('--tolerate-stale-file-handles', help='if true, do not throw exception on ESTALE',
-            type=boolean,
-            default=o.tolerate_stale_fh)
+        type=boolean,
+        default=o.tolerate_stale_fh)
     add('--fullness-limit-percent', help='stop adding to filesystem when it gets this full',
-            type=positive_percentage,
-            default=o.fullness_limit_pct)
+        type=positive_percentage,
+        default=o.fullness_limit_pct)
     add('--verbosity', help='decimal or hexadecimal integer bitmask controlling debug logging',
-            type=bitmask,
-            default=o.verbosity)
+        type=bitmask,
+        default=o.verbosity)
     add('--launch-as-daemon', help='launch remote/containerized fs-drift without ssh',
-            type=boolean,
-            default=o.launch_as_daemon)
+        type=boolean,
+        default=o.launch_as_daemon)
 
     # parse the command line and update opts
     args = parser.parse_args(cli_params)
@@ -315,7 +319,7 @@ def parseopts(cli_params=sys.argv[1:]):
     elif isinstance(o.file_size, tuple):
         o.max_file_size_kb = o.file_size[-1] // BYTES_PER_KiB
     else:
-        o.max_file_size_kb = o.file_size // BYTES_PER_KiB    
+        o.max_file_size_kb = o.file_size // BYTES_PER_KiB
     o.record_size = args.record_size
     if args.max_record_size_kb:
         o.record_size = (1, args.max_record_size_kb * BYTES_PER_KiB)
@@ -337,13 +341,13 @@ def parseopts(cli_params=sys.argv[1:]):
         if isinstance(o.record_size, tuple):
             o.record_size = (assure_block_alignment(o.record_size[0]), assure_block_alignment(o.record_size[1]))
         else:
-            o.record_size = assure_block_alignment(o.record_size)     
+            o.record_size = assure_block_alignment(o.record_size)
         o.max_file_size_kb = assure_block_alignment(o.max_file_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
         if isinstance(o.file_size, tuple):
             o.file_size = (assure_block_alignment(o.file_size[0]), assure_block_alignment(o.file_size[1]))
         else:
-            o.file_size = assure_block_alignment(o.file_size)     
-    o.rawdevice = args.rawdevice        
+            o.file_size = assure_block_alignment(o.file_size)
+    o.rawdevice = args.rawdevice
     o.pause_between_ops = args.pause_between_ops
     o.pause_secs = o.pause_between_ops / float(USEC_PER_SEC)
     o.response_times = args.response_times
@@ -371,7 +375,7 @@ def parseopts(cli_params=sys.argv[1:]):
     #    o.remote_pgm_dir = os.getcwd()
 
     o.is_slave = sys.argv[0].endswith('fs-drift-remote.py')
- 
+
     return o
 
 
@@ -390,7 +394,7 @@ def parse_yaml(options, input_yaml_file):
         except yaml.YAMLError as e:
             emsg = "YAML parse error: " + str(e)
             raise FsDriftParseException(emsg)
-    
+
     try:
         for k in y.keys():
             v = y[k]
@@ -415,7 +419,7 @@ def parse_yaml(options, input_yaml_file):
             elif k == 'max_file_size_kb':
                 options.max_file_size_kb = positive_integer(v)
             elif k == 'file_size':
-                options.file_size = size_or_range(v)                
+                options.file_size = size_or_range(v)
             elif k == 'pause_between_ops':
                 options.pause_between_ops = non_negative_integer(v)
             elif k == 'max_record_size_kb':
@@ -435,17 +439,17 @@ def parse_yaml(options, input_yaml_file):
             elif k == 'response_times':
                 options.response_times = boolean(v)
             elif k == 'bw':
-                options.bw = boolean(v)                
+                options.bw = boolean(v)
             elif k == 'incompressible':
                 options.incompressible = boolean(v)
             elif k == 'compress-ratio':
-                options.compress_ratio = positive_float(v)                
+                options.compress_ratio = positive_float(v)
             elif k == 'dedupe-pct':
                 options.dedupe_pct = positive_percentage(v)
             elif k == 'directIO':
                 options.directIO = boolean(v)
             elif k == 'rawdevice':
-                options.rawdevice = v                    
+                options.rawdevice = v
             elif k == 'random_distribution':
                 options.random_distribution = file_access_distrib(v)
             elif k == 'mean_velocity':
@@ -477,7 +481,7 @@ def parse_yaml(options, input_yaml_file):
         elif isinstance(options.file_size, tuple):
             options.max_file_size_kb = options.file_size[-1] // BYTES_PER_KiB
         else:
-            options.max_file_size_kb = options.file_size // BYTES_PER_KiB            
+            options.max_file_size_kb = options.file_size // BYTES_PER_KiB
         if options.directIO:
             options.max_file_size_kb = assure_block_alignment(options.max_file_size_kb * BYTES_PER_KiB) // BYTES_PER_KiB
             if isinstance(options.file_size, tuple):
@@ -487,7 +491,6 @@ def parse_yaml(options, input_yaml_file):
     except TypeExc as e:
         emsg = 'YAML parse error for key "%s" : %s' % (k, str(e))
         raise FsDriftParseException(emsg)
-
 
 
 if __name__ == "__main__":
@@ -523,7 +526,7 @@ if __name__ == "__main__":
             params.extend(['--max-file-size-kb', '1000000'])
             params.extend(['--pause-between-ops', '100'])
             params.extend(['--max-record-size-kb', '4096'])
-            params.extend(['--record-size', '4k'])            
+            params.extend(['--record-size', '4k'])
             params.extend(['--fdatasync-pct', '2'])
             params.extend(['--fsync-pct', '3'])
             params.extend(['--levels', '4'])
@@ -531,8 +534,8 @@ if __name__ == "__main__":
             params.extend(['--report-interval', '60'])
             params.extend(['--response-times', 'Y'])
             params.extend(['--incompressible', 'false'])
-            params.extend(['--directIO', 'false'])      
-            params.extend(['--rawdevice', 'none'])                   
+            params.extend(['--directIO', 'false'])
+            params.extend(['--rawdevice', 'none'])
             params.extend(['--random-distribution', 'gaussian'])
             params.extend(['--mean-velocity', '4.2'])
             params.extend(['--gaussian-stddev', '100.2'])
@@ -550,7 +553,7 @@ if __name__ == "__main__":
         def test_parse_all_from_yaml(self):
             fn = '/tmp/sample_parse.yaml'
             with open(fn, 'w') as f:
-                w = lambda s: f.write(s + '\n')
+                def w(s): return f.write(s + '\n')
                 w('top: /var/tmp')
                 w('output_json: /var/tmp/x.json')
                 w('workload_table: /var/tmp/x.csv')
@@ -560,7 +563,7 @@ if __name__ == "__main__":
                 w('max_file_size_kb: 1000000')
                 w('pause_between_ops: 100')
                 w('max_record_size_kb: None')
-                w('record_size: 4096')                
+                w('record_size: 4096')
                 w('fdatasync_pct: 2')
                 w('fsync_pct: 3')
                 w('levels: 4')
@@ -568,7 +571,7 @@ if __name__ == "__main__":
                 w('report_interval: 60')
                 w('response_times: Y')
                 w('incompressible: false')
-                w('directIO: false')                
+                w('directIO: false')
                 w('random_distribution: gaussian')
                 w('mean_velocity: 4.2')
                 w('gaussian_stddev: 100.2')
@@ -599,8 +602,8 @@ if __name__ == "__main__":
             assert(p.stats_report_interval == 60)
             assert(p.response_times == True)
             assert(p.incompressible == False)
-            assert(p.directIO == False)            
-            assert(p.rawdevice == None)            
+            assert(p.directIO == False)
+            assert(p.rawdevice == None)
             assert(p.random_distribution == FileAccessDistr.gaussian)
             assert(p.mean_velocity == 4.2)
             assert(p.gaussian_stddev == 100.2)
@@ -626,6 +629,6 @@ if __name__ == "__main__":
             with open(fn, 'w') as f:
                 f.write('host_set: host-foo,host-bar\n')
             parse_yaml(self.params, fn)
-            assert(self.params.host_set == [ 'host-foo', 'host-bar' ])
+            assert(self.params.host_set == ['host-foo', 'host-bar'])
 
     unittest_module.main()

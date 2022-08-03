@@ -1,21 +1,21 @@
 #!/usr/bin/env python
 #
 # smallfile_rsptimes_stats.py -- python program to reduce response time sample data from smallfile benchmark to
-# statistics.  
+# statistics.
 #
 # in addition to stats for individual thread, it shows per-client and cluster-wide stats
-# smallfile at present produces response time data in the /var/tmp/ directory 
+# smallfile at present produces response time data in the /var/tmp/ directory
 # within each workload generator
 # it is the user's responsibility to copy the data back
 # to a directory (on the test driver perhaps).
-# this means that the files from each workload generator have to have 
-# the workload generator hostname embedded in them 
+# this means that the files from each workload generator have to have
+# the workload generator hostname embedded in them
 # so that they can all be co-located in a single directory.
 # since there is no standard method for this yet,
 # this program has to be adjusted to parse the filenames
 # and extract 2 fields, thread number and short hostname
-# 
-# 
+#
+#
 import sys
 from sys import argv
 import os
@@ -27,19 +27,20 @@ import scipy.stats
 from scipy.stats import tmean, tstd
 import bisect
 
-time_infinity = 1<<62
+time_infinity = 1 << 62
 
 # edit this list if you want additional percentiles
 
-percentiles = [ 50, 90, 95, 99 ]
+percentiles = [50, 90, 95, 99]
 min_rsptime_samples = 5
 
-def usage( msg ):
+
+def usage(msg):
   print('ERROR: %s' % msg)
   print('usage: python smallfile_rsptimes_stats.py ')
   print('           [ --common-hostname-suffix my.suffix ] ')
   print('           [ --time-interval positive-integer-seconds ] ')
-  print('           directory' )
+  print('           directory')
   sys.exit(1)
 
 # parse files once, we assume here that we can hold them in RAM
@@ -47,26 +48,28 @@ def usage( msg ):
 # by keeping them in RAM we allow binary search for starting
 # time since we want to isolate set of samples in a time interval
 
-def parse_rsptime_file( result_dir, csv_pathname ):
+
+def parse_rsptime_file(result_dir, csv_pathname):
     samples = []
     with open(os.path.join(result_dir, csv_pathname), 'r') as f:
-        records = [ l.strip() for l in f.readlines() ]
+        records = [l.strip() for l in f.readlines()]
         for sample in records:
             components = sample.split(',')
             at_time = float(components[0])
             rsp_time = float(components[1])
             op = components[2]
-            samples.append( (op, at_time, rsp_time) )
+            samples.append((op, at_time, rsp_time))
     return samples
 
 
 # to be used for sorting based on tuple components
 
-def get_at_time( rsptime_tuple ):
+def get_at_time(rsptime_tuple):
     (_, at_time, _) = rsptime_tuple
     return at_time
 
-def get_rsp_time( rsptime_tuple ):
+
+def get_rsp_time(rsptime_tuple):
     (_, _, rsp_time) = rsptime_tuple
     return rsp_time
 
@@ -91,6 +94,7 @@ def find_le(a, x):
     i = bisect.bisect_right(a, x)
     return i
 
+
 def find_gt(a, x):
     # find lowest index with value >= x
     i = bisect.bisect_left(a, x)
@@ -102,8 +106,8 @@ def find_gt(a, x):
 # if you want this to calculate stats for a time_interval
 # t specify from_time and to_time
 
-def reduce_thread_set( sorted_samples_tuple, from_time=0, to_time=time_infinity ):
-    # FIXME: need binary search to 
+def reduce_thread_set(sorted_samples_tuple, from_time=0, to_time=time_infinity):
+    # FIXME: need binary search to
     # efficiently find beginning of time interval
     (sorted_samples, sorted_keys, sorted_times) = sorted_samples_tuple
     if to_time < time_infinity:
@@ -197,16 +201,19 @@ if not os.path.isdir(directory):
 
 samples_by_thread = {}
 hosts = {}
-pathname_matcher = lambda path : path.startswith('host') and path.endswith('.csv')
+def pathname_matcher(path): return path.startswith('host') and path.endswith('.csv')
+
+
 pathnames = filter(pathname_matcher, os.listdir(directory))
 max_thread = -1
 for p in pathnames:
     m = re.match(new_regex, p)
     if not m:
         continue
-    (host, threadstr) = m.group(1,2)
+    (host, threadstr) = m.group(1, 2)
     thread = int(threadstr)
-    if max_thread < thread: max_thread = thread
+    if max_thread < thread:
+      max_thread = thread
     try:
         perhost_dict = hosts[host]
     except KeyError:
@@ -214,9 +221,9 @@ for p in pathnames:
         hosts[host] = perhost_dict
     # load response times for this file into memory
     # save what file it came from too
-    samples = parse_rsptime_file( directory, p )
+    samples = parse_rsptime_file(directory, p)
     perhost_dict[threadstr] = (p, samples)
-  
+
 hostcount = len(hosts.keys())
 if hostcount == 0:
     usage('%s: no .csv response time log files were found' % directory)
@@ -267,14 +274,14 @@ with open(summary_pathname, 'w') as outf:
         threadset = hosts[h]
         for t in sorted(threadset.keys()):
             (_, samples) = threadset[t]
-            sorted_thrd_tuple = do_sorting(samples, already_sorted = True)
+            sorted_thrd_tuple = do_sorting(samples, already_sorted=True)
             thrd_results = reduce_thread_set(sorted_thrd_tuple)
             outf.write(h + ':' + t + ',' + format_stats(thrd_results) + '\n')
     outf.write('\n')
 
     # generate cluster-wide percentiles over time
     # to show if latency spikes occur
-    # first get max end time of any request, 
+    # first get max end time of any request,
     # round that down to quantized time interval
 
     end_time = -1
@@ -283,7 +290,7 @@ with open(summary_pathname, 'w') as outf:
         for t in threadset.keys():
             (_, samples) = threadset[t]
             if len(samples) > 0:
-                (_, max_at_time,max_rsp_time) = samples[-1]
+                (_, max_at_time, max_rsp_time) = samples[-1]
             else:
                 max_at_time = 0.0
                 max_rsp_time = 0.0
@@ -298,7 +305,7 @@ with open(summary_pathname, 'w') as outf:
         outf.write('cluster-wide response time stats over time:\n')
         outf.write('time-since-start(sec), ' + header + '\n')
 
-        # avoid re-sorting all response time samples 
+        # avoid re-sorting all response time samples
         # if possible (and it often is)
 
         if cluster_sample_set == None:
@@ -307,16 +314,14 @@ with open(summary_pathname, 'w') as outf:
                 for (_, samples) in per_host_dict.values():
                     cluster_sample_set.extend(samples)
             sorted_cluster_tuple = do_sorting(cluster_sample_set)
-        for from_t in range(0,quantized_end_time,time_interval):
+        for from_t in range(0, quantized_end_time, time_interval):
             to_t = from_t + time_interval
-            results_in_interval = reduce_thread_set(sorted_cluster_tuple, 
-                                                    from_time=from_t, 
-                                                    to_time=to_t) 
+            results_in_interval = reduce_thread_set(sorted_cluster_tuple,
+                                                    from_time=from_t,
+                                                    to_time=to_t)
             outf.write('%-8d, all-hosts:all-thrd, ' % from_t)
             outf.write(format_stats(results_in_interval) + '\n')
         outf.write('\n')
 
 
 print('rsp. time result summary at: %s' % summary_pathname)
-
-
